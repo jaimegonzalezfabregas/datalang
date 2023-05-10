@@ -26,14 +26,15 @@ pub enum LexogramType {
     OpSub,
     CharEq,
     OpEq,
-    OpAsig,
     OpNot,
     OpAnd,
     OpOr,
-    BrNewLine,
-    BrCarriageReturn,
+    Assuming,
+    CharNewLine,
+    CharCarriageReturn,
     Br,
     WhiteSpace,
+    TrueWhen,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
@@ -98,12 +99,13 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
         ("+", LexogramType::OpAdd),
         ("-", LexogramType::OpSub),
         ("=", LexogramType::CharEq),
-        ("\r", LexogramType::BrCarriageReturn),
-        ("\n", LexogramType::BrNewLine),
+        ("\r", LexogramType::CharCarriageReturn),
+        ("\n", LexogramType::CharNewLine),
         (" ", LexogramType::WhiteSpace),
         ("!", LexogramType::OpNot),
         ("&&", LexogramType::OpAnd),
         ("||", LexogramType::OpOr),
+        (":-", LexogramType::TrueWhen),
     ]);
 
     let mut ret: Vec<Lexogram> = vec![];
@@ -145,7 +147,6 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
     for l in simple {
         queue.push(l);
 
-        println!("{:?}", queue);
         let mut repeat_scan = true;
 
         while repeat_scan {
@@ -155,52 +156,38 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                 [Lexogram {
                     pos_f: _,
                     pos_s: _,
-                    l_type: LexogramType::BrCarriageReturn,
+                    l_type: LexogramType::CharCarriageReturn,
+                }]
+                | [Lexogram {
+                    pos_f: _,
+                    pos_s: _,
+                    l_type: LexogramType::CharNewLine,
+                }]
+                | [Lexogram {
+                    pos_f: _,
+                    pos_s: _,
+                    l_type: LexogramType::WhiteSpace,
+                }] => queue = vec![],
+
+                [Lexogram {
+                    pos_f: _,
+                    pos_s: _,
+                    l_type: LexogramType::CharEq,
                 }] => (),
 
                 [Lexogram {
                     pos_f,
                     pos_s: _,
-                    l_type: LexogramType::BrCarriageReturn,
-                }, Lexogram {
-                    pos_f: _,
-                    pos_s,
-                    l_type: LexogramType::BrNewLine,
-                }] => {
-                    ret.push(Lexogram {
-                        pos_f: *pos_f,
-                        pos_s: *pos_s,
-                        l_type: LexogramType::Br,
-                    });
-                    queue = vec![];
-                }
-
-                [Lexogram {
-                    pos_f,
-                    pos_s,
-                    l_type: LexogramType::BrNewLine,
-                }] => {
-                    ret.push(Lexogram {
-                        pos_f: *pos_f,
-                        pos_s: *pos_s,
-                        l_type: LexogramType::Br,
-                    });
-                    queue = vec![];
-                }
-
-                [Lexogram {
-                    pos_f,
-                    pos_s: _,
                     l_type: LexogramType::CharEq,
                 }, Lexogram {
                     pos_f: _,
                     pos_s,
-                    l_type: LexogramType::CharEq,
+                    l_type: LexogramType::OpGT,
                 }] => {
                     ret.push(Lexogram {
                         pos_f: *pos_f,
                         pos_s: *pos_s,
-                        l_type: LexogramType::OpEq,
+                        l_type: LexogramType::Assuming,
                     });
                     queue = vec![];
                 }
@@ -213,17 +200,11 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                     ret.push(Lexogram {
                         pos_f: *pos_f,
                         pos_s: *pos_s,
-                        l_type: LexogramType::OpAsig,
+                        l_type: LexogramType::OpEq,
                     });
                     repeat_scan = true;
                     queue = vec![next.clone()];
                 }
-
-                [Lexogram {
-                    pos_f: _,
-                    pos_s: _,
-                    l_type: LexogramType::CharEq,
-                }] => (),
 
                 [any_lex] => {
                     ret.push(any_lex.clone());
@@ -275,16 +256,14 @@ fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
 
         if c == '"' && tail.len() == 0 {
             let mut inside_a_string = true;
-            let mut scaping = true;
+            let mut scaping = false;
             while inside_a_string {
                 match (read_next_char(&mut f), scaping) {
                     (None, _) => {
                         return Err(LexerError {
                             pos_s: last_tail_reset,
                             pos_f: char_i,
-                            msg: LexerErrorMsg::Custom(String::from(
-                                "Specting matching \" found EOF",
-                            )),
+                            msg: LexerErrorMsg::Custom("Specting matching \" found EOF".into()),
                         })
                     }
                     (Some('"'), false) => inside_a_string = false,
@@ -355,7 +334,7 @@ fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
         Err(LexerError {
             pos_s: last_tail_reset,
             pos_f: char_i,
-            msg: LexerErrorMsg::Custom(String::from("unprocesable ending chars")),
+            msg: LexerErrorMsg::Custom("unprocesable ending chars".into()),
         })
     }
 }

@@ -1,6 +1,4 @@
-=
-
-persona("Jai()\" \\ me","Gonzalez",2002,7,22, 1.80)
+persona("","Gonzalez",2002,7,22, 1.80)
 
 suc(0,1)
 suc(1,2)
@@ -15,6 +13,5 @@ suc(8,9)
 sucs(9,[])
 
 sucs(a,[b,...c]) :- suc(a,b) && sucs(b,c)
-
 
 lt(A,B) :- suc(A,B) || suc(A,N) && lt(Mid, B)
