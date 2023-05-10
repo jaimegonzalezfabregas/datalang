@@ -24,7 +24,7 @@ pub enum LexogramType {
     OpDiv,
     OpAdd,
     OpSub,
-    CharEq,
+    TrueWhen,
     OpEq,
     OpNot,
     OpAnd,
@@ -32,15 +32,14 @@ pub enum LexogramType {
     Assuming,
     CharNewLine,
     CharCarriageReturn,
-    Br,
     WhiteSpace,
-    TrueWhen,
+    CharEq,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
-    pos_s: usize,
-    pos_f: usize,
-    l_type: LexogramType,
+    pub pos_s: usize,
+    pub pos_f: usize,
+    pub l_type: LexogramType,
 }
 
 #[derive(Debug)]

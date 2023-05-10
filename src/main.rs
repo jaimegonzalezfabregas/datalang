@@ -1,10 +1,11 @@
 mod lexer;
+mod parser;
 use std::fs::File;
 
 #[derive(Debug)]
 enum DLErr {
     LexerError(lexer::LexerError),
-    IOError(std::io::Error)
+    IOError(std::io::Error),
 }
 
 impl From<lexer::LexerError> for DLErr {
@@ -23,6 +24,7 @@ fn main() -> Result<(), DLErr> {
     let f = File::open("example.dl")?;
 
     let lexic = lexer::lex(f)?;
+    let ast = parser::parse(lexic)?;
 
     println!("{:?}", lexic);
 
