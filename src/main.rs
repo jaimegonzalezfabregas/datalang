@@ -6,11 +6,18 @@ use std::fs::File;
 enum DLErr {
     LexerError(lexer::LexerError),
     IOError(std::io::Error),
+    ParserError(parser::ParserError),
 }
 
 impl From<lexer::LexerError> for DLErr {
     fn from(e: lexer::LexerError) -> Self {
         Self::LexerError(e)
+    }
+}
+
+impl From<parser::ParserError> for DLErr {
+    fn from(e: parser::ParserError) -> Self {
+        Self::ParserError(e)
     }
 }
 
@@ -24,9 +31,9 @@ fn main() -> Result<(), DLErr> {
     let f = File::open("example.dl")?;
 
     let lexic = lexer::lex(f)?;
-    let ast = parser::parse(lexic)?;
+    println!("lexografic analisis: {:?}", lexic);
 
-    println!("{:?}", lexic);
+    let _ast = parser::parse(lexic)?;
 
     Ok(())
 }

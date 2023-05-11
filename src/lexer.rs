@@ -34,6 +34,7 @@ pub enum LexogramType {
     CharCarriageReturn,
     WhiteSpace,
     CharEq,
+    CharColon,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
@@ -83,6 +84,7 @@ fn parse(w: String) -> Result<Option<LexogramType>, LexerErrorMsg> {
 
 fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerErrorMsg> {
     let reserved_lexograms = HashMap::from([
+        (":", LexogramType::CharColon),
         (")", LexogramType::RightParenthesis),
         ("(", LexogramType::LeftParenthesis),
         ("]", LexogramType::RightBracket),
@@ -104,7 +106,6 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
         ("!", LexogramType::OpNot),
         ("&&", LexogramType::OpAnd),
         ("||", LexogramType::OpOr),
-        (":-", LexogramType::TrueWhen),
     ]);
 
     let mut ret: Vec<Lexogram> = vec![];
@@ -203,6 +204,44 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                     });
                     repeat_scan = true;
                     queue = vec![next.clone()];
+                }
+
+                [Lexogram {
+                    pos_f: _,
+                    pos_s: _,
+                    l_type: LexogramType::CharColon,
+                }] => (),
+
+                [Lexogram {
+                    pos_f: _,
+                    pos_s,
+                    l_type: LexogramType::CharColon,
+                }, Lexogram {
+                    pos_f,
+                    pos_s: _,
+                    l_type: LexogramType::OpSub,
+                }] => {
+                    ret.push(Lexogram {
+                        pos_f: *pos_f,
+                        pos_s: *pos_s,
+                        l_type: LexogramType::TrueWhen,
+                    });
+                    repeat_scan = true;
+                    queue = vec![];
+                }
+
+                [Lexogram {
+                    pos_f,
+                    pos_s,
+                    l_type: LexogramType::CharColon,
+                }, next] => {
+                    return Err(LexerError {
+                        pos_s: *pos_s,
+                        pos_f: *pos_f,
+                        msg: LexerErrorMsg::Custom(
+                            "compound lexogram analisis found a stray colon".into(),
+                        ),
+                    })
                 }
 
                 [any_lex] => {
