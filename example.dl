@@ -1,1 +1,1 @@
-hola(a,b) :- adios(b,a) && (b = a || "hola" + 3 < 2) || 4 >= 8
+hola([]+["hola",1,2+3]+["ho"+"la",["primer"]+[]+[3,4]],1+2)
