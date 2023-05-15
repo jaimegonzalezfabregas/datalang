@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::lexer;
 use crate::syntax::*;
 use lexer::LexogramType::*;
@@ -46,17 +48,17 @@ fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
         (VarLiteral::FullSet, _) => Err("cant operate on any".into()),
 
         (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
-            let mut ret = vec![];
+            let mut ret = HashSet::new();
             for it_a in set_a {
                 for it_b in set_b {
-                    ret.push(match (it_a, it_b) {
+                    ret.insert(match (it_a, it_b) {
                         (Data::Number(x), Data::Number(y)) => Data::Number(x + y),
                         (Data::String(x), Data::String(y)) => Data::String(x.clone() + y),
                         (Data::Array(x), Data::Array(y)) => {
                             Data::Array(x.iter().chain(y.iter()).map(|e| e.clone()).collect())
                         }
                         _ => return Err("cant operate on diferently typed literals".into()),
-                    })
+                    });
                 }
             }
             Ok(Expresion::Literal(VarLiteral::Set(ret)))
@@ -128,7 +130,7 @@ fn read_expresion_item(
         (LeftBracket, false) => {
             match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
                 Ok((ret, jump_to)) => Ok(Ok((
-                    Expresion::Literal(VarLiteral::Set(vec![ret])),
+                    Expresion::Literal(VarLiteral::Set(HashSet::from([ret]))),
                     jump_to,
                 ))),
                 Err(a) => match read_destructuring_array(
@@ -150,7 +152,7 @@ fn read_expresion_item(
 
         (_, _) => match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
             Ok((ret, jump_to)) => Ok(Ok((
-                Expresion::Literal(VarLiteral::Set(vec![ret])),
+                Expresion::Literal(VarLiteral::Set(HashSet::new())),
                 jump_to,
             ))),
             Err(e) => Ok(Err(FailureExplanation {
@@ -221,7 +223,7 @@ fn read_destructuring_array(
     let mut state = SpectingStart;
 
     for (i, lex) in lexograms.iter().enumerate() {
-        // println!("state: {:?}",state);
+        // println!("state: {:#?}",state);
         if cursor > i {
             continue;
         }
@@ -263,7 +265,7 @@ fn read_destructuring_array(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "destructuring_array".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -299,7 +301,7 @@ fn read_data_array(
     let mut state = SpectingStart;
 
     for (i, lex) in lexograms.iter().enumerate() {
-        // println!("state: {:?}",state);
+        // println!("state: {:#?}",state);
         if cursor > i {
             continue;
         }
@@ -335,7 +337,7 @@ fn read_data_array(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "varLiteral_array".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -370,11 +372,11 @@ fn read_set(
 
     let mut negated = false;
 
-    let mut ret = vec![];
+    let mut ret = HashSet::new();
     let mut state = SpectingStartOrNegation;
 
     for (i, lex) in lexograms.iter().enumerate() {
-        // println!("state: {:?}",state);
+        // println!("state: {:#?}",state);
         if cursor > i {
             continue;
         }
@@ -406,7 +408,7 @@ fn read_set(
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.push(expresion.literalize()?.get_element_if_singleton()?);
+                        ret.insert(expresion.literalize()?.get_element_if_singleton()?);
                         cursor = jump_to;
                     }
                 }
@@ -417,7 +419,7 @@ fn read_set(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "array".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -520,7 +522,7 @@ fn read_expresion(
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
                             if_it_was: "expresion".into(),
-                            failed_because: format!("pattern missmatch on {:?} state", state)
+                            failed_because: format!("pattern missmatch on {:#?} state", state)
                                 .into(),
                             parent_failure: Some(vec![e]),
                         }))
@@ -534,7 +536,7 @@ fn read_expresion(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "expresion".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -607,7 +609,7 @@ fn read_list(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "list".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }));
             }
@@ -682,7 +684,7 @@ fn read_literal_relation(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "literal relation".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -747,7 +749,7 @@ fn read_querring_relation(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "querring relation".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -830,7 +832,7 @@ fn read_intensional(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "intensional".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -953,7 +955,7 @@ fn read_statement(
                     lex_pos: i,
                     if_it_was: "statement".into(),
                     failed_because: format!(
-                        "pattern missmatch on {:?} state reading lex {:?}",
+                        "pattern missmatch on {:#?} state reading lex {:#?}",
                         state, lex
                     )
                     .into(),
@@ -1101,7 +1103,7 @@ fn read_logical_statement_concatenation(
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "expresion".into(),
-                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: None,
                 }))
             }
@@ -1126,18 +1128,19 @@ fn read_line(
     let a;
     let b;
     let c;
-    match read_literal_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
-        Ok(ret) => return Ok(Ok(ret)),
+    match read_querring_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+        Ok((rel_name, args, jump_to)) => return Ok(Ok((Line::Query(rel_name, args), jump_to))),
         Err(e) => a = e,
     }
-    match read_intensional(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+    match read_literal_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
         Ok(ret) => return Ok(Ok(ret)),
         Err(e) => b = e,
     }
-    match read_querring_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
-        Ok((rel_name, args, jump_to)) => return Ok(Ok((Line::Query(rel_name, args), jump_to))),
+    match read_intensional(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+        Ok(ret) => return Ok(Ok(ret)),
         Err(e) => c = e,
     }
+
     Ok(Err(FailureExplanation {
         lex_pos: start_cursor,
         if_it_was: "line".into(),

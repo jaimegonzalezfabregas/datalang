@@ -46,7 +46,6 @@ impl Engine {
 
     pub fn ingest(self: &mut Engine, lines: Vec<Line>) -> Result<(), RuntimeError> {
         for line in lines {
-            println!("   ingesting line: {:?}\n", line);
             match &line {
                 action @ (Line::ForgetRelation(RelName(rel_name), literal_vec)
                 | Line::CreateRelation(RelName(rel_name), literal_vec)) => {
@@ -80,7 +79,7 @@ impl Engine {
 
                     if let Some(table) = self.extensional.get_mut(&rel_id) {
                         let query_res = table.get_contents(arg_vec.to_owned())?;
-                        println!("{:?}", query_res);
+                        println!("{:#?}", query_res);
                     } else {
                         return Err(RuntimeError::RelationNotFound(rel_id));
                     }
@@ -88,8 +87,6 @@ impl Engine {
 
                 _ => return Err(RuntimeError::UnmatchingLine(line)),
             }
-
-            println!("   engine intrinsics: {:?}\n", self);
         }
 
         Ok(())

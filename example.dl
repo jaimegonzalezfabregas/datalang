@@ -7,4 +7,3 @@ suc(a,b)?
 suc(a,a)?
 suc(a,2)?
 suc(0,a)?
-suc(0,0)?

@@ -1,3 +1,5 @@
+use std::{collections::HashSet, hash};
+
 #[derive(Debug, Clone)]
 pub struct RelName(pub String);
 
@@ -7,7 +9,7 @@ pub enum VarName {
     Direct(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum Data {
     Number(f64),
     String(String),
@@ -18,17 +20,21 @@ pub enum Data {
 pub enum VarLiteral {
     EmptySet,
     FullSet,
-    Set(Vec<Data>),
-    AntiSet(Vec<Data>),
+    Set(HashSet<Data>),
+    AntiSet(HashSet<Data>),
 }
 
 impl VarLiteral {
     pub fn add(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
-            VarLiteral::EmptySet => *self = VarLiteral::Set(vec![d]),
+            VarLiteral::EmptySet => *self = VarLiteral::Set(HashSet::from([d])),
             VarLiteral::FullSet => (),
-            VarLiteral::Set(v) => v.push(d),
-            VarLiteral::AntiSet(v) => v.retain(|e| !d.eq(e)),
+            VarLiteral::Set(v) => {
+                v.insert(d);
+            }
+            VarLiteral::AntiSet(v) => {
+                v.retain(|e| !d.eq(e));
+            }
         }
 
         Ok(())
@@ -36,9 +42,13 @@ impl VarLiteral {
     pub fn remove(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
             VarLiteral::EmptySet => (),
-            VarLiteral::FullSet => *self = VarLiteral::AntiSet(vec![d]),
-            VarLiteral::AntiSet(v) => v.push(d),
-            VarLiteral::Set(v) => v.retain(|e| !d.eq(e)),
+            VarLiteral::FullSet => *self = VarLiteral::Set(HashSet::from([d])),
+            VarLiteral::AntiSet(v) => {
+                v.insert(d);
+            }
+            VarLiteral::Set(v) => {
+                v.retain(|e| !d.eq(e));
+            }
         }
 
         Ok(())
@@ -96,7 +106,7 @@ impl Expresion {
                 }
             }
             Expresion::Literal(e) => Ok(e),
-            _ => Err(format!("no se ha podido literalizar: {:?}", self)),
+            _ => Err(format!("no se ha podido literalizar: {:#?}", self)),
         };
 
         return ret;
@@ -111,7 +121,7 @@ impl VarLiteral {
             }
             VarLiteral::Set(e) => {
                 if e.len() == 1 {
-                    return Ok(e[0].clone());
+                    return Ok(e.iter().take(1).collect::<Vec<&Data>>()[0].to_owned());
                 } else {
                     Err("Not a singleton".into())
                 }
@@ -151,29 +161,26 @@ impl VarLiteral {
             (VarLiteral::EmptySet, _) => true,
             (VarLiteral::FullSet, _) => false,
 
-            (VarLiteral::Set(contained), VarLiteral::Set(_) | VarLiteral::AntiSet(_)) => {
-                for it_a in contained {
-                    if !self.contains_element(it_a) {
-                        return false;
-                    }
-                }
-                true
+            (VarLiteral::Set(contained), VarLiteral::Set(container)) => {
+                contained.is_subset(container)
             }
+
             (VarLiteral::AntiSet(_), VarLiteral::Set(_)) => false,
             (VarLiteral::AntiSet(not_in_contained), VarLiteral::AntiSet(not_in_container)) => {
-                for it_a in not_in_contained {
-                    let mut found = false;
-                    for it_b in not_in_container {
-                        if it_a.eq(it_b) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if !found {
-                        return false;
-                    }
-                }
-                true
+                not_in_contained.is_superset(not_in_container)
+            }
+
+            (VarLiteral::Set(contained), VarLiteral::AntiSet(not_in_container)) => {
+                not_in_container
+                    .symmetric_difference(contained)
+                    .map(|_| 0)
+                    .collect::<Vec<i32>>()
+                    .len()
+                    == not_in_container
+                        .union(contained)
+                        .map(|_| 0)
+                        .collect::<Vec<i32>>()
+                        .len()
             }
         }
     }
@@ -182,22 +189,8 @@ impl VarLiteral {
         match self {
             VarLiteral::FullSet => true,
             VarLiteral::EmptySet => false,
-            VarLiteral::Set(vec) => {
-                for it in vec {
-                    if it.eq(data) {
-                        return true;
-                    }
-                }
-                false
-            }
-            VarLiteral::AntiSet(vec) => {
-                for it in vec {
-                    if it.eq(data) {
-                        return false;
-                    }
-                }
-                true
-            }
+            VarLiteral::Set(set) => set.contains(data),
+            VarLiteral::AntiSet(set) => !set.contains(data),
         }
     }
 }
@@ -223,6 +216,35 @@ impl Data {
                 }
             }
             _ => false,
+        }
+    }
+}
+
+impl PartialEq for Data {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq(other)
+    }
+}
+
+impl Eq for Data {}
+
+impl hash::Hash for Data {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        match self {
+            Data::Number(n) => {
+                if (n.is_finite()) {
+                    n.to_bits().hash(state)
+                } else if n.is_infinite() {
+                    f64::INFINITY.to_bits().hash(state)
+                } else {
+                    f64::NAN.to_bits().hash(state)
+                }
+            }
+            Data::String(str) => str.hash(state),
+            Data::Array(array) => array.hash(state),
         }
     }
 }

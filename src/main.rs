@@ -41,7 +41,7 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-fn get_ASTs_from_chars(commands: String) -> Result<Vec<syntax::Line>, DLErr> {
+fn get_asts_from_chars(commands: String) -> Result<Vec<syntax::Line>, DLErr> {
     let lexic = lexer::lex(commands)?;
     println!(
         "lexografic analisis: {:?}\n",
@@ -57,22 +57,30 @@ fn get_ASTs_from_chars(commands: String) -> Result<Vec<syntax::Line>, DLErr> {
     Ok(ast_vec)
 }
 
-fn main() -> Result<(), DLErr> {
+fn error_centralizer() -> Result<(), DLErr> {
     let initializing_commands = read_to_string("example.dl")?;
 
     let mut engine = Engine::new();
-    engine.ingest(get_ASTs_from_chars(initializing_commands)?)?;
+    engine.ingest(get_asts_from_chars(initializing_commands)?)?;
 
     let mut buffer = String::new();
     let stdin = io::stdin(); // We get `Stdin` here.
+    stdin.read_line(&mut buffer)?;
 
-    while buffer != "exit" {
-        stdin.read_line(&mut buffer)?;
-        let ast = get_ASTs_from_chars(buffer)?;
-        engine.ingest(ast)?;
+    while buffer != "exit\n" {
+        let ast = get_asts_from_chars(buffer)?;
+        match engine.ingest(ast) {
+            Ok(output) => println!("OK!"),
+            Err(err) => todo!(),
+        }
         buffer = String::new();
-        println!("engine instrinsics: {:?}\n", engine);
+
+        stdin.read_line(&mut buffer)?;
     }
 
     Ok(())
+}
+
+fn main() {
+    println!("{:#?}", error_centralizer());
 }

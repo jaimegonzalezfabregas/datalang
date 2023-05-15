@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::syntax::{Expresion, VarLiteral, VarName};
 
 #[derive(Debug, Clone)]
@@ -207,7 +209,9 @@ impl Table {
                             .map(|e| {
                                 if let Expresion::Var(VarName::Direct(var_name_of_e)) = e {
                                     if var_name_of_e.to_owned() == var_name.to_owned() {
-                                        Expresion::Literal(VarLiteral::Set(vec![value.clone()]))
+                                        Expresion::Literal(VarLiteral::Set(HashSet::from([
+                                            value.to_owned()
+                                        ])))
                                     } else {
                                         e.clone()
                                     }
@@ -217,7 +221,6 @@ impl Table {
                             })
                             .collect();
 
-                        
                         let partial_results = self.get_contents(new_constraints)?;
 
                         ret = ret
@@ -229,7 +232,7 @@ impl Table {
                     Ok(ret)
                 }
                 _ => Err(format!(
-                    "unespected_expresion at argument at pos {first_non_literal}: {:?}",
+                    "unespected_expresion at argument at pos {first_non_literal}: {:#?}",
                     constraitns[first_non_literal]
                 )),
             },
