@@ -720,7 +720,7 @@ fn read_querring_relation(
         if cursor > i {
             continue;
         }
-        match (lex.l_type.clone(), state) {
+        match (lex.l_type.to_owned(), state) {
             (Identifier(str), SpectingStatementIdentifier) => {
                 r_name = RelName(str);
                 state = SpectingStatementList;
@@ -771,7 +771,6 @@ fn read_intensional(
         SpectingRelationDef,
         SpectingTrueWhen,
         SpectingCondition,
-        SpectingExtensional,
     }
     use IntensionalParserStates::*;
 
@@ -1143,7 +1142,7 @@ fn read_line(
         lex_pos: start_cursor,
         if_it_was: "line".into(),
         failed_because: "wasnt neither an extensional nor an intensional statement".into(),
-        parent_failure: Some(vec![a, b,c]),
+        parent_failure: Some(vec![a, b, c]),
     }))
 }
 

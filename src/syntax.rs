@@ -23,7 +23,7 @@ pub enum VarLiteral {
 }
 
 impl VarLiteral {
-    fn add(self: &mut VarLiteral, d: Data) -> Result<(), String> {
+    pub fn add(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
             VarLiteral::EmptySet => *self = VarLiteral::Set(vec![d]),
             VarLiteral::FullSet => (),
@@ -33,7 +33,7 @@ impl VarLiteral {
 
         Ok(())
     }
-    fn remove(self: &mut VarLiteral, d: Data) -> Result<(), String> {
+    pub fn remove(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
             VarLiteral::EmptySet => (),
             VarLiteral::FullSet => *self = VarLiteral::AntiSet(vec![d]),

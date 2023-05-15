@@ -48,13 +48,13 @@ impl Engine {
         for line in lines {
             println!("   ingesting line: {:?}\n", line);
             match &line {
-                action @ (Line::ForgetRelation(RelName(str), literal_vec)
-                | Line::CreateRelation(RelName(str), literal_vec)) => {
+                action @ (Line::ForgetRelation(RelName(rel_name), literal_vec)
+                | Line::CreateRelation(RelName(rel_name), literal_vec)) => {
                     let width = literal_vec.len();
 
                     let rel_id = RelId {
                         column_count: width,
-                        identifier: str.to_string(),
+                        identifier: rel_name.to_string(),
                     };
                     let insertion_key = rel_id.clone();
 
@@ -70,8 +70,20 @@ impl Engine {
                         }
                     }
                 }
-                Line::Query(r_name, arg_vec) => {
-                    
+                Line::Query(RelName(rel_name), arg_vec) => {
+                    let width = arg_vec.len();
+
+                    let rel_id = RelId {
+                        column_count: width,
+                        identifier: rel_name.to_string(),
+                    };
+
+                    if let Some(table) = self.extensional.get_mut(&rel_id) {
+                        let query_res = table.get_contents(arg_vec.to_owned())?;
+                        println!("{:?}", query_res);
+                    } else {
+                        return Err(RuntimeError::RelationNotFound(rel_id));
+                    }
                 }
 
                 _ => return Err(RuntimeError::UnmatchingLine(line)),

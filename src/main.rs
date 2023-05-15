@@ -71,9 +71,8 @@ fn main() -> Result<(), DLErr> {
         let ast = get_ASTs_from_chars(buffer)?;
         engine.ingest(ast)?;
         buffer = String::new();
+        println!("engine instrinsics: {:?}\n", engine);
     }
-
-    println!("engine instrinsics: {:?}\n", engine);
 
     Ok(())
 }

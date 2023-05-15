@@ -1,4 +1,10 @@
 suc(0,2)
-!suc(0,2)
+suc(1,1)
+suc(2,2)
+!suc(1,1)
 
-test([2.3,3+2],<1,"hola"+" lucas", [1,2,3]>, !<3>)
+suc(a,b)?
+suc(a,a)?
+suc(a,2)?
+suc(0,a)?
+suc(0,0)?

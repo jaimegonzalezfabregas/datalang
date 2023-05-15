@@ -1,4 +1,4 @@
-use crate::syntax::VarLiteral;
+use crate::syntax::{Expresion, VarLiteral, VarName};
 
 #[derive(Debug, Clone)]
 enum Command {
@@ -111,24 +111,131 @@ impl Table {
         }
     }
 
-    fn set_of_nth_column(self: &Table, n: usize) -> VarLiteral {
+    fn set_of_nth_column(self: &Table, n: usize) -> Result<VarLiteral, String> {
         let mut ret = VarLiteral::EmptySet;
         for command in &self.history {
             match command {
-                IsTrueThat(v) => match v[n] {
-                    VarLiteral::FullSet => ret = VarLiteral::FullSet,
-                    VarLiteral::Set(_) => todo!(),
-                    VarLiteral::AntiSet(_) => todo!(),
-                    VarLiteral::EmptySet => (),
+                IsTrueThat(v) => match &v[n] {
+                    VarLiteral::FullSet => {
+                        ret = VarLiteral::FullSet;
+                    }
+                    VarLiteral::Set(vec) => {
+                        for elm in vec {
+                            ret.add(elm.to_owned())?;
+                        }
+                    }
+                    VarLiteral::AntiSet(vec) => {
+                        for elm in vec {
+                            ret.remove(elm.to_owned())?;
+                        }
+                    }
+                    VarLiteral::EmptySet => ret = VarLiteral::EmptySet,
                 },
-                IsFalseThat(v) => match v[n] {
-                    VarLiteral::FullSet => ret = VarLiteral::EmptySet,
-                    VarLiteral::Set(_) => todo!(),
-                    VarLiteral::AntiSet(_) => todo!(),
-                    VarLiteral::EmptySet => (),
+                IsFalseThat(v) => match &v[n] {
+                    VarLiteral::FullSet => {
+                        ret = VarLiteral::FullSet;
+                    }
+                    VarLiteral::Set(vec) => {
+                        for elm in vec {
+                            ret.remove(elm.to_owned())?;
+                        }
+                    }
+                    VarLiteral::AntiSet(vec) => {
+                        for elm in vec {
+                            ret.add(elm.to_owned())?;
+                        }
+                    }
+                    VarLiteral::EmptySet => ret = VarLiteral::EmptySet,
                 },
+            };
+        }
+        Ok(ret)
+    }
+
+    pub fn get_contents(
+        self: &Table,
+        constraitns: Vec<Expresion>,
+    ) -> Result<Vec<Vec<VarLiteral>>, String> {
+        let mut only_literals = true;
+        let mut literalized_constrains = vec![];
+        let mut first_non_literal = 0;
+
+        for (i, exp) in constraitns.iter().enumerate() {
+            match exp.literalize() {
+                Ok(l) => literalized_constrains.push(l),
+                Err(_) => {
+                    first_non_literal = i;
+                    only_literals = false;
+                    break;
+                }
             }
         }
-        ret
+        if only_literals {
+            return Ok(
+                if self.contains_superset_of(literalized_constrains.clone())? {
+                    vec![literalized_constrains]
+                } else {
+                    vec![]
+                },
+            );
+        }
+
+        let column_universe = self.set_of_nth_column(first_non_literal)?;
+
+        match column_universe {
+            VarLiteral::EmptySet => return Ok(vec![]),
+            VarLiteral::FullSet => {
+                let new_constraints = constraitns
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| {
+                        if i == first_non_literal {
+                            Expresion::Literal(VarLiteral::FullSet)
+                        } else {
+                            e.clone()
+                        }
+                    })
+                    .collect();
+                return self.get_contents(new_constraints);
+            }
+            VarLiteral::Set(posible_values) => match &constraitns[first_non_literal] {
+                Expresion::Var(VarName::Direct(var_name)) => {
+                    let mut ret = vec![];
+                    for value in posible_values {
+                        let new_constraints = constraitns
+                            .iter()
+                            .map(|e| {
+                                if let Expresion::Var(VarName::Direct(var_name_of_e)) = e {
+                                    if var_name_of_e.to_owned() == var_name.to_owned() {
+                                        Expresion::Literal(VarLiteral::Set(vec![value.clone()]))
+                                    } else {
+                                        e.clone()
+                                    }
+                                } else {
+                                    e.clone()
+                                }
+                            })
+                            .collect();
+
+                        
+                        let partial_results = self.get_contents(new_constraints)?;
+
+                        ret = ret
+                            .iter()
+                            .chain(partial_results.iter())
+                            .map(|e| e.clone())
+                            .collect()
+                    }
+                    Ok(ret)
+                }
+                _ => Err(format!(
+                    "unespected_expresion at argument at pos {first_non_literal}: {:?}",
+                    constraitns[first_non_literal]
+                )),
+            },
+            VarLiteral::AntiSet(_) => Err(format!(
+                "cant iterate over inifinite set at column {first_non_literal}"
+            )),
+        }
     }
 }
