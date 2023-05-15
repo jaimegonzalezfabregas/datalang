@@ -35,6 +35,8 @@ pub enum LexogramType {
     WhiteSpace,
     CharEq,
     CharColon,
+    Any,
+    Query,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
@@ -106,6 +108,8 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
         ("!", LexogramType::OpNot),
         ("&&", LexogramType::OpAnd),
         ("||", LexogramType::OpOr),
+        ("_", LexogramType::Any),
+        ("?", LexogramType::Query),
     ]);
 
     let mut ret: Vec<Lexogram> = vec![];
@@ -135,8 +139,8 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
     Ok(None)
 }
 
-pub fn lex(f: File) -> Result<Vec<Lexogram>, LexerError> {
-    let simple = simple_lexogram_analisis(f)?;
+pub fn lex(str: String) -> Result<Vec<Lexogram>, LexerError> {
+    let simple = simple_lexogram_analisis(str)?;
     compound_lexogram_analisis(simple)
 }
 
@@ -275,16 +279,17 @@ fn read_next_char(f: &mut File) -> Option<char> {
     }
 }
 
-fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
+fn simple_lexogram_analisis(str: String) -> Result<Vec<Lexogram>, LexerError> {
     let mut ret: Vec<Lexogram> = vec![];
     let mut tail = String::new();
 
-    let mut c = '\0';
+    let mut c: u8 = 0;
     let mut last_tail_reset = 0;
 
     let mut char_i = 0;
     let mut repeat = true;
-    match read_next_char(&mut f) {
+
+    match str.bytes().nth(char_i) {
         Some(char) => c = char,
         None => repeat = false,
     }
@@ -292,11 +297,11 @@ fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
     while repeat {
         char_i += 1;
 
-        if c == '"' && tail.len() == 0 {
+        if c == 34 /* " */ && tail.len() == 0 {
             let mut inside_a_string = true;
             let mut scaping = false;
             while inside_a_string {
-                match (read_next_char(&mut f), scaping) {
+                match (str.bytes().nth(char_i), scaping) {
                     (None, _) => {
                         return Err(LexerError {
                             pos_s: last_tail_reset,
@@ -304,11 +309,17 @@ fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
                             msg: LexerErrorMsg::Custom("Specting matching \" found EOF".into()),
                         })
                     }
-                    (Some('"'), false) => inside_a_string = false,
-                    (Some('\\'), false) => scaping = true,
+                    (Some(34 /* " */), false) => {
+                        char_i += 1;
+                        inside_a_string = false
+                    }
+                    (Some(92 /* \ */), false) => {
+                        char_i += 1;
+                        scaping = true
+                    }
                     (Some(c), _) => {
                         char_i += 1;
-                        tail.push(c);
+                        tail.push(c as char);
                         scaping = false;
                     }
                 }
@@ -340,7 +351,7 @@ fn simple_lexogram_analisis(mut f: File) -> Result<Vec<Lexogram>, LexerError> {
             }
         }
 
-        match read_next_char(&mut f) {
+        match str.bytes().nth(char_i) {
             Some(char) => c = char,
             None => repeat = false,
         }

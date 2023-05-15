@@ -1,83 +1,6 @@
 use crate::lexer;
+use crate::syntax::*;
 use lexer::LexogramType::*;
-#[derive(Debug, Clone)]
-pub struct RelName(pub String);
-
-#[derive(Debug, Clone)]
-pub enum VarName {
-    DestructuredArray(Vec<Expresion>),
-    Direct(String),
-}
-#[derive(Debug, Clone)]
-enum Data {
-    Number(f64),
-    String(String),
-    Array(Vec<Data>),
-}
-
-#[derive(Debug, Clone)]
-pub enum VarLiteral {
-    Number(f64),
-    String(String),
-    Array(Vec<Expresion>),
-}
-
-impl VarLiteral {
-    pub fn literalize(e: Expresion) -> Result<VarLiteral, String> {
-        println!("literalizing {:?}\n", e);
-
-        let ret = match e.clone() {
-            Expresion::Arithmetic(a, b, f) => {
-                VarLiteral::literalize(f(*a, *b)?)
-            }
-            Expresion::Literal(VarLiteral::Array(elms)) => {
-                let mut literalized_vec = vec![];
-                for ex in elms {
-                    literalized_vec.push(Expresion::Literal(VarLiteral::literalize(ex)?));
-                }
-                Ok(VarLiteral::Array(literalized_vec))
-            }
-            Expresion::Literal(e @ (VarLiteral::Number(_) | VarLiteral::String(_))) => Ok(e),
-            _ => Err(format!("no se ha podido literalizar: {:?}", e)),
-        };
-
-        println!("literalizing {:?} resulted in {:?}\n", e, ret);
-
-        return ret;
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Statement {
-    // resolvable to a bolean
-    Hypothetical(Box<Statement>, Box<Statement>), // TODO
-    And(Box<Statement>, Box<Statement>),
-    Or(Box<Statement>, Box<Statement>),
-    Not(Box<Statement>),
-    Arithmetic(
-        Expresion,
-        Expresion,
-        fn(Expresion, Expresion) -> Result<bool, String>,
-    ),
-    CreateRelation(RelName, Vec<Expresion>),
-    ForgetRelation(RelName, Vec<Expresion>),
-    TrueWhen(Box<Statement>, Box<Statement>),
-    Empty,
-}
-
-#[derive(Debug, Clone)]
-pub enum Expresion {
-    // resolvable to a value
-    Arithmetic(
-        Box<Expresion>,
-        Box<Expresion>,
-        fn(Expresion, Expresion) -> Result<Expresion, String>,
-    ),
-    Literal(VarLiteral),
-    RestOfList(VarName),
-    Var(VarName),
-    Empty,
-}
 
 #[derive(Debug)]
 pub enum ParserError {
@@ -100,33 +23,47 @@ impl From<sprintf::PrintfError> for ParserError {
     }
 }
 
+impl From<String> for ParserError {
+    fn from(e: String) -> Self {
+        Self::Custom(e)
+    }
+}
+
 fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
-    let op1 = match a {
-        Expresion::Arithmetic(_, _, _) => VarLiteral::literalize(a)?,
-        Expresion::Literal(l) => l,
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
         _ => return Err("primer argumento no literalizable".into()),
     };
-    let op2 = match b {
-        Expresion::Arithmetic(_, _, _) => VarLiteral::literalize(b)?,
-        Expresion::Literal(l) => l,
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
         _ => return Err("segundo argumento no literalizable".into()),
     };
 
-    return match (op1, op2) {
-        (VarLiteral::Number(x), VarLiteral::Number(y)) => {
-            return Ok(Expresion::Literal(VarLiteral::Number(x + y)))
-        }
-        (VarLiteral::String(x), VarLiteral::String(y)) => {
-            return Ok(Expresion::Literal(VarLiteral::String(x + &y)))
-        }
-        (VarLiteral::Array(x), VarLiteral::Array(y)) => {
-            return Ok(Expresion::Literal(VarLiteral::Array(
-                x.iter().chain(y.iter()).map(|elm| elm.clone()).collect(),
-            )))
+    match &(op1, op2) {
+        (_, VarLiteral::FullSet) => Err("cant operate on any".into()),
+        (VarLiteral::FullSet, _) => Err("cant operate on any".into()),
+
+        (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
+            let mut ret = vec![];
+            for it_a in set_a {
+                for it_b in set_b {
+                    ret.push(match (it_a, it_b) {
+                        (Data::Number(x), Data::Number(y)) => Data::Number(x + y),
+                        (Data::String(x), Data::String(y)) => Data::String(x.clone() + y),
+                        (Data::Array(x), Data::Array(y)) => {
+                            Data::Array(x.iter().chain(y.iter()).map(|e| e.clone()).collect())
+                        }
+                        _ => return Err("cant operate on diferently typed literals".into()),
+                    })
+                }
+            }
+            Ok(Expresion::Literal(VarLiteral::Set(ret)))
         }
 
-        _ => Err("error sumando expresiones".into()),
-    };
+        _ => Err("cant operate on non literals".into()),
+    }
 }
 
 fn sub_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
@@ -161,7 +98,7 @@ fn gte_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
     todo!()
 }
 
-fn read_item(
+fn read_expresion_item(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     only_literals: bool,
@@ -170,22 +107,75 @@ fn read_item(
     println!("{}read_item at {}", debug_margin, start_cursor);
 
     match (lexograms[start_cursor].l_type.clone(), only_literals) {
-        (Number(n), _) => Ok(Ok((
-            Expresion::Literal(VarLiteral::Number(n)),
+        (Any, _) => Ok(Ok((
+            Expresion::Literal(VarLiteral::FullSet),
             start_cursor + 1,
         ))),
-        (Word(n), _) => Ok(Ok((
-            Expresion::Literal(VarLiteral::String(n)),
-            start_cursor + 1,
-        ))),
-        (LeftBracket, _) => {
-            match read_array(
-                lexograms,
-                start_cursor,
-                only_literals,
-                debug_margin.clone() + "   ",
-            )? {
-                Ok(ret) => Ok(Ok(ret)),
+
+        (OpLT | OpNot, _) => match read_set(lexograms, start_cursor, debug_margin.clone() + "   ")?
+        {
+            Ok(ret) => Ok(Ok(ret)),
+            Err(explanation) => Ok(Err(FailureExplanation {
+                lex_pos: start_cursor,
+                if_it_was: "item".into(),
+                failed_because: "was not an array".into(),
+                parent_failure: Some(vec![explanation]),
+            })),
+        },
+        (Identifier(str), false) => {
+            Ok(Ok((Expresion::Var(VarName::Direct(str)), start_cursor + 1)))
+        }
+        (LeftBracket, false) => {
+            match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+                Ok((ret, jump_to)) => Ok(Ok((
+                    Expresion::Literal(VarLiteral::Set(vec![ret])),
+                    jump_to,
+                ))),
+                Err(a) => match read_destructuring_array(
+                    lexograms,
+                    start_cursor,
+                    debug_margin.clone() + "   ",
+                )? {
+                    Ok(ret) => Ok(Ok(ret)),
+
+                    Err(b) => Ok(Err(FailureExplanation {
+                        lex_pos: start_cursor,
+                        if_it_was: "item".into(),
+                        failed_because: "specting some array".into(),
+                        parent_failure: Some(vec![a, b]),
+                    })),
+                },
+            }
+        }
+
+        (_, _) => match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+            Ok((ret, jump_to)) => Ok(Ok((
+                Expresion::Literal(VarLiteral::Set(vec![ret])),
+                jump_to,
+            ))),
+            Err(e) => Ok(Err(FailureExplanation {
+                lex_pos: start_cursor,
+                if_it_was: "item".into(),
+                failed_because: "specting data".into(),
+                parent_failure: Some(vec![e]),
+            })),
+        },
+    }
+}
+
+fn read_data(
+    lexograms: &Vec<lexer::Lexogram>,
+    start_cursor: usize,
+    debug_margin: String,
+) -> Result<Result<(Data, usize), FailureExplanation>, ParserError> {
+    println!("{}read_data at {}", debug_margin, start_cursor);
+
+    match lexograms[start_cursor].l_type.clone() {
+        Number(n) => Ok(Ok((Data::Number(n), start_cursor + 1))),
+        Word(n) => Ok(Ok((Data::String(n), start_cursor + 1))),
+        LeftBracket => {
+            match read_data_array(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+                Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
                 Err(explanation) => Ok(Err(FailureExplanation {
                     lex_pos: start_cursor,
                     if_it_was: "item".into(),
@@ -193,9 +183,6 @@ fn read_item(
                     parent_failure: Some(vec![explanation]),
                 })),
             }
-        }
-        (Identifier(str), false) => {
-            Ok(Ok((Expresion::Var(VarName::Direct(str)), start_cursor + 1)))
         }
 
         _ => Ok(Err(FailureExplanation {
@@ -207,10 +194,9 @@ fn read_item(
     }
 }
 
-fn read_array(
+fn read_destructuring_array(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    only_literals: bool,
     debug_margin: String,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
@@ -224,7 +210,10 @@ fn read_array(
     }
     use ArrayParserStates::*;
 
-    println!("{}read_array at {}", debug_margin, start_cursor);
+    println!(
+        "{}read_destructuring_array at {}",
+        debug_margin, start_cursor
+    );
 
     let mut cursor = start_cursor;
 
@@ -236,28 +225,178 @@ fn read_array(
         if cursor > i {
             continue;
         }
-        match (lex.l_type.clone(), state, only_literals) {
-            (LeftBracket, SpectingStart, _) => {
+        match (lex.l_type.clone(), state) {
+            (LeftBracket, SpectingStart) => {
                 state = SpectingItemOrEnd;
             }
-            (DotDotDot, SpectingItemOrDotDotDot, false) => {
+            (DotDotDot, SpectingItemOrDotDotDot) => {
                 state = SpectingIdentifierAfterDotDotDot;
             }
-            (Identifier(str), SpectingIdentifierAfterDotDotDot, false) => {
+            (Identifier(str), SpectingIdentifierAfterDotDotDot) => {
                 ret.push(Expresion::RestOfList(VarName::Direct(str)));
                 state = SpectingEnd;
             }
-            (Coma, SpectingComaOrEnd, _) => state = SpectingItemOrDotDotDot,
-            (RightBracket, SpectingComaOrEnd | SpectingEnd | SpectingItemOrEnd, _) => {
-                println!("{debug_margin}end of array at {}", i + 1);
-                if only_literals {
-                    return Ok(Ok((Expresion::Literal(VarLiteral::Array(ret)), i + 1)));
-                } else {
-                    return Ok(Ok((Expresion::Var(VarName::DestructuredArray(ret)), i + 1)));
-                }
+            (Coma, SpectingComaOrEnd) => state = SpectingItemOrDotDotDot,
+            (RightBracket, SpectingComaOrEnd | SpectingEnd | SpectingItemOrEnd) => {
+                println!("{debug_margin}end of destructuring array at {}", i + 1);
+                return Ok(Ok((Expresion::Var(VarName::DestructuredArray(ret)), i + 1)));
             }
-            (_, SpectingItemOrEnd | SpectingItemOrDotDotDot, _) => {
-                match read_expresion(lexograms, i, only_literals, debug_margin.clone() + "   ")? {
+            (_, SpectingItemOrEnd | SpectingItemOrDotDotDot) => {
+                match read_expresion(lexograms, i, false, debug_margin.clone() + "   ")? {
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "destructuring_array".into(),
+                            failed_because: "specting item".into(),
+                            parent_failure: Some(vec![e]),
+                        }))
+                    }
+                    Ok((expresion, jump_to)) => {
+                        ret.push(expresion);
+                        cursor = jump_to;
+                    }
+                }
+
+                state = SpectingComaOrEnd;
+            }
+            _ => {
+                return Ok(Err(FailureExplanation {
+                    lex_pos: i,
+                    if_it_was: "destructuring_array".into(),
+                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    parent_failure: None,
+                }))
+            }
+        }
+    }
+    Ok(Err(FailureExplanation {
+        lex_pos: lexograms.len(),
+        if_it_was: "destructuring_array".into(),
+        failed_because: "file ended".into(),
+        parent_failure: None,
+    }))
+}
+
+fn read_data_array(
+    lexograms: &Vec<lexer::Lexogram>,
+    start_cursor: usize,
+    debug_margin: String,
+) -> Result<Result<(Vec<Data>, usize), FailureExplanation>, ParserError> {
+    #[derive(Debug, Clone, Copy)]
+    enum ArrayParserStates {
+        SpectingItemOrEnd,
+        SpectingItem,
+        SpectingComaOrEnd,
+        SpectingStart,
+    }
+    use ArrayParserStates::*;
+
+    println!("{}read_varLiteral_array at {}", debug_margin, start_cursor);
+
+    let mut cursor = start_cursor;
+
+    let mut ret = vec![];
+    let mut state = SpectingStart;
+
+    for (i, lex) in lexograms.iter().enumerate() {
+        // println!("state: {:?}",state);
+        if cursor > i {
+            continue;
+        }
+        match (lex.l_type.clone(), state) {
+            (LeftBracket, SpectingStart) => {
+                state = SpectingItemOrEnd;
+            }
+
+            (Coma, SpectingComaOrEnd) => state = SpectingItem,
+            (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
+                println!("{debug_margin}end of varLiteral_array at {}", i + 1);
+                return Ok(Ok((ret, i + 1)));
+            }
+            (_, SpectingItemOrEnd | SpectingItem) => {
+                match read_expresion(lexograms, i, true, debug_margin.clone() + "   ")? {
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "varLiteral_array".into(),
+                            failed_because: "specting item".into(),
+                            parent_failure: Some(vec![e]),
+                        }))
+                    }
+                    Ok((expresion, jump_to)) => {
+                        ret.push(expresion.literalize()?.get_element_if_singleton()?);
+                        cursor = jump_to;
+                    }
+                }
+
+                state = SpectingComaOrEnd;
+            }
+            _ => {
+                return Ok(Err(FailureExplanation {
+                    lex_pos: i,
+                    if_it_was: "varLiteral_array".into(),
+                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    parent_failure: None,
+                }))
+            }
+        }
+    }
+    Ok(Err(FailureExplanation {
+        lex_pos: lexograms.len(),
+        if_it_was: "data_array".into(),
+        failed_because: "file ended".into(),
+        parent_failure: None,
+    }))
+}
+
+fn read_set(
+    lexograms: &Vec<lexer::Lexogram>,
+    start_cursor: usize,
+    debug_margin: String,
+) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
+    #[derive(Debug, Clone, Copy)]
+    enum ArrayParserStates {
+        SpectingItemOrEnd,
+        SpectingItem,
+        SpectingComaOrEnd,
+        SpectingStartOrNegation,
+        SpectingStart,
+    }
+    use ArrayParserStates::*;
+
+    println!("{}read_set at {}", debug_margin, start_cursor);
+
+    let mut cursor = start_cursor;
+
+    let mut negated = false;
+
+    let mut ret = vec![];
+    let mut state = SpectingStartOrNegation;
+
+    for (i, lex) in lexograms.iter().enumerate() {
+        // println!("state: {:?}",state);
+        if cursor > i {
+            continue;
+        }
+        match (lex.l_type.clone(), state) {
+            (OpNot, SpectingStartOrNegation) => {
+                negated = true;
+                state = SpectingStart
+            }
+            (OpLT, SpectingStart | SpectingStartOrNegation) => {
+                state = SpectingItemOrEnd;
+            }
+            (Coma, SpectingComaOrEnd) => state = SpectingItem,
+            (OpGT, SpectingComaOrEnd | SpectingItemOrEnd) => {
+                println!("{debug_margin}end of set at {}", i + 1);
+                return if negated {
+                    Ok(Ok((Expresion::Literal(VarLiteral::AntiSet(ret)), i + 1)))
+                } else {
+                    Ok(Ok((Expresion::Literal(VarLiteral::Set(ret)), i + 1)))
+                };
+            }
+            (_, SpectingItemOrEnd | SpectingItem) => {
+                match read_expresion(lexograms, i, true, debug_margin.clone() + "   ")? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
@@ -267,7 +406,7 @@ fn read_array(
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.push(expresion);
+                        ret.push(expresion.literalize()?.get_element_if_singleton()?);
                         cursor = jump_to;
                     }
                 }
@@ -362,7 +501,12 @@ fn read_expresion(
             (RightParenthesis, SpectingClosingParenthesis, _) => state = SpectingOperatorOrEnd,
 
             (_, SpectingItemOrOpenParenthesis, _) => {
-                match read_item(lexograms, i, only_literals, debug_margin.clone() + "   ")? {
+                match read_expresion_item(
+                    lexograms,
+                    i,
+                    only_literals,
+                    debug_margin.clone() + "   ",
+                )? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
                         ret = match append_mode {
@@ -378,7 +522,7 @@ fn read_expresion(
                             if_it_was: "expresion".into(),
                             failed_because: format!("pattern missmatch on {:?} state", state)
                                 .into(),
-                            parent_failure: None,
+                            parent_failure: Some(vec![e]),
                         }))
                     }
                 }
@@ -477,12 +621,11 @@ fn read_list(
     }));
 }
 
-fn read_relation(
+fn read_literal_relation(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    only_literals: bool,
     debug_margin: String,
-) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
         SpectingStatementIdentifierOrNot,
@@ -491,7 +634,7 @@ fn read_relation(
     }
     use RelationParserStates::*;
 
-    println!("{debug_margin}read_relation at {start_cursor}");
+    println!("{debug_margin}read_literal_relation at {start_cursor}");
 
     let mut cursor = start_cursor;
     let mut r_name = RelName("default_relation_name".into());
@@ -513,18 +656,24 @@ fn read_relation(
                 state = SpectingStatementList;
             }
             (_, SpectingStatementList) => {
-                return match read_list(lexograms, i, only_literals, debug_margin.clone() + "   ")? {
+                return match read_list(lexograms, i, true, debug_margin.clone() + "   ")? {
                     Err(e) => Ok(Err(FailureExplanation {
                         lex_pos: i,
-                        if_it_was: "relation".into(),
+                        if_it_was: "literal relation".into(),
                         failed_because: "specting list".into(),
                         parent_failure: Some(vec![e]),
                     })),
                     Ok((v, new_cursor)) => {
+                        let mut literal_vec = vec![];
+
+                        for exp in v {
+                            literal_vec.push(exp.literalize()?);
+                        }
+
                         if forget {
-                            Ok(Ok((Statement::ForgetRelation(r_name, v), new_cursor)))
+                            Ok(Ok((Line::ForgetRelation(r_name, literal_vec), new_cursor)))
                         } else {
-                            Ok(Ok((Statement::CreateRelation(r_name, v), new_cursor)))
+                            Ok(Ok((Line::CreateRelation(r_name, literal_vec), new_cursor)))
                         }
                     }
                 }
@@ -532,7 +681,7 @@ fn read_relation(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "relation".into(),
+                    if_it_was: "literal relation".into(),
                     failed_because: format!("pattern missmatch on {:?} state", state).into(),
                     parent_failure: None,
                 }))
@@ -541,7 +690,72 @@ fn read_relation(
     }
     Ok(Err(FailureExplanation {
         lex_pos: lexograms.len(),
-        if_it_was: "relation".into(),
+        if_it_was: "literal relation".into(),
+        failed_because: "file ended".into(),
+        parent_failure: None,
+    }))
+}
+
+fn read_querring_relation(
+    lexograms: &Vec<lexer::Lexogram>,
+    start_cursor: usize,
+    debug_margin: String,
+) -> Result<Result<(RelName, Vec<Expresion>, usize), FailureExplanation>, ParserError> {
+    #[derive(Debug, Clone, Copy)]
+    enum RelationParserStates {
+        SpectingStatementIdentifier,
+        SpectingStatementList,
+        SpectingQuery,
+    }
+    use RelationParserStates::*;
+
+    println!("{debug_margin}read_querring_relation at {start_cursor}");
+
+    let mut cursor = start_cursor;
+    let mut r_name = RelName("default_relation_name".into());
+    let mut args = vec![];
+    let mut state = SpectingStatementIdentifier;
+
+    for (i, lex) in lexograms.iter().enumerate() {
+        if cursor > i {
+            continue;
+        }
+        match (lex.l_type.clone(), state) {
+            (Identifier(str), SpectingStatementIdentifier) => {
+                r_name = RelName(str);
+                state = SpectingStatementList;
+            }
+            (_, SpectingStatementList) => {
+                match read_list(lexograms, i, false, debug_margin.clone() + "   ")? {
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "querring relation".into(),
+                            failed_because: "specting list".into(),
+                            parent_failure: Some(vec![e]),
+                        }))
+                    }
+                    Ok((v, jump_to)) => {
+                        cursor = jump_to;
+                        args = v;
+                        state = SpectingQuery;
+                    }
+                }
+            }
+            (Query, SpectingQuery) => return Ok(Ok((r_name, args, i + 1))),
+            _ => {
+                return Ok(Err(FailureExplanation {
+                    lex_pos: i,
+                    if_it_was: "querring relation".into(),
+                    failed_because: format!("pattern missmatch on {:?} state", state).into(),
+                    parent_failure: None,
+                }))
+            }
+        }
+    }
+    Ok(Err(FailureExplanation {
+        lex_pos: lexograms.len(),
+        if_it_was: "querring relation".into(),
         failed_because: "file ended".into(),
         parent_failure: None,
     }))
@@ -551,7 +765,7 @@ fn read_intensional(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
         SpectingRelationDef,
@@ -573,7 +787,7 @@ fn read_intensional(
         }
         match (lex.l_type.clone(), state) {
             (_, SpectingRelationDef) => {
-                match read_relation(lexograms, i, false, debug_margin.clone() + "   ")? {
+                match read_querring_relation(lexograms, i, debug_margin.clone() + "   ")? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
@@ -582,9 +796,9 @@ fn read_intensional(
                             parent_failure: Some(vec![e]),
                         }))
                     }
-                    Ok((r, jump_to)) => {
+                    Ok((r, args, jump_to)) => {
                         cursor = jump_to;
-                        base_relation = r;
+                        base_relation = Statement::Relation(r, args);
                         state = SpectingTrueWhen;
                     }
                 }
@@ -606,7 +820,7 @@ fn read_intensional(
                     }
                     Ok((cond, jump_to)) => {
                         return Ok(Ok((
-                            Statement::TrueWhen(Box::new(base_relation), Box::new(cond)),
+                            Line::TrueWhen(Box::new(base_relation), Box::new(cond)),
                             jump_to,
                         )))
                     }
@@ -659,8 +873,10 @@ fn read_statement(
 
         match (lex.l_type.clone(), state) {
             (_, SpectingFirstExpresionOrRelation) => {
-                match read_relation(lexograms, i, false, debug_margin.clone() + "   ")? {
-                    Ok(ret) => return Ok(Ok(ret)),
+                match read_querring_relation(lexograms, i, debug_margin.clone() + "   ")? {
+                    Ok((rel_name, args, jump_to)) => {
+                        return Ok(Ok((Statement::Relation(rel_name, args), jump_to)))
+                    }
 
                     Err(e1) => {
                         match read_expresion(lexograms, i, false, debug_margin.clone() + "   ")? {
@@ -907,10 +1123,11 @@ fn read_line(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     let a;
     let b;
-    match read_relation(lexograms, start_cursor, true, debug_margin.clone() + "   ")? {
+    let c;
+    match read_literal_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
         Ok(ret) => return Ok(Ok(ret)),
         Err(e) => a = e,
     }
@@ -918,15 +1135,19 @@ fn read_line(
         Ok(ret) => return Ok(Ok(ret)),
         Err(e) => b = e,
     }
+    match read_querring_relation(lexograms, start_cursor, debug_margin.clone() + "   ")? {
+        Ok((rel_name, args, jump_to)) => return Ok(Ok((Line::Query(rel_name, args), jump_to))),
+        Err(e) => c = e,
+    }
     Ok(Err(FailureExplanation {
         lex_pos: start_cursor,
         if_it_was: "line".into(),
         failed_because: "wasnt neither an extensional nor an intensional statement".into(),
-        parent_failure: Some(vec![a, b]),
+        parent_failure: Some(vec![a, b,c]),
     }))
 }
 
-pub fn parse(lexograms: Vec<lexer::Lexogram>) -> Result<Vec<Statement>, ParserError> {
+pub fn parse(lexograms: Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];
     let mut cursor = 0;
 

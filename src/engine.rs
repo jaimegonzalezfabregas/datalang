@@ -1,14 +1,9 @@
-use core::panic;
+mod table;
+
+use crate::syntax::*;
 use std::{collections::HashMap, vec};
 
-use crate::parser::{RelName, Statement, VarLiteral};
-
-
-
-#[derive(Debug, Clone)]
-struct Table {
-    data: Vec<Vec<VarLiteral>>,
-}
+use self::table::Table;
 
 #[derive(Debug, Clone)]
 struct Deductions {
@@ -23,15 +18,22 @@ pub struct RelId {
 }
 
 #[derive(Debug, Clone)]
-pub struct Engine {
-    extensional: HashMap<RelId, Table>,
-    intensional: Vec<Deductions>,
+pub enum RuntimeError {
+    RelationNotFound(RelId),
+    UnmatchingLine(Line),
+    Explanation(String),
+}
+
+impl From<String> for RuntimeError {
+    fn from(value: String) -> Self {
+        Self::Explanation(value)
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum RuntimeError {
-    RelationNotFound(RelId),
-    UnmatchingLine(Statement),
+pub struct Engine {
+    extensional: HashMap<RelId, Table>,
+    intensional: Vec<Deductions>,
 }
 
 impl Engine {
@@ -42,52 +44,34 @@ impl Engine {
         }
     }
 
-    pub fn ingest(self: &mut Engine, lines: Vec<Statement>) -> Result<(), RuntimeError> {
+    pub fn ingest(self: &mut Engine, lines: Vec<Line>) -> Result<(), RuntimeError> {
         for line in lines {
             println!("   ingesting line: {:?}\n", line);
-            match line {
-                Statement::ForgetRelation(RelName(str), data) => {
+            match &line {
+                action @ (Line::ForgetRelation(RelName(str), literal_vec)
+                | Line::CreateRelation(RelName(str), literal_vec)) => {
+                    let width = literal_vec.len();
+
                     let rel_id = RelId {
-                        column_count: data.len(),
-                        identifier: str,
+                        column_count: width,
+                        identifier: str.to_string(),
                     };
-                    match self.extensional.get(&rel_id) {
-                        None => {
-                            return Err(RuntimeError::RelationNotFound(rel_id));
+                    let insertion_key = rel_id.clone();
+
+                    if let None = self.extensional.get(&rel_id) {
+                        self.extensional.insert(insertion_key, Table::new(&width));
+                    }
+
+                    if let Some(table) = self.extensional.get_mut(&rel_id) {
+                        if let Line::ForgetRelation(..) = action {
+                            table.remove(literal_vec.clone())?;
+                        } else {
+                            table.add(literal_vec.clone())?;
                         }
-                        Some(table) => {}
                     }
                 }
-                Statement::CreateRelation(RelName(str), data) => {
-                    let rel_id = RelId {
-                        column_count: data.len(),
-                        identifier: str,
-                    };
-                    match self.extensional.get_mut(&rel_id) {
-                        None => {
-                            self.extensional
-                                .insert(rel_id.clone(), Table { data: vec![] });
-                        }
-                        _ => {}
-                    }
-                    match self.extensional.get_mut(&rel_id) {
-                        None => (),
-                        Some(table) => {
-                            table.data.push(
-                                data.iter()
-                                    .map(|exp| {
-                                        return match VarLiteral::literalize(exp.clone()) {
-                                            Ok(l) => l,
-                                            _ => {
-                                                println!("el parser ha dejado pasar una expresion no literalizable ({:?}) en los argumentos de una relacion",exp)   ;
-                                                panic!()
-                                            }
-                                        };
-                                    })
-                                    .collect(),
-                            );
-                        }
-                    }
+                Line::Query(r_name, arg_vec) => {
+                    
                 }
 
                 _ => return Err(RuntimeError::UnmatchingLine(line)),
