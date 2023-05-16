@@ -1,9 +1,7 @@
-suc(0,2)
-suc(1,1)
-suc(2,2)
-!suc(1,1)
+rel(0, "hola")
+rel(1, "adios")
+rel(2, "a")
+rel(3, "c")
+rel(4, "d")
 
-suc(a,b)?
-suc(a,a)?
-suc(a,2)?
-suc(0,a)?
+rel(<3,0,7>, _)?

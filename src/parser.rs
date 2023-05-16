@@ -31,6 +31,8 @@ impl From<String> for ParserError {
     }
 }
 
+const DEBUG_PRINT: bool = false;
+
 fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
     let op1 = match &a {
         Expresion::Arithmetic(_, _, _) => a.literalize()?,
@@ -106,7 +108,9 @@ fn read_expresion_item(
     only_literals: bool,
     debug_margin: String,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    println!("{}read_item at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_item at {}", debug_margin, start_cursor);
+    }
 
     match (lexograms[start_cursor].l_type.clone(), only_literals) {
         (Any, _) => Ok(Ok((
@@ -129,10 +133,7 @@ fn read_expresion_item(
         }
         (LeftBracket, false) => {
             match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
-                Ok((ret, jump_to)) => Ok(Ok((
-                    Expresion::Literal(VarLiteral::Set(HashSet::from([ret]))),
-                    jump_to,
-                ))),
+                Ok((ret, jump_to)) => Ok(Ok((Expresion::singleton(&ret), jump_to))),
                 Err(a) => match read_destructuring_array(
                     lexograms,
                     start_cursor,
@@ -151,10 +152,7 @@ fn read_expresion_item(
         }
 
         (_, _) => match read_data(lexograms, start_cursor, debug_margin.clone() + "   ")? {
-            Ok((ret, jump_to)) => Ok(Ok((
-                Expresion::Literal(VarLiteral::Set(HashSet::new())),
-                jump_to,
-            ))),
+            Ok((ret, jump_to)) => Ok(Ok((Expresion::singleton(&ret), jump_to))),
             Err(e) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,
                 if_it_was: "item".into(),
@@ -170,7 +168,9 @@ fn read_data(
     start_cursor: usize,
     debug_margin: String,
 ) -> Result<Result<(Data, usize), FailureExplanation>, ParserError> {
-    println!("{}read_data at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_data at {}", debug_margin, start_cursor);
+    }
 
     match lexograms[start_cursor].l_type.clone() {
         Number(n) => Ok(Ok((Data::Number(n), start_cursor + 1))),
@@ -293,7 +293,9 @@ fn read_data_array(
     }
     use ArrayParserStates::*;
 
-    println!("{}read_varLiteral_array at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_varLiteral_array at {}", debug_margin, start_cursor);
+    }
 
     let mut cursor = start_cursor;
 
@@ -366,8 +368,9 @@ fn read_set(
     }
     use ArrayParserStates::*;
 
-    println!("{}read_set at {}", debug_margin, start_cursor);
-
+    if DEBUG_PRINT {
+        println!("{}read_set at {}", debug_margin, start_cursor);
+    }
     let mut cursor = start_cursor;
 
     let mut negated = false;
@@ -439,7 +442,9 @@ fn read_expresion(
     only_literals: bool,
     debug_margin: String,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    println!("{}read_expresion at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_expresion at {}", debug_margin, start_cursor);
+    }
 
     #[derive(Debug, Clone, Copy)]
     enum ExpressionParserStates {
@@ -566,7 +571,9 @@ fn read_list(
         SpectingOpenParenthesis,
     }
 
-    println!("{}read_list at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_list at {}", debug_margin, start_cursor);
+    }
 
     use ListParserStates::*;
     let mut cursor = start_cursor;
@@ -636,9 +643,10 @@ fn read_literal_relation(
     }
     use RelationParserStates::*;
 
-    println!("{debug_margin}read_literal_relation at {start_cursor}");
-
-    let mut cursor = start_cursor;
+    if DEBUG_PRINT {
+        println!("{debug_margin}read_literal_relation at {start_cursor}");
+    }
+    let cursor = start_cursor;
     let mut r_name = RelName("default_relation_name".into());
     let mut state = SpectingStatementIdentifierOrNot;
 
@@ -711,7 +719,9 @@ fn read_querring_relation(
     }
     use RelationParserStates::*;
 
-    println!("{debug_margin}read_querring_relation at {start_cursor}");
+    if DEBUG_PRINT {
+        println!("{debug_margin}read_querring_relation at {start_cursor}");
+    }
 
     let mut cursor = start_cursor;
     let mut r_name = RelName("default_relation_name".into());
@@ -859,7 +869,9 @@ fn read_statement(
     }
     use StatementParserStates::*;
 
-    println!("{}read_statement at {}", debug_margin, start_cursor);
+    if DEBUG_PRINT {
+        println!("{}read_statement at {}", debug_margin, start_cursor);
+    }
 
     let mut cursor = start_cursor;
     let mut state = SpectingFirstExpresionOrRelation;
@@ -946,7 +958,14 @@ fn read_statement(
                             jump_to,
                         )))
                     }
-                    Err(e) => {}
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "statement".into(),
+                            failed_because: "specting second statement after operator".into(),
+                            parent_failure: Some(vec![e]),
+                        }))
+                    }
                 }
             }
 

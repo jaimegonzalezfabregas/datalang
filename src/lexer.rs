@@ -269,16 +269,6 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
     Ok(ret)
 }
 
-fn read_next_char(f: &mut File) -> Option<char> {
-    let mut c: u8 = 0;
-
-    match f.read(slice::from_mut(&mut c)) {
-        Ok(0) => None,
-        Ok(_) => Some(c as char),
-        Err(_) => None,
-    }
-}
-
 fn simple_lexogram_analisis(str: String) -> Result<Vec<Lexogram>, LexerError> {
     let mut ret: Vec<Lexogram> = vec![];
     let mut tail = String::new();

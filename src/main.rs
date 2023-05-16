@@ -43,13 +43,13 @@ impl From<std::io::Error> for DLErr {
 
 fn get_asts_from_chars(commands: String) -> Result<Vec<syntax::Line>, DLErr> {
     let lexic = lexer::lex(commands)?;
-    println!(
-        "lexografic analisis: {:?}\n",
-        lexic
-            .iter()
-            .enumerate()
-            .collect::<Vec<(usize, &Lexogram)>>()
-    );
+    // println!(
+    //     "lexografic analisis: {:?}\n",
+    //     lexic
+    //         .iter()
+    //         .enumerate()
+    //         .collect::<Vec<(usize, &Lexogram)>>()
+    // );
 
     let ast_vec = parser::parse(lexic)?;
     println!("sintaxis analisis: {:?}\n", ast_vec);

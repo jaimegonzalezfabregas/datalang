@@ -1,22 +1,22 @@
 use std::{collections::HashSet, hash};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RelName(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Data {
     Number(f64),
     String(String),
     Array(Vec<Data>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarLiteral {
     EmptySet,
     FullSet,
@@ -27,7 +27,7 @@ pub enum VarLiteral {
 impl VarLiteral {
     pub fn add(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
-            VarLiteral::EmptySet => *self = VarLiteral::Set(HashSet::from([d])),
+            VarLiteral::EmptySet => *self = VarLiteral::singleton(&d),
             VarLiteral::FullSet => (),
             VarLiteral::Set(v) => {
                 v.insert(d);
@@ -42,7 +42,7 @@ impl VarLiteral {
     pub fn remove(self: &mut VarLiteral, d: Data) -> Result<(), String> {
         match self {
             VarLiteral::EmptySet => (),
-            VarLiteral::FullSet => *self = VarLiteral::Set(HashSet::from([d])),
+            VarLiteral::FullSet => *self = VarLiteral::AntiSet(HashSet::from([d])),
             VarLiteral::AntiSet(v) => {
                 v.insert(d);
             }
@@ -55,7 +55,7 @@ impl VarLiteral {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     // resolvable to a bolean
     Hypothetical(Vec<Line>, Box<Statement>), // TODO
@@ -71,7 +71,7 @@ pub enum Statement {
     Empty,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Line {
     CreateRelation(RelName, Vec<VarLiteral>),
     ForgetRelation(RelName, Vec<VarLiteral>),
@@ -79,7 +79,7 @@ pub enum Line {
     Query(RelName, Vec<Expresion>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expresion {
     // resolvable to a value
     Arithmetic(
@@ -111,9 +111,17 @@ impl Expresion {
 
         return ret;
     }
+
+    pub fn singleton(value: &Data) -> Expresion {
+        return Expresion::Literal(VarLiteral::singleton(value));
+    }
 }
 
 impl VarLiteral {
+    pub fn singleton(value: &Data) -> VarLiteral {
+        return VarLiteral::Set(HashSet::from([value.to_owned()]));
+    }
+
     pub fn get_element_if_singleton(&self) -> Result<Data, String> {
         match self {
             VarLiteral::FullSet | VarLiteral::EmptySet | VarLiteral::AntiSet(_) => {
@@ -195,37 +203,6 @@ impl VarLiteral {
     }
 }
 
-impl Data {
-    fn eq(&self, other: &Data) -> bool {
-        match (self, other) {
-            (Data::Number(a), Data::Number(b)) => a == b,
-            (Data::String(a), Data::String(b)) => a == b,
-            (Data::Array(a), Data::Array(b)) => {
-                if a.len() != b.len() {
-                    false
-                } else {
-                    let mut c = 0;
-                    for (it_a, it_b) in a.iter().zip(b) {
-                        if it_a.eq(it_b) {
-                            return false;
-                        } else {
-                            return false;
-                        }
-                    }
-                    true
-                }
-            }
-            _ => false,
-        }
-    }
-}
-
-impl PartialEq for Data {
-    fn eq(&self, other: &Self) -> bool {
-        self.eq(other)
-    }
-}
-
 impl Eq for Data {}
 
 impl hash::Hash for Data {
@@ -235,7 +212,7 @@ impl hash::Hash for Data {
     {
         match self {
             Data::Number(n) => {
-                if (n.is_finite()) {
+                if n.is_finite() {
                     n.to_bits().hash(state)
                 } else if n.is_infinite() {
                     f64::INFINITY.to_bits().hash(state)
