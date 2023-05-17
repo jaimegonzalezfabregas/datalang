@@ -1,9 +1,8 @@
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::File;
 use std::io;
-use std::io::prelude::*;
-use std::slice;
+
+use crate::utils::*;
 
 #[derive(Debug, Clone)]
 pub enum LexogramType {
@@ -50,6 +49,15 @@ pub struct LexerError {
     pos_s: usize,
     pos_f: usize,
     msg: LexerErrorMsg,
+}
+
+impl LexerError {
+    pub fn print(&self, original_string: &String) {
+        println!("Lexer error breakdown: ");
+        println!("\"{:?}\" at:", self.msg);
+
+        print_hilighted(original_string, self.pos_s, self.pos_f, "".into());
+    }
 }
 
 #[derive(Debug)]
@@ -139,7 +147,7 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
     Ok(None)
 }
 
-pub fn lex(str: String) -> Result<Vec<Lexogram>, LexerError> {
+pub fn lex(str: &String) -> Result<Vec<Lexogram>, LexerError> {
     let simple = simple_lexogram_analisis(str)?;
     compound_lexogram_analisis(simple)
 }
@@ -238,7 +246,7 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                     pos_f,
                     pos_s,
                     l_type: LexogramType::CharColon,
-                }, next] => {
+                }, _] => {
                     return Err(LexerError {
                         pos_s: *pos_s,
                         pos_f: *pos_f,
@@ -269,7 +277,7 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
     Ok(ret)
 }
 
-fn simple_lexogram_analisis(str: String) -> Result<Vec<Lexogram>, LexerError> {
+fn simple_lexogram_analisis(str: &String) -> Result<Vec<Lexogram>, LexerError> {
     let mut ret: Vec<Lexogram> = vec![];
     let mut tail = String::new();
 

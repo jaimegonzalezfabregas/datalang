@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use std::{collections::HashSet, hash};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -222,6 +223,24 @@ impl hash::Hash for Data {
             }
             Data::String(str) => str.hash(state),
             Data::Array(array) => array.hash(state),
+        }
+    }
+}
+
+impl Data {
+    pub fn to_string(&self) -> String {
+        match self {
+            Data::Number(n) => format!("{n}").into(),
+            Data::String(s) => format!("\"{s}\"").into(),
+            Data::Array(arr) => {
+                "[".to_string()
+                    + &arr
+                        .iter()
+                        .map(|d| d.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                    + &"]".to_string()
+            }
         }
     }
 }

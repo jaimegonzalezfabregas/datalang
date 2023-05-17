@@ -1,7 +1,8 @@
-rel(0, "hola")
-rel(1, "adios")
-rel(2, "a")
-rel(3, "c")
-rel(4, "d")
 
-rel(<3,0,7>, _)?
+rel("aaaaaa", "deeeeeeee",3)
+rel("bbbb", "d",0):
+rel("cccccc", "deee",2)
+rel("dddd", "d",1)
+
+
+rel(_,_,_)?

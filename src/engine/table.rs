@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 
-use crate::syntax::{Data, Expresion, VarLiteral, VarName};
+use crate::syntax::{Data, Expresion, Statement, VarLiteral, VarName};
 
 #[derive(Debug, Clone)]
 enum Command {
     IsTrueThat(Vec<VarLiteral>),
     IsFalseThat(Vec<VarLiteral>),
+    IsTrueWhen(Statement),
+    IsFalseWhen(Statement),
 }
 use Command::*;
 
@@ -41,30 +43,6 @@ impl Table {
         }
     }
 
-    pub fn contains_eq(self: &Table, row: Vec<VarLiteral>) -> Result<bool, String> {
-        if row.len() != self.width {
-            Err("Cant compare a row with mismatching number of columns".into())
-        } else {
-            for command in self.history.iter().rev() {
-                let (inner, ret) = match command {
-                    IsFalseThat(inner) => (inner, false),
-                    IsTrueThat(inner) => (inner, true),
-                };
-
-                let mut c = 0;
-                for (a, b) in row.iter().zip(inner) {
-                    if a.set_eq(b) {
-                        c += 1;
-                    }
-                }
-                if c == row.len() {
-                    return Ok(ret);
-                }
-            }
-            Ok(false)
-        }
-    }
-
     pub fn contains_superset_of(self: &Table, sub_set: &Vec<VarLiteral>) -> Result<bool, String> {
         if sub_set.len() != self.width {
             Err("Cant compare a row with mismatching number of columns".into())
@@ -73,6 +51,8 @@ impl Table {
                 let (inner, ret) = match command {
                     IsFalseThat(inner) => (inner, false),
                     IsTrueThat(inner) => (inner, true),
+                    IsTrueWhen(_) => todo!(),
+                    IsFalseWhen(_) => todo!(),
                 };
 
                 let mut c = 0;
@@ -125,6 +105,8 @@ impl Table {
                     }
                     VarLiteral::EmptySet => (),
                 },
+                IsTrueWhen(_) => todo!(),
+                IsFalseWhen(_) => todo!(),
             };
         }
         Ok(ret)
@@ -134,7 +116,6 @@ impl Table {
         self: &Table,
         constraints: Vec<Expresion>,
     ) -> Result<Vec<Vec<Data>>, String> {
-        println!("{constraints:?}");
         let first_non_singleton = constraints.iter().position(|exp| match exp.literalize() {
             Ok(l) => match l {
                 VarLiteral::FullSet => true,
@@ -149,10 +130,10 @@ impl Table {
 
             let backtrack_universe = match column_universe {
                 VarLiteral::EmptySet => HashSet::new(),
-                VarLiteral::FullSet => self.set_of_table()?,
+                VarLiteral::FullSet => self.universe_of_table()?,
                 VarLiteral::Set(set) => set,
                 VarLiteral::AntiSet(anti_set) => self
-                    .set_of_table()?
+                    .universe_of_table()?
                     .difference(&anti_set)
                     .map(|e| e.to_owned())
                     .collect(),
@@ -241,12 +222,14 @@ impl Table {
         }
     }
 
-    fn set_of_table(&self) -> Result<HashSet<Data>, String> {
+    fn universe_of_table(&self) -> Result<HashSet<Data>, String> {
         let mut ret = HashSet::new();
         for comm in self.history.iter() {
             let vec = match comm {
                 IsTrueThat(e) => e,
                 IsFalseThat(e) => e,
+                IsTrueWhen(_) => todo!(),
+                IsFalseWhen(_) => todo!(),
             };
 
             let mut values = HashSet::new();

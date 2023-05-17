@@ -2,12 +2,10 @@ pub mod engine;
 mod lexer;
 mod parser;
 mod syntax;
-use std::{
-    fs::{read, read_to_string, File},
-    io,
-};
+mod utils;
+use std::{fs::read_to_string, io};
 
-use crate::{engine::Engine, lexer::Lexogram};
+use crate::engine::Engine;
 
 #[derive(Debug)]
 enum DLErr {
@@ -41,46 +39,29 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-fn get_asts_from_chars(commands: String) -> Result<Vec<syntax::Line>, DLErr> {
-    let lexic = lexer::lex(commands)?;
-    // println!(
-    //     "lexografic analisis: {:?}\n",
-    //     lexic
-    //         .iter()
-    //         .enumerate()
-    //         .collect::<Vec<(usize, &Lexogram)>>()
-    // );
-
-    let ast_vec = parser::parse(lexic)?;
-    println!("sintaxis analisis: {:?}\n", ast_vec);
-
-    Ok(ast_vec)
-}
-
-fn error_centralizer() -> Result<(), DLErr> {
+fn main() -> Result<(), DLErr> {
     let initializing_commands = read_to_string("example.dl")?;
 
     let mut engine = Engine::new();
-    engine.ingest(get_asts_from_chars(initializing_commands)?)?;
+    engine.input(initializing_commands);
 
-    let mut buffer = String::new();
-    let stdin = io::stdin(); // We get `Stdin` here.
-    stdin.read_line(&mut buffer)?;
+    let stdin = io::stdin();
 
-    while buffer != "exit\n" {
-        let ast = get_asts_from_chars(buffer)?;
-        match engine.ingest(ast) {
-            Ok(output) => println!("OK!"),
-            Err(err) => todo!(),
-        }
-        buffer = String::new();
+    loop {
+        let mut buffer = String::new();
 
+        print!(">");
+        io::Write::flush(&mut io::stdout())
+            .ok()
+            .expect("Could not flush stdout");
         stdin.read_line(&mut buffer)?;
+
+        if buffer.eq("/exit\r\n") || buffer.eq("/exit\n") {
+            break;
+        }
+
+        engine.input(buffer);
     }
 
     Ok(())
-}
-
-fn main() {
-    println!("{:#?}", error_centralizer());
 }

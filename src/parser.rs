@@ -1,14 +1,29 @@
 use std::collections::HashSet;
 
 use crate::lexer;
+use crate::lexer::Lexogram;
 use crate::syntax::*;
+use crate::utils::*;
 use lexer::LexogramType::*;
 
 #[derive(Debug)]
 pub enum ParserError {
-    PrintfError(sprintf::PrintfError),
     Custom(String),
     SyntaxError(FailureExplanation),
+}
+
+impl From<String> for ParserError {
+    fn from(e: String) -> Self {
+        Self::Custom(e)
+    }
+}
+impl ParserError {
+    pub fn print(&self, lexic: &Vec<Lexogram>, commands: &String) {
+        match self {
+            ParserError::Custom(str) => println!("custom error on parsing: {str}"),
+            ParserError::SyntaxError(e) => e.print(lexic, commands, "".into()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -19,15 +34,32 @@ pub struct FailureExplanation {
     parent_failure: Option<Vec<FailureExplanation>>,
 }
 
-impl From<sprintf::PrintfError> for ParserError {
-    fn from(e: sprintf::PrintfError) -> Self {
-        Self::PrintfError(e)
-    }
-}
+impl FailureExplanation {
+    pub fn print(&self, lex_list: &Vec<Lexogram>, original_string: &String, indentation: String) {
 
-impl From<String> for ParserError {
-    fn from(e: String) -> Self {
-        Self::Custom(e)
+        println!("{indentation}Parser error breakdown: ");
+        println!(
+            "{indentation}Trying to read a {} failed because {} starting at:",
+            self.if_it_was, self.failed_because
+        );
+        let error_lex = &lex_list[self.lex_pos];
+        print_hilighted(
+            original_string,
+            error_lex.pos_s,
+            error_lex.pos_f,
+            indentation.clone(),
+        );
+
+        if let Some(failures) = &self.parent_failure {
+            println!("{indentation}Caused by:");
+            for parent in failures {
+                parent.print(
+                    lex_list,
+                    original_string,
+                    indentation.clone() + "   ".into(),
+                );
+            }
+        }
     }
 }
 
@@ -46,9 +78,6 @@ fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
     };
 
     match &(op1, op2) {
-        (_, VarLiteral::FullSet) => Err("cant operate on any".into()),
-        (VarLiteral::FullSet, _) => Err("cant operate on any".into()),
-
         (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
             let mut ret = HashSet::new();
             for it_a in set_a {
@@ -71,35 +100,178 @@ fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
 }
 
 fn sub_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    match &(op1, op2) {
+        (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
+            let mut ret = HashSet::new();
+            for it_a in set_a {
+                for it_b in set_b {
+                    ret.insert(match (it_a, it_b) {
+                        (Data::Number(x), Data::Number(y)) => Data::Number(x - y),
+                        (Data::String(_), Data::String(_)) => {
+                            return Err("cant substract strings".into())
+                        }
+                        (Data::Array(_), Data::Array(_)) => {
+                            return Err("cant substract arrays".into())
+                        }
+                        _ => return Err("cant operate on diferently typed literals".into()),
+                    });
+                }
+            }
+            Ok(Expresion::Literal(VarLiteral::Set(ret)))
+        }
+
+        _ => Err("cant operate on non literals".into()),
+    }
 }
 
 fn mul_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    match &(op1, op2) {
+        (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
+            let mut ret = HashSet::new();
+            for it_a in set_a {
+                for it_b in set_b {
+                    ret.insert(match (it_a, it_b) {
+                        (Data::Number(x), Data::Number(y)) => Data::Number(x * y),
+                        (Data::String(_), Data::String(_)) => {
+                            return Err("cant multiply strings".into())
+                        }
+                        (Data::Array(_), Data::Array(_)) => {
+                            return Err("cant multiply arrays".into())
+                        }
+                        _ => return Err("cant operate on diferently typed literals".into()),
+                    });
+                }
+            }
+            Ok(Expresion::Literal(VarLiteral::Set(ret)))
+        }
+
+        _ => Err("cant operate on non literals".into()),
+    }
 }
 
 fn div_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    match &(op1, op2) {
+        (VarLiteral::Set(set_a), VarLiteral::Set(set_b)) => {
+            let mut ret = HashSet::new();
+            for it_a in set_a {
+                for it_b in set_b {
+                    ret.insert(match (it_a, it_b) {
+                        (Data::Number(x), Data::Number(y)) => Data::Number(x / y),
+                        (Data::String(_), Data::String(_)) => {
+                            return Err("cant divide strings".into())
+                        }
+                        (Data::Array(_), Data::Array(_)) => return Err("cant divide arrays".into()),
+                        _ => return Err("cant operate on diferently typed literals".into()),
+                    });
+                }
+            }
+            Ok(Expresion::Literal(VarLiteral::Set(ret)))
+        }
+
+        _ => Err("cant operate on non literals".into()),
+    }
 }
 
 fn eq_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    Ok(op1.eq(&op2) && op2.eq(&op1)) // hashset eq is a subset check
 }
 
 fn lt_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    match (
+        op1.get_element_if_singleton()?,
+        op2.get_element_if_singleton()?,
+    ) {
+        (Data::Number(x), Data::Number(y)) => Ok(x < y),
+        (Data::String(x), Data::String(y)) => Ok(x < y),
+        (Data::Array(_), Data::Array(_)) => Err("cant compare arrays".into()),
+        _ => Err("cant operate on diferently typed literals".into()),
+    }
 }
 
 fn gt_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
-    todo!()
+    let op1 = match &a {
+        Expresion::Arithmetic(_, _, _) => a.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("primer argumento no literalizable".into()),
+    };
+    let op2 = match &b {
+        Expresion::Arithmetic(_, _, _) => b.literalize()?,
+        Expresion::Literal(l) => l.clone(),
+        _ => return Err("segundo argumento no literalizable".into()),
+    };
+
+    match (
+        op1.get_element_if_singleton()?,
+        op2.get_element_if_singleton()?,
+    ) {
+        (Data::Number(x), Data::Number(y)) => Ok(x > y),
+        (Data::String(x), Data::String(y)) => Ok(x > y),
+        (Data::Array(_), Data::Array(_)) => Err("cant compare arrays".into()),
+        _ => Err("cant operate on diferently typed literals".into()),
+    }
 }
 
 fn lte_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
-    todo!()
+    Ok(!gt_expresions(a, b)?)
 }
 
 fn gte_expresions(a: Expresion, b: Expresion) -> Result<bool, String> {
-    todo!()
+    Ok(!lt_expresions(a, b)?)
 }
 
 fn read_expresion_item(
@@ -1063,8 +1235,6 @@ fn read_logical_statement_concatenation(
                                 Statement::Or(Box::new(ret), Box::new(Statement::Not(Box::new(e))))
                             }
                             (AppendModes::None, _) => e,
-
-                            _ => ret,
                         };
                         negate_next_statement = false;
                     }
@@ -1100,8 +1270,6 @@ fn read_logical_statement_concatenation(
                                 Statement::Or(Box::new(ret), Box::new(Statement::Not(Box::new(e))))
                             }
                             (AppendModes::None, _) => e,
-
-                            _ => ret,
                         };
                         negate_next_statement = false;
                     }
@@ -1168,7 +1336,7 @@ fn read_line(
     }))
 }
 
-pub fn parse(lexograms: Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
+pub fn parse(lexograms: &Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];
     let mut cursor = 0;
 
