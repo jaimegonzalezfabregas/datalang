@@ -1,8 +1,17 @@
 
+
+
+
+
+
+
 rel("aaaaaa", "deeeeeeee",3)
-rel("bbbb", "d",0):
+rel("bbbb", "d",0)
 rel("cccccc", "deee",2)
 rel("dddd", "d",1)
 
 
 rel(_,_,_)?
+
+
+()()

@@ -1,4 +1,3 @@
-use core::fmt::Display;
 use std::{collections::HashSet, hash};
 
 #[derive(Debug, Clone, PartialEq)]

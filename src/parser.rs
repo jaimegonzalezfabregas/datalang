@@ -36,29 +36,30 @@ pub struct FailureExplanation {
 
 impl FailureExplanation {
     pub fn print(&self, lex_list: &Vec<Lexogram>, original_string: &String, indentation: String) {
-
-        println!("{indentation}Parser error breakdown: ");
         println!(
-            "{indentation}Trying to read a {} failed because {} starting at:",
-            self.if_it_was, self.failed_because
+            "{indentation}Error trying to read a \x1b[1m{}\x1b[0m failed because:",
+            self.if_it_was,
         );
         let error_lex = &lex_list[self.lex_pos];
-        print_hilighted(
-            original_string,
-            error_lex.pos_s,
-            error_lex.pos_f,
-            indentation.clone(),
-        );
 
         if let Some(failures) = &self.parent_failure {
-            println!("{indentation}Caused by:");
             for parent in failures {
                 parent.print(
                     lex_list,
                     original_string,
-                    indentation.clone() + "   ".into(),
+                    indentation.clone() + "\x1b[90m| \x1b[0m".into(),
                 );
             }
+        } else {
+            print!("{indentation}\x1b[1m{}\x1b[0m starting at:\n{indentation}", self.failed_because);
+            print_hilighted(
+                original_string,
+                error_lex.pos_s,
+                error_lex.pos_f,
+                indentation.clone(),
+            );
+            print!("\n{indentation}\n");
+
         }
     }
 }
@@ -295,7 +296,7 @@ fn read_expresion_item(
             Ok(ret) => Ok(Ok(ret)),
             Err(explanation) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,
-                if_it_was: "item".into(),
+                if_it_was: "expresion_item".into(),
                 failed_because: "was not an array".into(),
                 parent_failure: Some(vec![explanation]),
             })),
@@ -315,7 +316,7 @@ fn read_expresion_item(
 
                     Err(b) => Ok(Err(FailureExplanation {
                         lex_pos: start_cursor,
-                        if_it_was: "item".into(),
+                        if_it_was: "expresion_item".into(),
                         failed_because: "specting some array".into(),
                         parent_failure: Some(vec![a, b]),
                     })),
@@ -327,7 +328,7 @@ fn read_expresion_item(
             Ok((ret, jump_to)) => Ok(Ok((Expresion::singleton(&ret), jump_to))),
             Err(e) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,
-                if_it_was: "item".into(),
+                if_it_was: "expresion_item".into(),
                 failed_because: "specting data".into(),
                 parent_failure: Some(vec![e]),
             })),
@@ -352,7 +353,7 @@ fn read_data(
                 Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
                 Err(explanation) => Ok(Err(FailureExplanation {
                     lex_pos: start_cursor,
-                    if_it_was: "item".into(),
+                    if_it_was: "data".into(),
                     failed_because: "was not an array".into(),
                     parent_failure: Some(vec![explanation]),
                 })),
@@ -361,7 +362,7 @@ fn read_data(
 
         _ => Ok(Err(FailureExplanation {
             lex_pos: start_cursor,
-            if_it_was: "item".into(),
+            if_it_was: "data".into(),
             failed_because: "pattern missmatch trying to read item".into(),
             parent_failure: None,
         })),
@@ -809,7 +810,7 @@ fn read_literal_relation(
 ) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
-        SpectingStatementIdentifierOrNot,
+        SpectingStatementIdentifierOrNegation,
         SpectingStatementIdentifier,
         SpectingStatementList,
     }
@@ -820,7 +821,7 @@ fn read_literal_relation(
     }
     let cursor = start_cursor;
     let mut r_name = RelName("default_relation_name".into());
-    let mut state = SpectingStatementIdentifierOrNot;
+    let mut state = SpectingStatementIdentifierOrNegation;
 
     let mut forget = false;
 
@@ -829,11 +830,11 @@ fn read_literal_relation(
             continue;
         }
         match (lex.l_type.clone(), state) {
-            (OpNot, SpectingStatementIdentifierOrNot) => {
+            (OpNot, SpectingStatementIdentifierOrNegation) => {
                 forget = true;
                 state = SpectingStatementIdentifier
             }
-            (Identifier(str), SpectingStatementIdentifier | SpectingStatementIdentifierOrNot) => {
+            (Identifier(str), SpectingStatementIdentifier | SpectingStatementIdentifierOrNegation) => {
                 r_name = RelName(str);
                 state = SpectingStatementList;
             }

@@ -3,7 +3,6 @@ mod table;
 use crate::{
     lexer, parser,
     syntax::{self, *},
-    DLErr,
 };
 use std::{collections::HashMap, vec};
 
@@ -62,7 +61,7 @@ impl Engine {
     }
 
     pub fn input(self: &mut Engine, commands: String) {
-        match get_lines_from_chars(commands) {
+        match get_lines_from_chars(String::from("\n") + &commands) {
             Ok(lines) => {
                 for line in lines {
                     match self.ingest(line) {

@@ -50,7 +50,7 @@ fn main() -> Result<(), DLErr> {
     loop {
         let mut buffer = String::new();
 
-        print!(">");
+        print!("\n>");
         io::Write::flush(&mut io::stdout())
             .ok()
             .expect("Could not flush stdout");
