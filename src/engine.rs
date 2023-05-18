@@ -1,4 +1,5 @@
 mod table;
+pub mod operations;
 
 use crate::{
     lexer, parser,
@@ -34,6 +35,8 @@ pub struct Engine {
 
 fn get_lines_from_chars(commands: String) -> Result<Vec<syntax::Line>, ()> {
     let lex_res = lexer::lex(&commands);
+
+    println!("{lex_res:?}");
 
     match lex_res {
         Ok(lexic) => {

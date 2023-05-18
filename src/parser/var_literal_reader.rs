@@ -1,20 +1,12 @@
-use std::{collections::HashSet, hash};
+use std::collections::HashSet;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct RelName(pub String);
+use crate::lexer::LexogramType::*;
+use crate::{
+    lexer,
+    parser::{error::FailureExplanation, expresion_reader::read_expresion},
+};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum VarName {
-    DestructuredArray(Vec<Expresion>),
-    Direct(String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Data {
-    Number(f64),
-    String(String),
-    Array(Vec<Data>),
-}
+use super::error::ParserError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VarLiteral {
@@ -53,71 +45,7 @@ impl VarLiteral {
 
         Ok(())
     }
-}
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
-    // resolvable to a bolean
-    Hypothetical(Vec<Line>, Box<Statement>), // TODO
-    And(Box<Statement>, Box<Statement>),
-    Or(Box<Statement>, Box<Statement>),
-    Not(Box<Statement>),
-    Arithmetic(
-        Expresion,
-        Expresion,
-        fn(Expresion, Expresion) -> Result<bool, String>,
-    ),
-    Relation(RelName, Vec<Expresion>),
-    Empty,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Line {
-    CreateRelation(RelName, Vec<VarLiteral>),
-    ForgetRelation(RelName, Vec<VarLiteral>),
-    TrueWhen(Box<Statement>, Box<Statement>),
-    Query(RelName, Vec<Expresion>),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expresion {
-    // resolvable to a value
-    Arithmetic(
-        Box<Expresion>,
-        Box<Expresion>,
-        fn(Expresion, Expresion) -> Result<Expresion, String>,
-    ),
-    Literal(VarLiteral),
-    RestOfList(VarName),
-    Var(VarName),
-    Empty,
-}
-
-impl Expresion {
-    pub fn literalize(self: &Expresion) -> Result<VarLiteral, String> {
-        let ret = match self.clone() {
-            Expresion::Arithmetic(a, b, f) => {
-                if let Expresion::Literal(VarLiteral::FullSet) = *a {
-                    Ok(VarLiteral::FullSet)
-                } else if let Expresion::Literal(VarLiteral::FullSet) = *a {
-                    Ok(VarLiteral::FullSet)
-                } else {
-                    f(*a, *b)?.literalize()
-                }
-            }
-            Expresion::Literal(e) => Ok(e),
-            _ => Err(format!("no se ha podido literalizar: {:#?}", self)),
-        };
-
-        return ret;
-    }
-
-    pub fn singleton(value: &Data) -> Expresion {
-        return Expresion::Literal(VarLiteral::singleton(value));
-    }
-}
-
-impl VarLiteral {
     pub fn singleton(value: &Data) -> VarLiteral {
         return VarLiteral::Set(HashSet::from([value.to_owned()]));
     }
@@ -203,43 +131,92 @@ impl VarLiteral {
     }
 }
 
-impl Eq for Data {}
+pub fn read_var_literal(
+    lexograms: &Vec<lexer::Lexogram>,
+    start_cursor: usize,
+    debug_margin: String,
+    debug_print: bool,
+) -> Result<Result<(VarLiteral, usize), FailureExplanation>, ParserError> {
+    #[derive(Debug, Clone, Copy)]
+    enum ArrayParserStates {
+        SpectingItemOrEnd,
+        SpectingItem,
+        SpectingComaOrEnd,
+        SpectingStartOrNegation,
+        SpectingStart,
+    }
+    use ArrayParserStates::*;
 
-impl hash::Hash for Data {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
-        match self {
-            Data::Number(n) => {
-                if n.is_finite() {
-                    n.to_bits().hash(state)
-                } else if n.is_infinite() {
-                    f64::INFINITY.to_bits().hash(state)
+    if debug_print {
+        println!("{}read_set at {}", debug_margin, start_cursor);
+    }
+    let mut cursor = start_cursor;
+
+    let mut negated = false;
+
+    let mut ret = HashSet::new();
+    let mut state = SpectingStartOrNegation;
+
+    for (i, lex) in lexograms.iter().enumerate() {
+        // println!("state: {:#?}",state);
+        if cursor > i {
+            continue;
+        }
+        match (lex.l_type.clone(), state) {
+            (OpNot, SpectingStartOrNegation) => {
+                negated = true;
+                state = SpectingStart
+            }
+            (OpLT, SpectingStart | SpectingStartOrNegation) => {
+                state = SpectingItemOrEnd;
+            }
+            (Coma, SpectingComaOrEnd) => state = SpectingItem,
+            (OpGT, SpectingComaOrEnd | SpectingItemOrEnd) => {
+                println!("{debug_margin}end of set at {}", i + 1);
+                return if negated {
+                    Ok(Ok((VarLiteral::AntiSet(ret), i + 1)))
                 } else {
-                    f64::NAN.to_bits().hash(state)
+                    Ok(Ok((VarLiteral::Set(ret), i + 1)))
+                };
+            }
+            (_, SpectingItemOrEnd | SpectingItem) => {
+                match read_expresion(
+                    lexograms,
+                    i,
+                    true,
+                    debug_margin.clone() + "   ",
+                    debug_print,
+                )? {
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "array".into(),
+                            failed_because: "specting item".into(),
+                            parent_failure: Some(vec![e]),
+                        }))
+                    }
+                    Ok((expresion, jump_to)) => {
+                        ret.insert(expresion.literalize()?.get_element_if_singleton()?);
+                        cursor = jump_to;
+                    }
                 }
-            }
-            Data::String(str) => str.hash(state),
-            Data::Array(array) => array.hash(state),
-        }
-    }
-}
 
-impl Data {
-    pub fn to_string(&self) -> String {
-        match self {
-            Data::Number(n) => format!("{n}").into(),
-            Data::String(s) => format!("\"{s}\"").into(),
-            Data::Array(arr) => {
-                "[".to_string()
-                    + &arr
-                        .iter()
-                        .map(|d| d.to_string())
-                        .collect::<Vec<String>>()
-                        .join(",")
-                    + &"]".to_string()
+                state = SpectingComaOrEnd;
+            }
+            _ => {
+                return Ok(Err(FailureExplanation {
+                    lex_pos: i,
+                    if_it_was: "array".into(),
+                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
+                    parent_failure: None,
+                }))
             }
         }
     }
+    Ok(Err(FailureExplanation {
+        lex_pos: lexograms.len(),
+        if_it_was: "array".into(),
+        failed_because: "file ended".into(),
+        parent_failure: None,
+    }))
 }

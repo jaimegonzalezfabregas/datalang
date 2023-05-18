@@ -1,17 +1,8 @@
+rel(2+3)
 
+rel(<2,3>, 4)
 
+rel(2,4)
+rel(3,4)
 
-
-
-
-
-rel("aaaaaa", "deeeeeeee",3)
-rel("bbbb", "d",0)
-rel("cccccc", "deee",2)
-rel("dddd", "d",1)
-
-
-rel(_,_,_)?
-
-
-()()
+rel(a,b) :- rel(a-1,b+2) && (a < b || a+2 == 9 ) && {rel(0,1)} => (rel(b,a))

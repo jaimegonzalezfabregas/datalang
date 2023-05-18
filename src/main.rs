@@ -6,12 +6,13 @@ mod utils;
 use std::{fs::read_to_string, io};
 
 use crate::engine::Engine;
+use crate::parser::error::ParserError;
 
 #[derive(Debug)]
 enum DLErr {
     LexerError(lexer::LexerError),
     IOError(std::io::Error),
-    ParserError(parser::ParserError),
+    ParserError(ParserError),
     RuntimeError(engine::RuntimeError),
 }
 
@@ -21,8 +22,8 @@ impl From<lexer::LexerError> for DLErr {
     }
 }
 
-impl From<parser::ParserError> for DLErr {
-    fn from(e: parser::ParserError) -> Self {
+impl From<ParserError> for DLErr {
+    fn from(e: ParserError) -> Self {
         Self::ParserError(e)
     }
 }
