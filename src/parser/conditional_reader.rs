@@ -1,5 +1,5 @@
 use crate::lexer::LexogramType::*;
-use crate::parser::logical_statement_concatenation_reader::read_logical_statement_concatenation;
+use crate::parser::statement_reader::read_statement;
 use crate::{
     lexer,
     parser::{defered_relation_reader::read_defered_relation, error::FailureExplanation},
@@ -9,7 +9,7 @@ use super::defered_relation_reader::DeferedRelation;
 use super::error::ParserError;
 use super::statement_reader::Statement;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Conditional {
     conditional: Statement,
     relation: DeferedRelation,
@@ -54,7 +54,7 @@ pub fn read_conditional(
                             lex_pos: i,
                             if_it_was: "intensional".into(),
                             failed_because: "specting relation".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                     Ok((r, jump_to)) => {
@@ -67,7 +67,7 @@ pub fn read_conditional(
             (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
             (_, SpectingCondition) => {
                 match (
-                    read_logical_statement_concatenation(
+                    read_statement(
                         lexograms,
                         i,
                         debug_margin.clone() + "   ",
@@ -80,7 +80,7 @@ pub fn read_conditional(
                             lex_pos: i,
                             if_it_was: "intensional".into(),
                             failed_because: "specting statement".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                     (Ok((cond, jump_to)), Some(def_rel)) => {
@@ -101,7 +101,7 @@ pub fn read_conditional(
                     lex_pos: i,
                     if_it_was: "intensional".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -110,6 +110,6 @@ pub fn read_conditional(
         lex_pos: lexograms.len(),
         if_it_was: "intensional".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }))
 }

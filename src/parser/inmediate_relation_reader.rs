@@ -1,7 +1,6 @@
 use crate::{
     lexer::{self, LexogramType::*},
-    parser::list_reader::read_list,
-    syntax::{Line, RelName},
+    parser::{common::RelName, list_reader::read_list},
 };
 
 use super::{
@@ -11,9 +10,9 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InmediateRelation {
-    negated: bool,
-    rel_name: RelName,
-    args: Vec<VarLiteral>,
+    pub negated: bool,
+    pub rel_name: RelName,
+    pub args: Vec<VarLiteral>,
 }
 
 pub fn read_inmediate_relation(
@@ -34,10 +33,10 @@ pub fn read_inmediate_relation(
         println!("{debug_margin}read_literal_relation at {start_cursor}");
     }
     let cursor = start_cursor;
-    let mut r_name = RelName("default_relation_name".into());
+    let mut op_rel_name = None;
     let mut state = SpectingStatementIdentifierOrNegation;
 
-    let mut forget = false;
+    let mut negated = false;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
@@ -45,43 +44,50 @@ pub fn read_inmediate_relation(
         }
         match (lex.l_type.clone(), state) {
             (OpNot, SpectingStatementIdentifierOrNegation) => {
-                forget = true;
+                negated = true;
                 state = SpectingStatementIdentifier
             }
             (
                 Identifier(str),
                 SpectingStatementIdentifier | SpectingStatementIdentifierOrNegation,
             ) => {
-                r_name = RelName(str);
+                op_rel_name = Some(RelName(str));
                 state = SpectingStatementList;
             }
             (_, SpectingStatementList) => {
-                return match read_list(
-                    lexograms,
-                    i,
-                    true,
-                    debug_margin.clone() + "   ",
-                    debug_print,
-                )? {
-                    Err(e) => Ok(Err(FailureExplanation {
+                return match (
+                    read_list(
+                        lexograms,
+                        i,
+                        true,
+                        debug_margin.clone() + "   ",
+                        debug_print,
+                    )?,
+                    op_rel_name,
+                ) {
+                    (Err(e), _) => Ok(Err(FailureExplanation {
                         lex_pos: i,
                         if_it_was: "literal relation".into(),
                         failed_because: "specting list".into(),
-                        parent_failure: Some(vec![e]),
+                        parent_failure: (vec![e]),
                     })),
-                    Ok((v, new_cursor)) => {
+                    (Ok((args, new_cursor)), Some(rel_name)) => {
                         let mut literal_vec = vec![];
 
-                        for exp in v {
+                        for exp in args {
                             literal_vec.push(exp.literalize()?);
                         }
 
-                        if forget {
-                            Ok(Ok((Line::ForgetRelation(r_name, literal_vec), new_cursor)))
-                        } else {
-                            Ok(Ok((Line::CreateRelation(r_name, literal_vec), new_cursor)))
-                        }
+                        Ok(Ok((
+                            InmediateRelation {
+                                args: literal_vec,
+                                negated,
+                                rel_name,
+                            },
+                            new_cursor,
+                        )))
                     }
+                    _ => panic!("unreacheable state"),
                 }
             }
             _ => {
@@ -89,7 +95,7 @@ pub fn read_inmediate_relation(
                     lex_pos: i,
                     if_it_was: "literal relation".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -98,6 +104,6 @@ pub fn read_inmediate_relation(
         lex_pos: lexograms.len(),
         if_it_was: "literal relation".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }))
 }

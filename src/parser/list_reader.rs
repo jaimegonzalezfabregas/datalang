@@ -1,7 +1,7 @@
-use crate::{parser::{FailureExplanation, expresion_reader::read_expresion}, lexer, syntax::Expresion};
+use crate::{parser::{FailureExplanation, expresion_reader::read_expresion}, lexer};
 use crate::lexer::LexogramType::*;
 
-use super::error::ParserError;
+use super::{error::ParserError, expresion_reader::Expresion};
 
 
 pub fn read_list(
@@ -55,7 +55,7 @@ pub fn read_list(
                             lex_pos: i,
                             if_it_was: "list".into(),
                             failed_because: "Specting item".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                     Ok((e, i)) => {
@@ -70,7 +70,7 @@ pub fn read_list(
                     lex_pos: i,
                     if_it_was: "list".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }));
             }
         }
@@ -79,6 +79,6 @@ pub fn read_list(
         lex_pos: lexograms.len(),
         if_it_was: "list".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }));
 }

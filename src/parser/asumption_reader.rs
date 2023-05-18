@@ -1,17 +1,16 @@
 use super::{
     conditional_reader::Conditional,
-    defered_relation_reader::read_defered_relation,
+    defered_relation_reader::{read_defered_relation, DeferedRelation},
     error::{FailureExplanation, ParserError},
-    inmediate_relation_reader::InmediateRelation,
 };
 use crate::{
     lexer::{self},
     parser::conditional_reader::read_conditional,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Asumption {
-    Relation(InmediateRelation),
+    Relation(DeferedRelation),
     Conditional(Conditional),
 }
 
@@ -48,6 +47,6 @@ pub fn read_asumption(
         lex_pos: start_cursor,
         if_it_was: "line".into(),
         failed_because: "wasnt neither an extensional nor an intensional statement".into(),
-        parent_failure: Some(vec![a, b]),
+        parent_failure: vec![a, b],
     }))
 }

@@ -6,6 +6,7 @@ use crate::{
     parser::{error::FailureExplanation, expresion_reader::read_expresion},
 };
 
+use super::data_reader::Data;
 use super::error::ParserError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -142,7 +143,7 @@ pub fn read_var_literal(
         SpectingItemOrEnd,
         SpectingItem,
         SpectingComaOrEnd,
-        SpectingStartOrNegation,
+        SpectingStartOrNegationOrAny,
         SpectingStart,
     }
     use ArrayParserStates::*;
@@ -155,7 +156,7 @@ pub fn read_var_literal(
     let mut negated = false;
 
     let mut ret = HashSet::new();
-    let mut state = SpectingStartOrNegation;
+    let mut state = SpectingStartOrNegationOrAny;
 
     for (i, lex) in lexograms.iter().enumerate() {
         // println!("state: {:#?}",state);
@@ -163,13 +164,14 @@ pub fn read_var_literal(
             continue;
         }
         match (lex.l_type.clone(), state) {
-            (OpNot, SpectingStartOrNegation) => {
+            (OpNot, SpectingStartOrNegationOrAny) => {
                 negated = true;
                 state = SpectingStart
             }
-            (OpLT, SpectingStart | SpectingStartOrNegation) => {
+            (OpLT, SpectingStart | SpectingStartOrNegationOrAny) => {
                 state = SpectingItemOrEnd;
             }
+            (Any, SpectingStartOrNegationOrAny) => return Ok(Ok((VarLiteral::FullSet, i + 1))),
             (Coma, SpectingComaOrEnd) => state = SpectingItem,
             (OpGT, SpectingComaOrEnd | SpectingItemOrEnd) => {
                 println!("{debug_margin}end of set at {}", i + 1);
@@ -192,7 +194,7 @@ pub fn read_var_literal(
                             lex_pos: i,
                             if_it_was: "array".into(),
                             failed_because: "specting item".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                     Ok((expresion, jump_to)) => {
@@ -203,12 +205,37 @@ pub fn read_var_literal(
 
                 state = SpectingComaOrEnd;
             }
+            (_, SpectingStartOrNegationOrAny) => {
+                match read_expresion(
+                    lexograms,
+                    i,
+                    true,
+                    debug_margin.clone() + "   ",
+                    debug_print,
+                )? {
+                    Err(e) => {
+                        return Ok(Err(FailureExplanation {
+                            lex_pos: i,
+                            if_it_was: "array".into(),
+                            failed_because: "specting item".into(),
+                            parent_failure: (vec![e]),
+                        }))
+                    }
+                    Ok((expresion, jump_to)) => {
+                        return Ok(Ok((
+                            VarLiteral::singleton(&expresion.literalize()?.get_element_if_singleton()?),
+                            jump_to,
+                        )))
+                    }
+                }
+            }
+
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "array".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -217,6 +244,6 @@ pub fn read_var_literal(
         lex_pos: lexograms.len(),
         if_it_was: "array".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }))
 }

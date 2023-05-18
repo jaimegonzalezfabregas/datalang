@@ -1,6 +1,5 @@
 use std::collections::HashSet;
-
-use crate::syntax::{Data, Expresion, Statement, VarLiteral, VarName};
+use crate::parser::{var_literal_reader::VarLiteral, statement_reader::Statement, expresion_reader::{Expresion, VarName}, data_reader::Data};
 
 #[derive(Debug, Clone)]
 enum Command {
@@ -10,6 +9,7 @@ enum Command {
     IsFalseWhen(Statement),
 }
 use Command::*;
+
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -114,7 +114,7 @@ impl Table {
 
     pub fn get_contents(
         self: &Table,
-        constraints: Vec<Expresion>,
+        constraints: &Vec<Expresion>,
     ) -> Result<Vec<Vec<Data>>, String> {
         let first_non_singleton = constraints.iter().position(|exp| match exp.literalize() {
             Ok(l) => match l {
@@ -146,7 +146,7 @@ impl Table {
                         let new_constraints =
                             vector_find_replace(&constraints, var, &Expresion::singleton(&value));
 
-                        let partial_results = self.get_contents(new_constraints)?;
+                        let partial_results = self.get_contents(&new_constraints)?;
 
                         ret = ret
                             .iter()
@@ -164,7 +164,7 @@ impl Table {
                             let mut new_constraints = constraints.clone();
                             new_constraints[backtrack_pos] = Expresion::singleton(value);
 
-                            let partial_results = self.get_contents(new_constraints)?;
+                            let partial_results = self.get_contents(&new_constraints)?;
 
                             ret = ret
                                 .iter()
@@ -183,7 +183,7 @@ impl Table {
                         let mut new_constraints = constraints.clone();
                         new_constraints[backtrack_pos] = Expresion::singleton(&value);
 
-                        let partial_results = self.get_contents(new_constraints)?;
+                        let partial_results = self.get_contents(&new_constraints)?;
 
                         ret = ret
                             .iter()

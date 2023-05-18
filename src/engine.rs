@@ -1,9 +1,9 @@
-mod table;
 pub mod operations;
+mod table;
 
 use crate::{
-    lexer, parser,
-    syntax::{self, *},
+    lexer,
+    parser::{self, data_reader::Data, line_reader::Line},
 };
 use std::{collections::HashMap, vec};
 
@@ -33,7 +33,7 @@ pub struct Engine {
     tables: HashMap<RelId, Table>,
 }
 
-fn get_lines_from_chars(commands: String) -> Result<Vec<syntax::Line>, ()> {
+fn get_lines_from_chars(commands: String) -> Result<Vec<Line>, ()> {
     let lex_res = lexer::lex(&commands);
 
     println!("{lex_res:?}");
@@ -82,13 +82,12 @@ impl Engine {
 
     pub fn ingest(self: &mut Engine, line: Line) -> Result<(), RuntimeError> {
         match &line {
-            action @ (Line::ForgetRelation(RelName(rel_name), literal_vec)
-            | Line::CreateRelation(RelName(rel_name), literal_vec)) => {
-                let width = literal_vec.len();
+            action @ Line::Relation(rel) => {
+                let width = rel.args.len();
 
                 let rel_id = RelId {
                     column_count: width,
-                    identifier: rel_name.to_string(),
+                    identifier: rel.rel_name.0.to_string(),
                 };
                 let insertion_key = rel_id.clone();
 
@@ -97,23 +96,23 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    if let Line::ForgetRelation(..) = action {
-                        table.remove(literal_vec.clone())?;
+                    if rel.negated {
+                        table.remove(rel.args.clone())?;
                     } else {
-                        table.add(literal_vec.clone())?;
+                        table.add(rel.args.clone())?;
                     }
                 }
             }
-            Line::Query(RelName(rel_name), arg_vec) => {
-                let width = arg_vec.len();
+            Line::Query(rel) => {
+                let width = rel.args.len();
 
                 let rel_id = RelId {
                     column_count: width,
-                    identifier: rel_name.to_string(),
+                    identifier: rel.rel_name.0.to_string(),
                 };
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    let query_res = table.get_contents(arg_vec.to_owned())?;
+                    let query_res = table.get_contents(&rel.args)?;
                     draw_table(query_res);
                 } else {
                     return Err(RuntimeError::RelationNotFound(rel_id));

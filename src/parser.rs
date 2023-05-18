@@ -1,17 +1,17 @@
-mod defered_relation_reader;
-mod inmediate_relation_reader;
-mod line_reader;
-mod var_literal_reader;
-mod statement_reader;
-mod conditional_reader;
-mod list_reader;
-mod expresion_reader;
-mod logical_statement_concatenation_reader;
-mod destructuring_array_reader;
-mod asumption_reader;
+pub mod defered_relation_reader;
+pub mod inmediate_relation_reader;
+pub mod line_reader;
+pub mod var_literal_reader;
+pub mod statement_reader;
+pub mod conditional_reader;
+pub mod list_reader;
+pub mod expresion_reader;
+pub mod data_reader;
+pub mod destructuring_array_reader;
+pub mod asumption_reader;
 
 pub mod error;
-mod common;
+pub mod common;
 
 
 

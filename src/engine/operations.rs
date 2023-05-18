@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::syntax::{Expresion, Data, VarLiteral};
+use crate::parser::{expresion_reader::Expresion, data_reader::Data, var_literal_reader::VarLiteral};
 
 pub fn add_expresions(a: Expresion, b: Expresion) -> Result<Expresion, String> {
     let op1 = match &a {

@@ -1,6 +1,10 @@
-use crate::{syntax::{Expresion, VarName}, lexer, parser::expresion_reader::read_expresion};
-use crate::lexer::LexogramType::*;
 use super::error::{FailureExplanation, ParserError};
+use crate::lexer::LexogramType::*;
+use crate::parser::expresion_reader::{VarName, Expresion};
+use crate::{
+    lexer,
+    parser::expresion_reader::read_expresion,
+};
 
 pub fn read_destructuring_array(
     lexograms: &Vec<lexer::Lexogram>,
@@ -59,12 +63,12 @@ pub fn read_destructuring_array(
                     debug_margin.clone() + "   ",
                     debug_print,
                 )? {
-                    Err(e) => {
+                    Err(err) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
                             if_it_was: "destructuring_array".into(),
                             failed_because: "specting item".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: vec![err],
                         }))
                     }
                     Ok((expresion, jump_to)) => {
@@ -80,7 +84,7 @@ pub fn read_destructuring_array(
                     lex_pos: i,
                     if_it_was: "destructuring_array".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -89,6 +93,6 @@ pub fn read_destructuring_array(
         lex_pos: lexograms.len(),
         if_it_was: "destructuring_array".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }))
 }

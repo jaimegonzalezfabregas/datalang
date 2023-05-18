@@ -1,7 +1,6 @@
 pub mod engine;
 mod lexer;
 mod parser;
-mod syntax;
 mod utils;
 use std::{fs::read_to_string, io};
 

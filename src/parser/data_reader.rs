@@ -1,3 +1,9 @@
+use std::hash;
+
+use super::error::ParserError;
+use crate::lexer::{LexogramType::*, self};
+use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Data {
     Number(f64),
@@ -46,7 +52,7 @@ impl Data {
     }
 }
 
-fn read_data(
+pub fn read_data(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
@@ -71,7 +77,7 @@ fn read_data(
                     lex_pos: start_cursor,
                     if_it_was: "data".into(),
                     failed_because: "was not an array".into(),
-                    parent_failure: Some(vec![explanation]),
+                    parent_failure: (vec![explanation]),
                 })),
             }
         }
@@ -80,7 +86,7 @@ fn read_data(
             lex_pos: start_cursor,
             if_it_was: "data".into(),
             failed_because: "pattern missmatch trying to read item".into(),
-            parent_failure: None,
+            parent_failure: vec![],
         })),
     }
 }
@@ -137,7 +143,7 @@ pub fn read_data_array(
                             lex_pos: i,
                             if_it_was: "varLiteral_array".into(),
                             failed_because: "specting item".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                     Ok((expresion, jump_to)) => {
@@ -153,7 +159,7 @@ pub fn read_data_array(
                     lex_pos: i,
                     if_it_was: "varLiteral_array".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -162,6 +168,6 @@ pub fn read_data_array(
         lex_pos: lexograms.len(),
         if_it_was: "data_array".into(),
         failed_because: "file ended".into(),
-        parent_failure: None,
+        parent_failure: vec![],
     }))
 }

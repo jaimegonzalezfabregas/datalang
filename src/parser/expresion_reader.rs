@@ -1,17 +1,17 @@
 use crate::lexer::LexogramType::*;
-use crate::{lexer, syntax::Expresion};
+use crate::{lexer};
 
+use super::data_reader::{read_data, Data};
 use super::error::{FailureExplanation, ParserError};
-use super::var_literal_reader::VarLiteral;
+use super::var_literal_reader::{read_var_literal, VarLiteral};
 use crate::engine::operations::*;
-use crate::parser::common::read_expresion_item;
+use crate::parser::destructuring_array_reader::read_destructuring_array;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expresion {
@@ -119,7 +119,7 @@ pub fn read_expresion(
                             lex_pos: i,
                             if_it_was: "expresion".into(),
                             failed_because: "specting nested expresion".into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                 }
@@ -152,7 +152,7 @@ pub fn read_expresion(
                             if_it_was: "expresion".into(),
                             failed_because: format!("pattern missmatch on {:#?} state", state)
                                 .into(),
-                            parent_failure: Some(vec![e]),
+                            parent_failure: (vec![e]),
                         }))
                     }
                 }
@@ -165,7 +165,7 @@ pub fn read_expresion(
                     lex_pos: i,
                     if_it_was: "expresion".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
-                    parent_failure: None,
+                    parent_failure: vec![],
                 }))
             }
         }
@@ -176,11 +176,10 @@ pub fn read_expresion(
             lex_pos: lexograms.len(),
             if_it_was: "expresion".into(),
             failed_because: "file ended".into(),
-            parent_failure: None,
+            parent_failure: vec![],
         })),
     }
 }
-
 
 pub fn read_expresion_item(
     lexograms: &Vec<lexer::Lexogram>,
@@ -194,25 +193,6 @@ pub fn read_expresion_item(
     }
 
     match (lexograms[start_cursor].l_type.clone(), only_literals) {
-        (Any, _) => Ok(Ok((
-            Expresion::Literal(VarLiteral::FullSet),
-            start_cursor + 1,
-        ))),
-
-        (OpLT | OpNot, _) => match read_var_literal(
-            lexograms,
-            start_cursor,
-            debug_margin.clone() + "   ",
-            debug_print,
-        )? {
-            Ok(ret) => Ok(Ok(ret)),
-            Err(explanation) => Ok(Err(FailureExplanation {
-                lex_pos: start_cursor,
-                if_it_was: "expresion_item".into(),
-                failed_because: "was not an array".into(),
-                parent_failure: Some(vec![explanation]),
-            })),
-        },
         (Identifier(str), false) => {
             Ok(Ok((Expresion::Var(VarName::Direct(str)), start_cursor + 1)))
         }
@@ -236,24 +216,19 @@ pub fn read_expresion_item(
                         lex_pos: start_cursor,
                         if_it_was: "expresion_item".into(),
                         failed_because: "specting some array".into(),
-                        parent_failure: Some(vec![a, b]),
+                        parent_failure: vec![a, b],
                     })),
                 },
             }
         }
 
-        (_, _) => match read_data(
-            lexograms,
-            start_cursor,
-            debug_margin.clone() + "   ",
-            debug_print,
-        )? {
-            Ok((ret, jump_to)) => Ok(Ok((Expresion::singleton(&ret), jump_to))),
-            Err(e) => Ok(Err(FailureExplanation {
+        (_, _) => match read_var_literal(lexograms, start_cursor, debug_margin, debug_print)? {
+            Ok((value, jump_to)) => Ok(Ok((Expresion::Literal(value), jump_to))),
+            Err(err) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,
                 if_it_was: "expresion_item".into(),
-                failed_because: "specting data".into(),
-                parent_failure: Some(vec![e]),
+                failed_because: "specting some array".into(),
+                parent_failure: vec![err],
             })),
         },
     }
