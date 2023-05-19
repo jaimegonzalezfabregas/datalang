@@ -5,15 +5,15 @@ use crate::{
 };
 
 use super::{
+    data_reader::Data,
     error::{FailureExplanation, ParserError},
-    var_literal_reader::VarLiteral,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InmediateRelation {
     pub negated: bool,
     pub rel_name: String,
-    pub args: Vec<VarLiteral>,
+    pub args: Vec<Data>,
 }
 
 impl InmediateRelation {

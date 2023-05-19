@@ -1,18 +1,17 @@
+use std::collections::HashMap;
+
 use crate::parser::{
     conditional_reader::Conditional,
     data_reader::Data,
     expresion_reader::{Expresion, VarName},
     inmediate_relation_reader::InmediateRelation,
-    statement_reader::Statement,
-    var_literal_reader::VarLiteral,
 };
-use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 enum Command {
-    IsTrueThat(Vec<VarLiteral>),
-    IsFalseThat(Vec<VarLiteral>),
-    IsTrueWhen(Conditional),
+    IsTrueThat(Vec<Data>),
+    IsFalseThat(Vec<Data>),
+    Conditional(Conditional),
 }
 use Command::*;
 
@@ -32,7 +31,7 @@ impl Table {
         }
     }
 
-    pub fn add_rule(self: &mut Table, rule: InmediateRelation) -> Result<(), String> {
+    pub fn add_rule(&mut self, rule: InmediateRelation) -> Result<(), String> {
         if self.width != rule.get_rel_id().column_count {
             Err("Cant add to a table a row with mismatching number of columns".into())
         } else {
@@ -44,249 +43,84 @@ impl Table {
         }
     }
 
-    pub(crate) fn add_conditional(&self, cond: Conditional) -> Result<(), String> {
+    pub(crate) fn add_conditional(&mut self, cond: Conditional) -> Result<(), String> {
         if self.width != cond.get_rel_id().column_count {
             Err("Cant add to a table a row with mismatching number of columns".into())
         } else {
-            self.history.push(IsTrueWhen(cond));
+            self.history.push(Conditional(cond));
             Ok(())
         }
     }
 
-    pub fn contains_superset_of(self: &Table, sub_set: &Vec<VarLiteral>) -> Result<bool, String> {
-        if sub_set.len() != self.width {
-            Err("Cant compare a row with mismatching number of columns".into())
-        } else {
-            for command in self.history.iter().rev() {
-                let (inner, ret) = match command {
-                    IsFalseThat(inner) => (inner, false),
-                    IsTrueThat(inner) => (inner, true),
-                    IsTrueWhen(_) => todo!(),
-                    IsFalseWhen(_) => todo!(),
+    pub fn get_all_contents(self: &Table) -> Vec<Vec<Data>> {
+        todo!()
+    }
+
+    pub fn get_contents(self: &Table, filter: Vec<Expresion>) -> Vec<Vec<Data>> {
+        let all_truths = self.get_all_contents();
+
+        let literal_matched_truths = vec![];
+        for truth in all_truths {
+            let discard = false;
+            for check in truth.iter().zip(filter) {
+                discard = match check {
+                    (d, Expresion::Literal(f)) => f != d.to_owned(),
+                    _ => false,
                 };
-
-                let mut c = 0;
-                for (a, b) in sub_set.iter().zip(inner) {
-                    if b.contains_set(a) {
-                        c += 1;
-                    }
-                }
-                if c == sub_set.len() {
-                    return Ok(ret);
+                if discard {
+                    break;
                 }
             }
-            Ok(false)
-        }
-    }
 
-    fn universe_of_nth_column(self: &Table, n: usize) -> Result<VarLiteral, String> {
-        let mut ret = VarLiteral::EmptySet;
-        for command in &self.history {
-            match command {
-                IsTrueThat(v) => match &v[n] {
-                    VarLiteral::FullSet => {
-                        ret = VarLiteral::FullSet;
-                    }
-                    VarLiteral::Set(vec) => {
-                        for elm in vec {
-                            ret.add(elm.to_owned())?;
+            if !discard {
+                literal_matched_truths.push(truth);
+            }
+        }
+
+        let mut var_values = HashMap::new();
+
+        let var_matched_truths = vec![];
+        for truth in all_truths {
+            let discard = false;
+            for check in truth.iter().zip(filter) {
+                discard = match check {
+                    (d, Expresion::Var(VarName::Direct(name))) => match var_values.get(&name) {
+                        Some(prev_val) => prev_val.to_owned() != d.to_owned(),
+                        None => {
+                            var_values.insert(name, d.to_owned());
+                            false
                         }
-                    }
-                    VarLiteral::AntiSet(vec) => {
-                        for elm in vec {
-                            ret.remove(elm.to_owned())?;
-                        }
-                    }
-                    VarLiteral::EmptySet => ret = VarLiteral::EmptySet,
-                },
-                IsFalseThat(v) => match &v[n] {
-                    VarLiteral::FullSet => {
-                        ret = VarLiteral::EmptySet;
-                    }
-                    VarLiteral::Set(vec) => {
-                        for elm in vec {
-                            ret.remove(elm.to_owned())?;
-                        }
-                    }
-                    VarLiteral::AntiSet(vec) => {
-                        for elm in vec {
-                            ret.add(elm.to_owned())?;
-                        }
-                    }
-                    VarLiteral::EmptySet => (),
-                },
-                IsTrueWhen(cond) => match cond.relation.args[n] {
-                    Expresion::Literal(v) => match v {
-                        VarLiteral::FullSet => {
-                            ret = VarLiteral::EmptySet;
-                        }
-                        VarLiteral::Set(vec) => {
-                            for elm in vec {
-                                ret.remove(elm.to_owned())?;
-                            }
-                        }
-                        VarLiteral::AntiSet(vec) => {
-                            for elm in vec {
-                                ret.add(elm.to_owned())?;
-                            }
-                        }
-                        VarLiteral::EmptySet => (),
                     },
-                    Expresion::Var(VarName::Direct(str)) => return universe_of_engine(),
-                    _ => panic!("unespected item at conditional"),
-                },
-            };
-        }
-        Ok(ret)
-    }
-
-    pub fn get_contents(
-        self: &Table,
-        constraints: &Vec<Expresion>,
-        backtrack_context: &HashMap<String, Data>,
-    ) -> Result<Vec<Vec<Data>>, String> {
-        let first_non_singleton = constraints.iter().position(|exp| match exp.literalize() {
-            Ok(l) => match l {
-                VarLiteral::FullSet => true,
-                VarLiteral::Set(s) => s.len() != 1,
-                _ => false,
-            },
-            Err(_) => true,
-        });
-
-        if let Some(backtrack_pos) = first_non_singleton {
-            let column_universe = self.universe_of_nth_column(backtrack_pos)?;
-
-            let backtrack_universe = match column_universe {
-                VarLiteral::EmptySet => HashSet::new(),
-                VarLiteral::FullSet => self.universe_of_table()?,
-                VarLiteral::Set(set) => set,
-                VarLiteral::AntiSet(anti_set) => self
-                    .universe_of_table()?
-                    .difference(&anti_set)
-                    .map(|e| e.to_owned())
-                    .collect(),
-            };
-
-            match &constraints[backtrack_pos] {
-                var @ Expresion::Var(VarName::Direct(_)) => {
-                    let mut ret = vec![];
-                    for value in backtrack_universe {
-                        let new_constraints =
-                            vector_find_replace(&constraints, var, &Expresion::singleton(&value));
-
-                        let partial_results = self.get_contents(&new_constraints)?;
-
-                        ret = ret
-                            .iter()
-                            .chain(partial_results.iter())
-                            .map(|e| e.clone())
-                            .collect()
-                    }
-                    Ok(ret)
+                    _ => false,
+                };
+                if discard {
+                    break;
                 }
-                Expresion::Literal(VarLiteral::Set(constraint_values)) => {
-                    let mut ret = vec![];
-
-                    for value in constraint_values {
-                        if backtrack_universe.contains(value) {
-                            let mut new_constraints = constraints.clone();
-                            new_constraints[backtrack_pos] = Expresion::singleton(value);
-
-                            let partial_results = self.get_contents(&new_constraints)?;
-
-                            ret = ret
-                                .iter()
-                                .chain(partial_results.iter())
-                                .map(|e| e.clone())
-                                .collect()
-                        }
-                    }
-
-                    Ok(ret)
-                }
-                Expresion::Literal(VarLiteral::FullSet) => {
-                    let mut ret = vec![];
-
-                    for value in backtrack_universe {
-                        let mut new_constraints = constraints.clone();
-                        new_constraints[backtrack_pos] = Expresion::singleton(&value);
-
-                        let partial_results = self.get_contents(&new_constraints)?;
-
-                        ret = ret
-                            .iter()
-                            .chain(partial_results.iter())
-                            .map(|e| e.clone())
-                            .collect()
-                    }
-
-                    Ok(ret)
-                }
-                _ => Err(format!(
-                    "unespected_expresion at argument at pos {backtrack_pos}: {:?}",
-                    constraints[backtrack_pos]
-                )),
-            }
-        } else {
-            let mut var_literal_result = vec![];
-
-            for exp in constraints {
-                var_literal_result.push(match exp {
-                    Expresion::Literal(VarLiteral::FullSet) => VarLiteral::FullSet,
-                    _ => VarLiteral::singleton(&exp.literalize()?.get_element_if_singleton()?),
-                });
             }
 
-            Ok(if self.contains_superset_of(&var_literal_result)? {
-                let mut ret = vec![];
-                for data in var_literal_result {
-                    ret.push(data.get_element_if_singleton()?);
-                }
-
-                vec![ret]
-            } else {
-                vec![]
-            })
-        }
-    }
-
-    fn universe_of_table(&self) -> Result<HashSet<Data>, String> {
-        let mut ret = HashSet::new();
-        for comm in self.history.iter() {
-            let vec = match comm {
-                IsTrueThat(e) => e,
-                IsFalseThat(e) => e,
-                IsTrueWhen(_) => todo!(),
-                IsFalseWhen(_) => todo!(),
-            };
-
-            let mut values = HashSet::new();
-
-            vec.iter().for_each(|e| match e {
-                VarLiteral::Set(s) => values.extend(s.iter().map(|e| e.to_owned())),
-                _ => (),
-            });
-
-            ret.extend(values);
-        }
-
-        Ok(ret)
-    }
-}
-
-fn vector_find_replace<T: 'static>(v: &Vec<T>, find: &T, replace: &T) -> Vec<T>
-where
-    T: PartialEq<T>,
-    T: Clone,
-{
-    v.iter()
-        .map(|original_value| {
-            if original_value.clone() == find.clone() {
-                replace.clone()
-            } else {
-                original_value.clone()
+            if !discard {
+                var_values.push(truth);
             }
-        })
-        .collect::<Vec<T>>()
+        }
+
+        let mut expresion_matched_truths = vec![];
+        for truth in all_truths {
+            let discard = false;
+            for check in truth.iter().zip(filter) {
+                discard = match check {
+                    (d, Expresion::Arithmetic(_, _, _)) => todo!(),
+                    _ => false,
+                };
+                if discard {
+                    break;
+                }
+            }
+
+            if !discard {
+                expresion_matched_truths.push(truth);
+            }
+        }
+
+        all_truths;
+    }
 }

@@ -1,7 +1,7 @@
 use std::hash;
 
 use super::error::ParserError;
-use crate::lexer::{LexogramType::*, self};
+use crate::lexer::{self, LexogramType::*};
 use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -107,7 +107,7 @@ pub fn read_data_array(
     use ArrayParserStates::*;
 
     if debug_print {
-        println!("{}read_varLiteral_array at {}", debug_margin, start_cursor);
+        println!("{}read_data_array at {}", debug_margin, start_cursor);
     }
 
     let mut cursor = start_cursor;
@@ -127,7 +127,7 @@ pub fn read_data_array(
 
             (Coma, SpectingComaOrEnd) => state = SpectingItem,
             (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
-                println!("{debug_margin}end of varLiteral_array at {}", i + 1);
+                println!("{debug_margin}end of data_array at {}", i + 1);
                 return Ok(Ok((ret, i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItem) => {
@@ -141,13 +141,24 @@ pub fn read_data_array(
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
-                            if_it_was: "varLiteral_array".into(),
+                            if_it_was: "data_array".into(),
                             failed_because: "specting item".into(),
-                            parent_failure: (vec![e]),
+                            parent_failure: vec![e],
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.push(expresion.literalize()?.get_element_if_singleton()?);
+                        ret.push(match expresion.literalize() {
+                            Ok(data) => data,
+                            Err(err) => {
+                                return Ok(Err(FailureExplanation {
+                                    lex_pos: i,
+                                    if_it_was: "data_array".into(),
+                                    failed_because: format!("unliteralizable expresion: {err}")
+                                        .into(),
+                                    parent_failure: vec![],
+                                }))
+                            }
+                        });
                         cursor = jump_to;
                     }
                 }
@@ -157,7 +168,7 @@ pub fn read_data_array(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "varLiteral_array".into(),
+                    if_it_was: "data_array".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: vec![],
                 }))

@@ -1,6 +1,6 @@
 use super::error::{FailureExplanation, ParserError};
 use crate::lexer::LexogramType::*;
-use crate::parser::expresion_reader::{Expresion};
+use crate::parser::expresion_reader::{Expresion, VarName};
 use crate::{
     lexer,
     parser::expresion_reader::read_expresion,

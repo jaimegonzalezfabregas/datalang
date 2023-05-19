@@ -54,11 +54,14 @@ pub struct LexerError {
 }
 
 impl LexerError {
-    pub fn print(&self, original_string: &String) {
-        println!("Lexer error breakdown: ");
-        println!("\"{:?}\" at:", self.msg);
+    pub fn print(&self, original_string: &String) -> String {
+        let ret = format!(
+            "Lexer error breakdown: \n\"{:?}\" at: {}",
+            self.msg,
+            print_hilighted(original_string, self.pos_s, self.pos_f, "".into())
+        );
 
-        print_hilighted(original_string, self.pos_s, self.pos_f, "".into());
+        ret
     }
 }
 

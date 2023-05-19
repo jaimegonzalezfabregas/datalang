@@ -1,6 +1,9 @@
-pub fn print_hilighted(base_string: &String, start: usize, end: usize, indentation: String) {
-
-
+pub fn print_hilighted(
+    base_string: &String,
+    start: usize,
+    end: usize,
+    indentation: String,
+) -> String {
     let context_margin = 30;
 
     let precontext =
@@ -54,8 +57,24 @@ pub fn print_hilighted(base_string: &String, start: usize, end: usize, indentati
         })
         .collect();
 
-    print!(
+    format!(
         "{}\x1b[1m\x1b[37;41m{}\x1b[0m{}",
         padded_precontext, padded_error, padded_postcontext
-    );
+    )
+}
+
+fn vector_find_replace<T: 'static>(v: &Vec<T>, find: &T, replace: &T) -> Vec<T>
+where
+    T: PartialEq<T>,
+    T: Clone,
+{
+    v.iter()
+        .map(|original_value| {
+            if original_value.clone() == find.clone() {
+                replace.clone()
+            } else {
+                original_value.clone()
+            }
+        })
+        .collect::<Vec<T>>()
 }

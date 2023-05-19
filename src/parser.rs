@@ -1,7 +1,6 @@
 pub mod defered_relation_reader;
 pub mod inmediate_relation_reader;
 pub mod line_reader;
-pub mod var_literal_reader;
 pub mod statement_reader;
 pub mod conditional_reader;
 pub mod list_reader;

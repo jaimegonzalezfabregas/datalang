@@ -10,8 +10,13 @@ pub struct FailureExplanation {
 }
 
 impl FailureExplanation {
-    pub fn print(self, lex_list: &Vec<Lexogram>, original_string: &String, indentation: String) {
-        println!(
+    pub fn print(
+        self,
+        lex_list: &Vec<Lexogram>,
+        original_string: &String,
+        indentation: String,
+    ) -> String {
+        let mut ret = format!(
             "{indentation}Error trying to read a \x1b[1m{}\x1b[0m failed because:",
             self.if_it_was,
         );
@@ -19,25 +24,26 @@ impl FailureExplanation {
 
         if !self.parent_failure.is_empty() {
             for parent in self.parent_failure {
-                parent.print(
+                ret += &parent.print(
                     lex_list,
                     original_string,
                     indentation.clone() + "\x1b[90m| \x1b[0m".into(),
                 );
             }
         } else {
-            print!(
-                "{indentation}\x1b[1m{}\x1b[0m starting at:\n{indentation}",
-                self.failed_because
+            ret += &format!(
+                "{indentation}\x1b[1m{}\x1b[0m starting at:\n{indentation}{}\n{indentation}\n",
+                self.failed_because,
+                print_hilighted(
+                    original_string,
+                    error_lex.pos_s,
+                    error_lex.pos_f,
+                    indentation.clone(),
+                )
             );
-            print_hilighted(
-                original_string,
-                error_lex.pos_s,
-                error_lex.pos_f,
-                indentation.clone(),
-            );
-            print!("\n{indentation}\n");
-        }
+        };
+
+        ret
     }
 }
 
@@ -53,9 +59,9 @@ impl From<String> for ParserError {
     }
 }
 impl ParserError {
-    pub fn print(self, lexic: &Vec<Lexogram>, commands: &String) {
+    pub fn print(self, lexic: &Vec<Lexogram>, commands: &String) -> String {
         match self {
-            ParserError::Custom(str) => println!("custom error on parsing: {str}"),
+            ParserError::Custom(str) => format!("custom error on parsing: {str}"),
             ParserError::SyntaxError(e) => e.print(lexic, commands, "".into()),
         }
     }

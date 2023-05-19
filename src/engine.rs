@@ -33,7 +33,7 @@ pub struct Engine {
     tables: HashMap<RelId, Table>,
 }
 
-fn get_lines_from_chars(commands: String) -> Result<Vec<Line>, ()> {
+fn get_lines_from_chars(commands: String) -> Result<Vec<Line>, String> {
     let lex_res = lexer::lex(&commands);
 
     println!("{lex_res:?}");
@@ -43,16 +43,10 @@ fn get_lines_from_chars(commands: String) -> Result<Vec<Line>, ()> {
             let ast_res = parser::parse(&lexic);
             match ast_res {
                 Ok(ast_vec) => Ok(ast_vec),
-                Err(err) => {
-                    err.print(&lexic, &commands);
-                    Err(())
-                }
+                Err(err) => Err(err.print(&lexic, &commands)),
             }
         }
-        Err(e) => {
-            e.print(&commands);
-            Err(())
-        }
+        Err(e) => Err(e.print(&commands)),
     }
 }
 
@@ -63,7 +57,8 @@ impl Engine {
         }
     }
 
-    pub fn input(self: &mut Engine, commands: String) {
+    pub fn input(self: &mut Engine, commands: String) -> String {
+        let ret = String::new();
         match get_lines_from_chars(String::from("\n") + &commands) {
             Ok(lines) => {
                 for line in lines {
@@ -76,8 +71,9 @@ impl Engine {
                     }
                 }
             }
-            Err(()) => (),
+            Err(err) => return err,
         }
+        ret
     }
 
     pub fn ingest(self: &mut Engine, line: Line) -> Result<(), RuntimeError> {
@@ -98,7 +94,8 @@ impl Engine {
                 let rel_id = rel.get_rel_id();
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    let query_res = table.get_contents(&rel.args)?;
+                    let query_res = table.get_contents(rel.args);
+
                     draw_table(query_res);
                 } else {
                     return Err(RuntimeError::RelationNotFound(rel_id));
@@ -113,7 +110,7 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_conditional(cond);
+                    table.add_conditional(cond)?;
                 }
             }
         }

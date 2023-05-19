@@ -1,53 +1,43 @@
+use crate::lexer;
 use crate::lexer::LexogramType::*;
-use crate::{lexer};
 
 use super::data_reader::{read_data, Data};
 use super::error::{FailureExplanation, ParserError};
-use super::var_literal_reader::{read_var_literal, VarLiteral};
 use crate::engine::operations::*;
 use crate::parser::destructuring_array_reader::read_destructuring_array;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
+    Anonimus,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct Operation<Op, Res> {
+    pub forward: fn(Op, Op) -> Result<Res, String>,
+    pub reverse_op1: fn(Op, Res) -> Result<Res, String>,
+    pub reverse_op2: fn(Op, Res) -> Result<Res, String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Expresion {
     // resolvable to a value
-    Arithmetic(
-        Box<Expresion>,
-        Box<Expresion>,
-        fn(Expresion, Expresion) -> Result<Expresion, String>,
-    ),
-    Literal(VarLiteral),
+    Arithmetic(Box<Expresion>, Box<Expresion>, Operation<Data, Data>),
+    Literal(Data),
     RestOfList(VarName),
     Var(VarName),
     Empty,
 }
 
 impl Expresion {
-    pub fn literalize(self: &Expresion) -> Result<VarLiteral, String> {
+    pub fn literalize(self: &Expresion) -> Result<Data, String> {
         let ret = match self.clone() {
-            Expresion::Arithmetic(a, b, f) => {
-                if let Expresion::Literal(VarLiteral::FullSet) = *a {
-                    Ok(VarLiteral::FullSet)
-                } else if let Expresion::Literal(VarLiteral::FullSet) = *a {
-                    Ok(VarLiteral::FullSet)
-                } else {
-                    f(*a, *b)?.literalize()
-                }
-            }
+            Expresion::Arithmetic(a, b, f) => Ok((f.forward)(a.literalize()?, b.literalize()?)?),
             Expresion::Literal(e) => Ok(e),
-            _ => Err(format!("no se ha podido literalizar: {:#?}", self)),
+            _ => Err(format!("no se ha podido literalizar: {self:?}")),
         };
 
         return ret;
-    }
-
-    pub fn singleton(value: &Data) -> Expresion {
-        return Expresion::Literal(VarLiteral::singleton(value));
     }
 }
 
@@ -73,7 +63,7 @@ pub fn read_expresion(
     let mut state = SpectingItemOrOpenParenthesis;
 
     let mut ret = Expresion::Empty;
-    let mut append_mode: Option<fn(Expresion, Expresion) -> Result<Expresion, String>> = None;
+    let mut append_mode: Option<Operation<Data, Data>> = None;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
@@ -82,19 +72,35 @@ pub fn read_expresion(
 
         match (lex.l_type.clone(), state, only_literals) {
             (OpAdd, SpectingOperatorOrEnd, _) => {
-                append_mode = Some(add_expresions);
+                append_mode = Some(Operation {
+                    forward: add_direct,
+                    reverse_op1: add_reverse_op1,
+                    reverse_op2: add_reverse_op2,
+                });
                 state = SpectingItemOrOpenParenthesis;
             }
             (OpSub, SpectingOperatorOrEnd, _) => {
-                append_mode = Some(sub_expresions);
+                append_mode = Some(Operation {
+                    forward: substract_direct,
+                    reverse_op1: substract_reverse_op1,
+                    reverse_op2: substract_reverse_op2,
+                });
                 state = SpectingItemOrOpenParenthesis;
             }
             (OpMul, SpectingOperatorOrEnd, _) => {
-                append_mode = Some(mul_expresions);
+                append_mode = Some(Operation {
+                    forward: multiply_direct,
+                    reverse_op1: multiply_reverse_op1,
+                    reverse_op2: multiply_reverse_op2,
+                });
                 state = SpectingItemOrOpenParenthesis;
             }
             (OpDiv, SpectingOperatorOrEnd, _) => {
-                append_mode = Some(div_expresions);
+                append_mode = Some(Operation {
+                    forward: divide_direct,
+                    reverse_op1: divide_reverse_op1,
+                    reverse_op2: divide_reverse_op2,
+                });
                 state = SpectingItemOrOpenParenthesis;
             }
             (LeftParenthesis, SpectingItemOrOpenParenthesis, _) => {
@@ -107,12 +113,13 @@ pub fn read_expresion(
                 )? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
-                        ret = match append_mode {
-                            Some(append_mode_fn) => {
-                                Expresion::Arithmetic(Box::new(ret), Box::new(e), append_mode_fn)
+                        ret = match &append_mode {
+                            Some(op) => {
+                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.to_owned())
                             }
                             None => e,
-                        }
+                        };
+                        append_mode = None
                     }
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
@@ -139,12 +146,13 @@ pub fn read_expresion(
                 )? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
-                        ret = match append_mode {
-                            Some(append_mode_fn) => {
-                                Expresion::Arithmetic(Box::new(ret), Box::new(e), append_mode_fn)
+                        ret = match &append_mode {
+                            Some(op) => {
+                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.clone())
                             }
                             None => e,
-                        }
+                        };
+                        append_mode = None
                     }
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
@@ -203,7 +211,7 @@ pub fn read_expresion_item(
                 debug_margin.clone() + "   ",
                 debug_print,
             )? {
-                Ok((ret, jump_to)) => Ok(Ok((Expresion::singleton(&ret), jump_to))),
+                Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
                 Err(a) => match read_destructuring_array(
                     lexograms,
                     start_cursor,
@@ -221,8 +229,9 @@ pub fn read_expresion_item(
                 },
             }
         }
+        (Any, false) => Ok(Ok((Expresion::Var(VarName::Anonimus), start_cursor + 1))),
 
-        (_, _) => match read_var_literal(lexograms, start_cursor, debug_margin, debug_print)? {
+        (_, _) => match read_data(lexograms, start_cursor, debug_margin, debug_print)? {
             Ok((value, jump_to)) => Ok(Ok((Expresion::Literal(value), jump_to))),
             Err(err) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,
