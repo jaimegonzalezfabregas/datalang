@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::lexer::LexogramType::*;
+use crate::parser::data_reader::read_data;
 use crate::{
     lexer,
     parser::{error::FailureExplanation, expresion_reader::read_expresion},
@@ -140,23 +141,23 @@ pub fn read_var_literal(
 ) -> Result<Result<(VarLiteral, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ArrayParserStates {
-        SpectingItemOrEnd,
-        SpectingItem,
+        SpectingDataOrEnd,
+        SpectingData,
         SpectingComaOrEnd,
-        SpectingStartOrNegationOrAny,
-        SpectingStart,
+        SpectingLTOrNegationOrAnyOrData,
+        SpectingLT,
     }
     use ArrayParserStates::*;
 
     if debug_print {
-        println!("{}read_set at {}", debug_margin, start_cursor);
+        println!("{}read_var_literal at {}", debug_margin, start_cursor);
     }
     let mut cursor = start_cursor;
 
     let mut negated = false;
 
     let mut ret = HashSet::new();
-    let mut state = SpectingStartOrNegationOrAny;
+    let mut state = SpectingLTOrNegationOrAnyOrData;
 
     for (i, lex) in lexograms.iter().enumerate() {
         // println!("state: {:#?}",state);
@@ -164,16 +165,16 @@ pub fn read_var_literal(
             continue;
         }
         match (lex.l_type.clone(), state) {
-            (OpNot, SpectingStartOrNegationOrAny) => {
+            (OpNot, SpectingLTOrNegationOrAnyOrData) => {
                 negated = true;
-                state = SpectingStart
+                state = SpectingLT
             }
-            (OpLT, SpectingStart | SpectingStartOrNegationOrAny) => {
-                state = SpectingItemOrEnd;
+            (OpLT, SpectingLT | SpectingLTOrNegationOrAnyOrData) => {
+                state = SpectingDataOrEnd;
             }
-            (Any, SpectingStartOrNegationOrAny) => return Ok(Ok((VarLiteral::FullSet, i + 1))),
-            (Coma, SpectingComaOrEnd) => state = SpectingItem,
-            (OpGT, SpectingComaOrEnd | SpectingItemOrEnd) => {
+            (Any, SpectingLTOrNegationOrAnyOrData) => return Ok(Ok((VarLiteral::FullSet, i + 1))),
+            (Coma, SpectingComaOrEnd) => state = SpectingData,
+            (OpGT, SpectingComaOrEnd | SpectingDataOrEnd) => {
                 println!("{debug_margin}end of set at {}", i + 1);
                 return if negated {
                     Ok(Ok((VarLiteral::AntiSet(ret), i + 1)))
@@ -181,14 +182,8 @@ pub fn read_var_literal(
                     Ok(Ok((VarLiteral::Set(ret), i + 1)))
                 };
             }
-            (_, SpectingItemOrEnd | SpectingItem) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    true,
-                    debug_margin.clone() + "   ",
-                    debug_print,
-                )? {
+            (_, SpectingDataOrEnd | SpectingData) => {
+                match read_data(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
@@ -198,21 +193,15 @@ pub fn read_var_literal(
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.insert(expresion.literalize()?.get_element_if_singleton()?);
+                        ret.insert(expresion);
                         cursor = jump_to;
                     }
                 }
 
                 state = SpectingComaOrEnd;
             }
-            (_, SpectingStartOrNegationOrAny) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    true,
-                    debug_margin.clone() + "   ",
-                    debug_print,
-                )? {
+            (_, SpectingLTOrNegationOrAnyOrData) => {
+                match read_data(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
@@ -221,12 +210,7 @@ pub fn read_var_literal(
                             parent_failure: (vec![e]),
                         }))
                     }
-                    Ok((expresion, jump_to)) => {
-                        return Ok(Ok((
-                            VarLiteral::singleton(&expresion.literalize()?.get_element_if_singleton()?),
-                            jump_to,
-                        )))
-                    }
+                    Ok((data, jump_to)) => return Ok(Ok((VarLiteral::singleton(&data), jump_to))),
                 }
             }
 

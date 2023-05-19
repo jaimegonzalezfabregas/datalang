@@ -35,7 +35,7 @@ pub fn read_asumption(
     match read_defered_relation(
         lexograms,
         start_cursor,
-        true,
+        false,
         debug_margin.clone() + "   ",
         debug_print,
     )? {
@@ -45,7 +45,7 @@ pub fn read_asumption(
 
     Ok(Err(FailureExplanation {
         lex_pos: start_cursor,
-        if_it_was: "line".into(),
+        if_it_was: "asumption".into(),
         failed_because: "wasnt neither an extensional nor an intensional statement".into(),
         parent_failure: vec![a, b],
     }))

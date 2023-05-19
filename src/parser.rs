@@ -11,7 +11,6 @@ pub mod destructuring_array_reader;
 pub mod asumption_reader;
 
 pub mod error;
-pub mod common;
 
 
 
@@ -23,7 +22,7 @@ use self::line_reader::*;
 
 
 
-const DEBUG_PRINT: bool = false;
+const DEBUG_PRINT: bool = true;
 
 pub fn parse(lexograms: &Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];

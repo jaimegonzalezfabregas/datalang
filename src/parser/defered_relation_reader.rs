@@ -1,9 +1,9 @@
+use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::asumption_reader::read_asumption;
 use crate::{lexer, parser::list_reader::read_list};
 
 use super::asumption_reader::Asumption;
-use super::common::RelName;
 use super::error::ParserError;
 use super::FailureExplanation;
 use crate::parser::expresion_reader::Expresion;
@@ -11,8 +11,17 @@ use crate::parser::expresion_reader::Expresion;
 #[derive(Debug, Clone)]
 pub struct DeferedRelation {
     pub asumptions: Vec<Asumption>,
-    pub rel_name: RelName,
+    pub rel_name: String,
     pub args: Vec<Expresion>,
+}
+
+impl DeferedRelation {
+    pub fn get_rel_id(&self) -> RelId {
+        return RelId {
+            identifier: self.rel_name.clone(),
+            column_count: self.args.len(),
+        };
+    }
 }
 
 pub fn read_defered_relation(
@@ -39,7 +48,7 @@ pub fn read_defered_relation(
     }
 
     let mut cursor = start_cursor;
-    let mut rel_name = RelName("default_relation_name".into());
+    let mut op_rel_name = None;
     let mut args = vec![];
     let mut asumptions = vec![];
     let mut state = SpectingStatementIdentifierOrAsumption;
@@ -50,7 +59,7 @@ pub fn read_defered_relation(
         }
         match (lex.l_type.to_owned(), state) {
             (_, SpectingAsumption) => {
-                match read_asumption(lexograms, i, debug_margin.clone()+"   ", debug_print)? {
+                match read_asumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
                     Ok((asumption, jump_to)) => {
                         cursor = jump_to;
                         asumptions.push(asumption);
@@ -70,17 +79,17 @@ pub fn read_defered_relation(
                 state = SpectingAsumption;
             }
             (RightKey, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
-                state = SpectingStatementIdentifier;
+                state = SpectingAssuming;
             }
             (Coma, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
-                state = SpectingAssuming;
+                state = SpectingAsumption;
             }
             (Assuming, SpectingAssuming) => state = SpectingStatementIdentifier,
             (
                 Identifier(str),
                 SpectingStatementIdentifier | SpectingStatementIdentifierOrAsumption,
             ) => {
-                rel_name = RelName(str);
+                op_rel_name = Some(str);
                 state = SpectingStatementList;
             }
             (_, SpectingStatementList) => {
@@ -105,27 +114,35 @@ pub fn read_defered_relation(
                         if check_querry {
                             state = SpectingQuery;
                         } else {
-                            return Ok(Ok((
-                                DeferedRelation {
-                                    asumptions,
-                                    rel_name,
-                                    args,
-                                },
-                                i + 1,
-                            )));
+                            if let Some(rel_name) = op_rel_name {
+                                return Ok(Ok((
+                                    DeferedRelation {
+                                        asumptions,
+                                        rel_name,
+                                        args,
+                                    },
+                                    jump_to,
+                                )));
+                            } else {
+                                panic!("unreacheable state");
+                            }
                         }
                     }
                 }
             }
             (Query, SpectingQuery) => {
-                return Ok(Ok((
-                    DeferedRelation {
-                        asumptions,
-                        rel_name,
-                        args,
-                    },
-                    i + 1,
-                )))
+                if let Some(rel_name) = op_rel_name {
+                    return Ok(Ok((
+                        DeferedRelation {
+                            asumptions,
+                            rel_name,
+                            args,
+                        },
+                        i + 1,
+                    )));
+                } else {
+                    panic!("unreacheable state");
+                }
             }
             _ => {
                 return Ok(Err(FailureExplanation {

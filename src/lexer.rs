@@ -192,12 +192,12 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                 }] => (),
 
                 [Lexogram {
-                    pos_f,
-                    pos_s: _,
-                    l_type: LexogramType::CharEq,
-                }, Lexogram {
                     pos_f: _,
                     pos_s,
+                    l_type: LexogramType::CharEq,
+                }, Lexogram {
+                    pos_f,
+                    pos_s: _,
                     l_type: LexogramType::OpGT,
                 }] => {
                     ret.push(Lexogram {
@@ -229,12 +229,12 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                 }] => (),
 
                 [Lexogram {
-                    pos_f: _,
-                    pos_s,
-                    l_type: LexogramType::CharColon,
-                }, Lexogram {
                     pos_f,
                     pos_s: _,
+                    l_type: LexogramType::CharColon,
+                }, Lexogram {
+                    pos_f: _,
+                    pos_s,
                     l_type: LexogramType::OpSub,
                 }] => {
                     ret.push(Lexogram {

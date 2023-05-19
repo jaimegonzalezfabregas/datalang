@@ -11,8 +11,8 @@ use self::table::Table;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct RelId {
-    identifier: String,
-    column_count: usize,
+    pub identifier: String,
+    pub column_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -70,7 +70,7 @@ impl Engine {
                     match self.ingest(line) {
                         Ok(()) => (),
                         Err(err) => {
-                            println!("An error ocurred on the execution step: \n {err:#?}");
+                            println!("An error ocurred on the execution step: \n {err:?}");
                             break;
                         }
                     }
@@ -81,35 +81,21 @@ impl Engine {
     }
 
     pub fn ingest(self: &mut Engine, line: Line) -> Result<(), RuntimeError> {
-        match &line {
-            action @ Line::Relation(rel) => {
-                let width = rel.args.len();
-
-                let rel_id = RelId {
-                    column_count: width,
-                    identifier: rel.rel_name.0.to_string(),
-                };
+        match line {
+            Line::Relation(rel) => {
+                let rel_id = rel.get_rel_id();
                 let insertion_key = rel_id.clone();
 
                 if let None = self.tables.get(&rel_id) {
-                    self.tables.insert(insertion_key, Table::new(&width));
+                    self.tables.insert(insertion_key, Table::new(&rel_id));
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    if rel.negated {
-                        table.remove(rel.args.clone())?;
-                    } else {
-                        table.add(rel.args.clone())?;
-                    }
+                    table.add_rule(rel)?;
                 }
             }
             Line::Query(rel) => {
-                let width = rel.args.len();
-
-                let rel_id = RelId {
-                    column_count: width,
-                    identifier: rel.rel_name.0.to_string(),
-                };
+                let rel_id = rel.get_rel_id();
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
                     let query_res = table.get_contents(&rel.args)?;
@@ -118,8 +104,18 @@ impl Engine {
                     return Err(RuntimeError::RelationNotFound(rel_id));
                 }
             }
+            Line::TrueWhen(cond) => {
+                let rel_id = cond.get_rel_id();
+                let insertion_key = rel_id.clone();
 
-            _ => return Err(RuntimeError::UnmatchingLine(line)),
+                if let None = self.tables.get(&rel_id) {
+                    self.tables.insert(insertion_key, Table::new(&rel_id));
+                }
+
+                if let Some(table) = self.tables.get_mut(&rel_id) {
+                    table.add_conditional(cond);
+                }
+            }
         }
 
         Ok(())

@@ -1,4 +1,6 @@
 pub fn print_hilighted(base_string: &String, start: usize, end: usize, indentation: String) {
+
+
     let context_margin = 30;
 
     let precontext =

@@ -5,4 +5,4 @@ rel(<2,3>, 4)
 rel(2,4)
 rel(3,4)
 
-rel(a,b) :- rel(a-1,b+2) && (a < b || a+2 == 9 ) && {rel(0,1)} => (rel(b,a))
+rel(a,b) :- rel(a-1,b+2) && (a < b || a+2 = 9 ) && {rel(0,1)} => rel(b,a)

@@ -1,5 +1,12 @@
+use crate::parser::{
+    conditional_reader::Conditional,
+    data_reader::Data,
+    expresion_reader::{Expresion, VarName},
+    inmediate_relation_reader::InmediateRelation,
+    statement_reader::Statement,
+    var_literal_reader::VarLiteral,
+};
 use std::collections::HashSet;
-use crate::parser::{var_literal_reader::VarLiteral, statement_reader::Statement, expresion_reader::{Expresion, VarName}, data_reader::Data};
 
 #[derive(Debug, Clone)]
 enum Command {
@@ -10,6 +17,7 @@ enum Command {
 }
 use Command::*;
 
+use super::RelId;
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -18,27 +26,21 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(width: &usize) -> Self {
+    pub fn new(rel_id: &RelId) -> Self {
         Self {
-            width: *width,
+            width: rel_id.column_count,
             history: vec![],
         }
     }
 
-    pub fn add(self: &mut Table, row: Vec<VarLiteral>) -> Result<(), String> {
-        if row.len() != self.width {
+    pub fn add_rule(self: &mut Table, rule: InmediateRelation) -> Result<(), String> {
+        if self.width != rule.get_rel_id().column_count {
             Err("Cant add to a table a row with mismatching number of columns".into())
         } else {
-            self.history.push(IsTrueThat(row));
-            Ok(())
-        }
-    }
-
-    pub fn remove(self: &mut Table, row: Vec<VarLiteral>) -> Result<(), String> {
-        if row.len() != self.width {
-            Err("Cant remove to a table a row with mismatching number of columns".into())
-        } else {
-            self.history.push(IsFalseThat(row));
+            self.history.push(match rule.negated {
+                true => IsTrueThat(rule.args),
+                false => IsFalseThat(rule.args),
+            });
             Ok(())
         }
     }
@@ -243,6 +245,10 @@ impl Table {
         }
 
         Ok(ret)
+    }
+
+    pub(crate) fn add_conditional(&self, cond: Conditional) -> Result<(), String> {
+        todo!()
     }
 }
 

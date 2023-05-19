@@ -1,6 +1,7 @@
 use crate::{
+    engine::RelId,
     lexer::{self, LexogramType::*},
-    parser::{common::RelName, list_reader::read_list},
+    parser::list_reader::read_list,
 };
 
 use super::{
@@ -11,8 +12,17 @@ use super::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct InmediateRelation {
     pub negated: bool,
-    pub rel_name: RelName,
+    pub rel_name: String,
     pub args: Vec<VarLiteral>,
+}
+
+impl InmediateRelation {
+    pub fn get_rel_id(&self) -> RelId {
+        return RelId {
+            identifier: self.rel_name.clone(),
+            column_count: self.args.len(),
+        };
+    }
 }
 
 pub fn read_inmediate_relation(
@@ -51,7 +61,7 @@ pub fn read_inmediate_relation(
                 Identifier(str),
                 SpectingStatementIdentifier | SpectingStatementIdentifierOrNegation,
             ) => {
-                op_rel_name = Some(RelName(str));
+                op_rel_name = Some(str);
                 state = SpectingStatementList;
             }
             (_, SpectingStatementList) => {

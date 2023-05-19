@@ -65,3 +65,14 @@ fn main() -> Result<(), DLErr> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::engine::Engine;
+
+    #[test]
+    fn it_works() {
+        let mut engine = Engine::new();
+        engine.input("rel(0,1) rel(0,2) rel(0,3) rel(0,_)?".into());
+    }
+}

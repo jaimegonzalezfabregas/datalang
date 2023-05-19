@@ -6,7 +6,6 @@ use crate::parser::expresion_reader::read_expresion;
 
 use crate::lexer::{self};
 
-use super::asumption_reader::Asumption;
 use super::defered_relation_reader::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
 use super::expresion_reader::Expresion;
@@ -21,7 +20,6 @@ enum AppendModes {
 #[derive(Debug, Clone)]
 pub enum Statement {
     // resolvable to a bolean
-    Hypothetical(Vec<Asumption>, Box<Statement>), // TODO
     And(Box<Statement>, Box<Statement>),
     Or(Box<Statement>, Box<Statement>),
     Not(Box<Statement>),
@@ -341,6 +339,6 @@ fn merge_statements(
             Box::new(prev_statement),
             Box::new(Statement::Not(Box::new(new_statement))),
         ),
-        (Some(prev_statement), AppendModes::None, _) => new_statement,
+        (Some(_), AppendModes::None, _) => panic!("unreacheable state"),
     })
 }

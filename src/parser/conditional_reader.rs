@@ -1,3 +1,4 @@
+use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::statement_reader::read_statement;
 use crate::{
@@ -13,6 +14,12 @@ use super::statement_reader::Statement;
 pub struct Conditional {
     conditional: Statement,
     relation: DeferedRelation,
+}
+
+impl Conditional {
+    pub fn get_rel_id(&self) -> RelId {
+        self.relation.get_rel_id()
+    }
 }
 
 pub fn read_conditional(
@@ -52,7 +59,7 @@ pub fn read_conditional(
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
-                            if_it_was: "intensional".into(),
+                            if_it_was: "conditional".into(),
                             failed_because: "specting relation".into(),
                             parent_failure: (vec![e]),
                         }))
@@ -67,18 +74,13 @@ pub fn read_conditional(
             (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
             (_, SpectingCondition) => {
                 match (
-                    read_statement(
-                        lexograms,
-                        i,
-                        debug_margin.clone() + "   ",
-                        debug_print,
-                    )?,
+                    read_statement(lexograms, i, debug_margin.clone() + "   ", debug_print)?,
                     base_relation,
                 ) {
                     (Err(e), _) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
-                            if_it_was: "intensional".into(),
+                            if_it_was: "conditional".into(),
                             failed_because: "specting statement".into(),
                             parent_failure: (vec![e]),
                         }))
@@ -99,7 +101,7 @@ pub fn read_conditional(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "intensional".into(),
+                    if_it_was: "conditional".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: vec![],
                 }))
