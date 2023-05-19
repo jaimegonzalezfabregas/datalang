@@ -6,14 +6,13 @@ use crate::parser::{
     statement_reader::Statement,
     var_literal_reader::VarLiteral,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 enum Command {
     IsTrueThat(Vec<VarLiteral>),
     IsFalseThat(Vec<VarLiteral>),
-    IsTrueWhen(Statement),
-    IsFalseWhen(Statement),
+    IsTrueWhen(Conditional),
 }
 use Command::*;
 
@@ -45,6 +44,15 @@ impl Table {
         }
     }
 
+    pub(crate) fn add_conditional(&self, cond: Conditional) -> Result<(), String> {
+        if self.width != cond.get_rel_id().column_count {
+            Err("Cant add to a table a row with mismatching number of columns".into())
+        } else {
+            self.history.push(IsTrueWhen(cond));
+            Ok(())
+        }
+    }
+
     pub fn contains_superset_of(self: &Table, sub_set: &Vec<VarLiteral>) -> Result<bool, String> {
         if sub_set.len() != self.width {
             Err("Cant compare a row with mismatching number of columns".into())
@@ -71,7 +79,7 @@ impl Table {
         }
     }
 
-    fn set_of_nth_column(self: &Table, n: usize) -> Result<VarLiteral, String> {
+    fn universe_of_nth_column(self: &Table, n: usize) -> Result<VarLiteral, String> {
         let mut ret = VarLiteral::EmptySet;
         for command in &self.history {
             match command {
@@ -107,8 +115,26 @@ impl Table {
                     }
                     VarLiteral::EmptySet => (),
                 },
-                IsTrueWhen(_) => todo!(),
-                IsFalseWhen(_) => todo!(),
+                IsTrueWhen(cond) => match cond.relation.args[n] {
+                    Expresion::Literal(v) => match v {
+                        VarLiteral::FullSet => {
+                            ret = VarLiteral::EmptySet;
+                        }
+                        VarLiteral::Set(vec) => {
+                            for elm in vec {
+                                ret.remove(elm.to_owned())?;
+                            }
+                        }
+                        VarLiteral::AntiSet(vec) => {
+                            for elm in vec {
+                                ret.add(elm.to_owned())?;
+                            }
+                        }
+                        VarLiteral::EmptySet => (),
+                    },
+                    Expresion::Var(VarName::Direct(str)) => return universe_of_engine(),
+                    _ => panic!("unespected item at conditional"),
+                },
             };
         }
         Ok(ret)
@@ -117,6 +143,7 @@ impl Table {
     pub fn get_contents(
         self: &Table,
         constraints: &Vec<Expresion>,
+        backtrack_context: &HashMap<String, Data>,
     ) -> Result<Vec<Vec<Data>>, String> {
         let first_non_singleton = constraints.iter().position(|exp| match exp.literalize() {
             Ok(l) => match l {
@@ -128,7 +155,7 @@ impl Table {
         });
 
         if let Some(backtrack_pos) = first_non_singleton {
-            let column_universe = self.set_of_nth_column(backtrack_pos)?;
+            let column_universe = self.universe_of_nth_column(backtrack_pos)?;
 
             let backtrack_universe = match column_universe {
                 VarLiteral::EmptySet => HashSet::new(),
@@ -245,10 +272,6 @@ impl Table {
         }
 
         Ok(ret)
-    }
-
-    pub(crate) fn add_conditional(&self, cond: Conditional) -> Result<(), String> {
-        todo!()
     }
 }
 

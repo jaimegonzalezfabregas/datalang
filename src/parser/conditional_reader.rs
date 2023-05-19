@@ -12,8 +12,8 @@ use super::statement_reader::Statement;
 
 #[derive(Debug, Clone)]
 pub struct Conditional {
-    conditional: Statement,
-    relation: DeferedRelation,
+    pub conditional: Statement,
+    pub relation: DeferedRelation,
 }
 
 impl Conditional {
