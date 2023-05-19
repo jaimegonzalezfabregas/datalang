@@ -52,42 +52,24 @@ impl Table {
         }
     }
 
-    pub fn get_all_contents(self: &Table) -> Vec<Vec<Data>> {
+    pub fn get_all_contents(self: &Table) -> Result<Vec<Vec<Data>>, String> {
         todo!()
     }
 
-    pub fn get_contents(self: &Table, filter: Vec<Expresion>) -> Vec<Vec<Data>> {
-        let all_truths = self.get_all_contents();
+    pub fn get_contents(self: &Table, filter: Vec<Expresion>) -> Result<Vec<Vec<Data>>, String> {
+        let all_truths = self.get_all_contents()?;
+        let mut context: HashMap<String, Data> = HashMap::new();
 
-        let literal_matched_truths = vec![];
+        let mut matched_truths = vec![];
         for truth in all_truths {
-            let discard = false;
+            let mut discard = false;
             for check in truth.iter().zip(filter) {
                 discard = match check {
                     (d, Expresion::Literal(f)) => f != d.to_owned(),
-                    _ => false,
-                };
-                if discard {
-                    break;
-                }
-            }
-
-            if !discard {
-                literal_matched_truths.push(truth);
-            }
-        }
-
-        let mut var_values = HashMap::new();
-
-        let var_matched_truths = vec![];
-        for truth in all_truths {
-            let discard = false;
-            for check in truth.iter().zip(filter) {
-                discard = match check {
-                    (d, Expresion::Var(VarName::Direct(name))) => match var_values.get(&name) {
+                    (d, Expresion::Var(VarName::Direct(name))) => match context.get(&name) {
                         Some(prev_val) => prev_val.to_owned() != d.to_owned(),
                         None => {
-                            var_values.insert(name, d.to_owned());
+                            context.insert(name, d.to_owned());
                             false
                         }
                     },
@@ -99,16 +81,18 @@ impl Table {
             }
 
             if !discard {
-                var_values.push(truth);
+                matched_truths.push(truth);
             }
         }
 
         let mut expresion_matched_truths = vec![];
         for truth in all_truths {
-            let discard = false;
+            let mut discard = false;
             for check in truth.iter().zip(filter) {
                 discard = match check {
-                    (d, Expresion::Arithmetic(_, _, _)) => todo!(),
+                    (d, e @ Expresion::Arithmetic(_, _, _)) => {
+                        (e.literalize(None)?) == d.to_owned()
+                    }
                     _ => false,
                 };
                 if discard {
@@ -121,6 +105,6 @@ impl Table {
             }
         }
 
-        all_truths;
+        Ok(expresion_matched_truths)
     }
 }

@@ -188,16 +188,21 @@ pub fn read_statement_item(
     let mut cursor = start_cursor;
     let mut state = SpectingFirstExpresionOrRelation;
 
-    let mut first_expresion = Expresion::Empty;
-    let mut append_mode = OpEq;
+    let mut op_first_expresion = None;
+    let mut op_append_mode = None;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
             continue;
         }
 
-        match (lex.l_type.clone(), state) {
-            (_, SpectingFirstExpresionOrRelation) => {
+        match (
+            lex.l_type.clone(),
+            state,
+            op_first_expresion,
+            op_append_mode,
+        ) {
+            (_, SpectingFirstExpresionOrRelation, _, _) => {
                 let err1;
 
                 match read_defered_relation(
@@ -236,11 +241,16 @@ pub fn read_statement_item(
                     }
                 }
             }
-            (op @ (OpEq | OpGT | OpLT | OpGTE | OpLTE), SpectingExrpresionComparisonOperator) => {
+            (
+                op @ (OpEq | OpGT | OpLT | OpGTE | OpLTE),
+                SpectingExrpresionComparisonOperator,
+                _,
+                _,
+            ) => {
                 append_mode = op;
                 state = SpectingSecondExpresion;
             }
-            (_, SpectingSecondExpresion) => {
+            (_, SpectingSecondExpresion, Some(first_expresion), Some(append_mode)) => {
                 match read_expresion(
                     lexograms,
                     i,
@@ -299,12 +309,12 @@ pub fn read_statement_item(
                 }
             }
 
-            (lex, state) => {
+            (lex, state, a, b) => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "statement".into(),
                     failed_because: format!(
-                        "pattern missmatch on {:#?} state reading lex {:#?}",
+                        "pattern missmatch on {:#?} state ({a:?} {b:?}) reading lex {:#?}",
                         state, lex
                     )
                     .into(),

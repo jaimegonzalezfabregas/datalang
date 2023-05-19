@@ -85,7 +85,7 @@ pub fn read_inmediate_relation(
                         let mut literal_vec = vec![];
 
                         for exp in args {
-                            literal_vec.push(exp.literalize()?);
+                            literal_vec.push(exp.literalize(None)?);
                         }
 
                         Ok(Ok((

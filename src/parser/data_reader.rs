@@ -147,7 +147,7 @@ pub fn read_data_array(
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.push(match expresion.literalize() {
+                        ret.push(match expresion.literalize(None) {
                             Ok(data) => data,
                             Err(err) => {
                                 return Ok(Err(FailureExplanation {
