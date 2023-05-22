@@ -1,4 +1,3 @@
-use crate::engine::operations::*;
 use crate::lexer::LexogramType::*;
 
 use crate::parser::defered_relation_reader::read_defered_relation;
@@ -18,16 +17,21 @@ enum AppendModes {
 }
 
 #[derive(Debug, Clone)]
+pub enum Comparison {
+    Eq,
+    Lt,
+    Gt,
+    Gte,
+    Lte,
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     // resolvable to a bolean
     And(Box<Statement>, Box<Statement>),
     Or(Box<Statement>, Box<Statement>),
     Not(Box<Statement>),
-    ExpresionComparison(
-        Expresion,
-        Expresion,
-        fn(Expresion, Expresion) -> Result<bool, String>,
-    ),
+    ExpresionComparison(Expresion, Expresion, Comparison),
     Relation(DeferedRelation),
 }
 
@@ -66,7 +70,7 @@ pub fn read_statement(
             continue;
         }
 
-        match (lex.l_type.clone(), state, op_ret.clone()) {
+        match (lex.l_type.to_owned(), state, op_ret.clone()) {
             (OpAnd, SpectingOperatorOrEnd, _) => {
                 append_mode = AppendModes::And;
                 state = SpectingStatementOrOpenParenthesis;
@@ -197,10 +201,10 @@ pub fn read_statement_item(
         }
 
         match (
-            lex.l_type.clone(),
+            lex.l_type.to_owned(),
             state,
-            op_first_expresion,
-            op_append_mode,
+            op_first_expresion.to_owned(),
+            op_append_mode.to_owned(),
         ) {
             (_, SpectingFirstExpresionOrRelation, _, _) => {
                 let err1;
@@ -226,7 +230,7 @@ pub fn read_statement_item(
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
-                        first_expresion = e;
+                        op_first_expresion = Some(e);
                         cursor = jump_to;
                         state = SpectingExrpresionComparisonOperator;
                     }
@@ -247,7 +251,7 @@ pub fn read_statement_item(
                 _,
                 _,
             ) => {
-                append_mode = op;
+                op_append_mode = Some(op);
                 state = SpectingSecondExpresion;
             }
             (_, SpectingSecondExpresion, Some(first_expresion), Some(append_mode)) => {
@@ -264,27 +268,27 @@ pub fn read_statement_item(
                                 OpEq => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
-                                    eq_expresions,
+                                    Comparison::Eq,
                                 ),
                                 OpLT => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
-                                    lt_expresions,
+                                    Comparison::Lt,
                                 ),
                                 OpLTE => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
-                                    lte_expresions,
+                                    Comparison::Lte,
                                 ),
                                 OpGT => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
-                                    gt_expresions,
+                                    Comparison::Gt,
                                 ),
                                 OpGTE => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
-                                    gte_expresions,
+                                    Comparison::Gte,
                                 ),
                                 _ => {
                                     return Ok(Err(FailureExplanation {
@@ -349,6 +353,6 @@ fn merge_statements(
             Box::new(prev_statement),
             Box::new(Statement::Not(Box::new(new_statement))),
         ),
-        (Some(_), AppendModes::None, _) => panic!("unreacheable state"),
+        (Some(_), AppendModes::None, _) => unreachable!(),
     })
 }

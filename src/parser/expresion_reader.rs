@@ -33,7 +33,7 @@ pub enum Expresion {
 impl Expresion {
     pub fn literalize(
         self: &Expresion,
-        context: Option<HashMap<String, Data>>,
+        context: Option<&HashMap<String, Data>>,
     ) -> Result<Data, String> {
         let ret = match (self.to_owned(), context) {
             (Expresion::Arithmetic(a, b, f), _) => {
@@ -82,7 +82,12 @@ pub fn read_expresion(
             continue;
         }
 
-        match (lex.l_type.clone(), state, only_literals, op_ret) {
+        match (
+            lex.l_type.to_owned(),
+            state,
+            only_literals.to_owned(),
+            op_ret.to_owned(),
+        ) {
             (OpAdd, SpectingOperatorOrEnd, _, _) => {
                 append_mode = Some(Operation {
                     forward: add_direct,

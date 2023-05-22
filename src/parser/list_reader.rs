@@ -32,7 +32,7 @@ pub fn read_list(
         if cursor > i {
             continue;
         }
-        match (lex.l_type.clone(), state, only_literals) {
+        match (lex.l_type.to_owned(), state, only_literals) {
             (LeftParenthesis, SpectingOpenParenthesis, _) => {
                 state = SpectingItem;
             }

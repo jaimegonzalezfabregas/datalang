@@ -61,15 +61,15 @@ impl Table {
         let mut context: HashMap<String, Data> = HashMap::new();
 
         let mut matched_truths = vec![];
-        for truth in all_truths {
+        for truth in all_truths.to_owned() {
             let mut discard = false;
-            for check in truth.iter().zip(filter) {
+            for check in truth.iter().zip(&filter) {
                 discard = match check {
-                    (d, Expresion::Literal(f)) => f != d.to_owned(),
-                    (d, Expresion::Var(VarName::Direct(name))) => match context.get(&name) {
+                    (d, Expresion::Literal(f)) => f.to_owned() != d.to_owned(),
+                    (d, Expresion::Var(VarName::Direct(name))) => match context.get(name) {
                         Some(prev_val) => prev_val.to_owned() != d.to_owned(),
                         None => {
-                            context.insert(name, d.to_owned());
+                            context.insert(name.to_owned(), d.to_owned());
                             false
                         }
                     },
@@ -88,7 +88,7 @@ impl Table {
         let mut expresion_matched_truths = vec![];
         for truth in all_truths {
             let mut discard = false;
-            for check in truth.iter().zip(filter) {
+            for check in truth.iter().zip(&filter) {
                 discard = match check {
                     (d, e @ Expresion::Arithmetic(_, _, _)) => {
                         (e.literalize(None)?) == d.to_owned()
@@ -101,7 +101,7 @@ impl Table {
             }
 
             if !discard {
-                expresion_matched_truths.push(truth);
+                expresion_matched_truths.push(truth.to_owned());
             }
         }
 

@@ -124,7 +124,7 @@ pub fn read_defered_relation(
                                     jump_to,
                                 )));
                             } else {
-                                panic!("unreacheable state");
+                                unreachable!()
                             }
                         }
                     }
@@ -141,7 +141,7 @@ pub fn read_defered_relation(
                         i + 1,
                     )));
                 } else {
-                    panic!("unreacheable state");
+                    unreachable!()
                 }
             }
             _ => {

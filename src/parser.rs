@@ -8,6 +8,7 @@ pub mod expresion_reader;
 pub mod data_reader;
 pub mod destructuring_array_reader;
 pub mod asumption_reader;
+pub mod update_reader;
 
 pub mod error;
 

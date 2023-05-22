@@ -2,7 +2,7 @@ use super::{
     conditional_reader::read_conditional,
     defered_relation_reader::{read_defered_relation, DeferedRelation},
     error::*,
-    inmediate_relation_reader::{read_inmediate_relation, InmediateRelation},
+    inmediate_relation_reader::{read_inmediate_relation, InmediateRelation}, update_reader::Update,
 };
 use crate::lexer;
 use crate::parser::conditional_reader::Conditional;
@@ -12,6 +12,7 @@ pub enum Line {
     Relation(InmediateRelation),
     TrueWhen(Conditional),
     Query(DeferedRelation),
+    Upadte(Update),
 }
 
 pub fn read_line(

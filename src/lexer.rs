@@ -38,6 +38,7 @@ pub enum LexogramType {
     CharColon,
     Any,
     Query,
+    Update,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
@@ -193,6 +194,36 @@ fn compound_lexogram_analisis(simple: Vec<Lexogram>) -> Result<Vec<Lexogram>, Le
                     pos_s: _,
                     l_type: LexogramType::CharEq,
                 }] => (),
+
+                [Lexogram {
+                    pos_f: _,
+                    pos_s,
+                    l_type: LexogramType::OpSub,
+                }, Lexogram {
+                    pos_f,
+                    pos_s: _,
+                    l_type: LexogramType::OpGT,
+                }] => {
+                    ret.push(Lexogram {
+                        pos_f: *pos_f,
+                        pos_s: *pos_s,
+                        l_type: LexogramType::Update,
+                    });
+                    queue = vec![];
+                }
+                [Lexogram {
+                    pos_f,
+                    pos_s,
+                    l_type: LexogramType::OpSub,
+                }, next] => {
+                    ret.push(Lexogram {
+                        pos_f: *pos_f,
+                        pos_s: *pos_s,
+                        l_type: LexogramType::OpSub,
+                    });
+                    queue = vec![next.clone()];
+                    repeat_scan = true;
+                }
 
                 [Lexogram {
                     pos_f: _,

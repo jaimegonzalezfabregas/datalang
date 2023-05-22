@@ -94,7 +94,7 @@ impl Engine {
                 let rel_id = rel.get_rel_id();
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    let query_res = table.get_contents(rel.args);
+                    let query_res = table.get_contents(rel.args)?;
 
                     draw_table(query_res);
                 } else {

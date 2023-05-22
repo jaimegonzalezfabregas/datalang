@@ -52,7 +52,7 @@ pub fn read_inmediate_relation(
         if cursor > i {
             continue;
         }
-        match (lex.l_type.clone(), state) {
+        match (lex.l_type.to_owned(), state) {
             (OpNot, SpectingStatementIdentifierOrNegation) => {
                 negated = true;
                 state = SpectingStatementIdentifier
@@ -97,7 +97,7 @@ pub fn read_inmediate_relation(
                             new_cursor,
                         )))
                     }
-                    _ => panic!("unreacheable state"),
+                    _ => unreachable!(),
                 }
             }
             _ => {

@@ -120,7 +120,7 @@ pub fn read_data_array(
         if cursor > i {
             continue;
         }
-        match (lex.l_type.clone(), state) {
+        match (lex.l_type.to_owned(), state) {
             (LeftBracket, SpectingStart) => {
                 state = SpectingItemOrEnd;
             }
