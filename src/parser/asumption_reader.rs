@@ -67,7 +67,7 @@ pub fn read_asumption(
     Ok(Err(FailureExplanation {
         lex_pos: start_cursor,
         if_it_was: "asumption".into(),
-        failed_because: "wasnt neither an extensional nor an intensional statement".into(),
-        parent_failure: vec![a, b],
+        failed_because: "wasnt any type of asumption".into(),
+        parent_failure: vec![a, b, c,d],
     }))
 }

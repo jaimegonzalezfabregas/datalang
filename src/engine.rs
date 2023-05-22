@@ -9,7 +9,7 @@ use crate::{
         line_reader::Line, Relation,
     },
 };
-use std::{collections::HashMap, task::Context, vec};
+use std::{collections::HashMap, vec};
 
 use self::table::Table;
 
@@ -67,7 +67,7 @@ impl Engine {
         match get_lines_from_chars(String::from("\n") + &commands) {
             Ok(lines) => {
                 for line in lines {
-                    match self.ingest_line(line, None) {
+                    match self.ingest_line(line) {
                         Ok(Some(output)) => draw_table(output),
                         Ok(None) => (),
                         Err(err) => {
@@ -84,18 +84,18 @@ impl Engine {
 
     pub fn query(
         &self,
-        querry: DeferedRelation,
+        query: DeferedRelation,
         context: Option<&HashMap<String, Data>>,
     ) -> Result<Vec<Vec<Data>>, RuntimeError> {
-        let rel_id = querry.get_rel_id();
-        let mut self_clone = self.clone();
+        let rel_id = query.get_rel_id();
+        let mut hypothetical_engine = self.clone();
 
-        for assumption in querry.asumptions {
-            self_clone.ingest_asumption(assumption, context);
+        for assumption in &query.asumptions {
+            hypothetical_engine.ingest_asumption(assumption, context)?;
         }
 
-        if let Some(table) = self_clone.tables.get_mut(&rel_id) {
-            Ok(table.get_contents(&querry, &self_clone)?)
+        if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
+            Ok(table.get_contents(&query, &hypothetical_engine)?)
         } else {
             Err(RuntimeError::RelationNotFound(rel_id))
         }
@@ -103,7 +103,7 @@ impl Engine {
 
     fn ingest_asumption(
         self: &mut Engine,
-        asumption: Asumption,
+        asumption: &Asumption,
         context: Option<&HashMap<String, Data>>,
     ) -> Result<(), RuntimeError> {
         match asumption {
@@ -116,7 +116,7 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_conditional(cond)?;
+                    table.add_conditional(cond.to_owned())?;
                 }
                 Ok(())
             }
@@ -130,27 +130,25 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_rule(rel)?;
+                    table.add_rule(rel.to_owned())?;
                 }
                 Ok(())
             }
             Asumption::RelationDefered(d_rel) => match context {
                 Some(_) => {
                     let mut data = vec![];
-                    for exp in d_rel.args {
+                    for exp in &d_rel.args {
                         data.push(exp.literalize(context)?);
                     }
 
                     self.ingest_asumption(
-                        Asumption::RelationInmediate(InmediateRelation {
+                        &Asumption::RelationInmediate(InmediateRelation {
                             negated: false,
-                            rel_name: d_rel.rel_name,
+                            rel_name: d_rel.rel_name.to_owned(),
                             args: data,
                         }),
                         None,
-                    );
-
-                    Ok(())
+                    )
                 }
                 None => return Err(RuntimeError::NoContextWhenNeeded),
             },
@@ -164,7 +162,7 @@ impl Engine {
         match line {
             Line::Query(q) => Ok(Some(self.query(q, None)?)),
             Line::Asumption(asumption) => {
-                self.ingest_asumption(asumption, None);
+                self.ingest_asumption(&asumption, None)?;
                 Ok(None)
             }
         }

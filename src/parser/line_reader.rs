@@ -1,10 +1,7 @@
 use super::{
     asumption_reader::{read_asumption, Asumption},
-    conditional_reader::read_conditional,
     defered_relation_reader::{read_defered_relation, DeferedRelation},
     error::*,
-    inmediate_relation_reader::read_inmediate_relation,
-    update_reader::read_update,
 };
 use crate::lexer;
 
