@@ -63,18 +63,18 @@ pub fn print_hilighted(
     )
 }
 
-fn vector_find_replace<T: 'static>(v: &Vec<T>, find: &T, replace: &T) -> Vec<T>
-where
-    T: PartialEq<T>,
-    T: Clone,
-{
-    v.iter()
-        .map(|original_value| {
-            if original_value.clone() == find.clone() {
-                replace.clone()
-            } else {
-                original_value.clone()
-            }
-        })
-        .collect::<Vec<T>>()
-}
+// fn vector_find_replace<T: 'static>(v: &Vec<T>, find: &T, replace: &T) -> Vec<T>
+// where
+//     T: PartialEq<T>,
+//     T: Clone,
+// {
+//     v.iter()
+//         .map(|original_value| {
+//             if original_value.clone() == find.clone() {
+//                 replace.clone()
+//             } else {
+//                 original_value.clone()
+//             }
+//         })
+//         .collect::<Vec<T>>()
+// }

@@ -51,6 +51,58 @@ impl Expresion {
 
         ret
     }
+
+    pub fn solve(
+        self: &Expresion,
+        goal: &Data,
+        context: &HashMap<String, Data>,
+    ) -> Result<Option<HashMap<String, Data>>, String> {
+        // Ok significa que goal y self han podido ser evaluadas a lo mismo, Ok(Some) significa que se necesita un contexto expandido para
+        match self.literalize(Some(context)) {
+            Ok(d) => {
+                if d == goal.to_owned() {
+                    Ok(None)
+                } else {
+                    Err("La literalizacion y el goal no coinciden".into())
+                }
+            }
+            Err(_) => match self {
+                Expresion::Arithmetic(a, b, func) => {
+                    let literalize_a = a.literalize(Some(context));
+                    let literalize_b = b.literalize(Some(context));
+
+                    match (literalize_a, literalize_b) {
+                        (Ok(_), Ok(_)) => {
+                            Err("parece que se intentan operar dos datos incompatibles".into())
+                        }
+                        (Ok(op_1), Err(_)) => {
+                            let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
+                            b.solve(&new_goal, context)
+                        }
+                        (Err(_), Ok(op_2)) => {
+                            let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
+                            b.solve(&new_goal, context)
+                        }
+                        (Err(_), Err(_)) => {
+                            Err("parece que esta expresión contiene varias incognitas".into())
+                        }
+                    }
+                }
+                Expresion::Literal(_) => unreachable!(),
+                Expresion::Var(VarName::Direct(name)) => {
+                    let mut new_context = context.clone();
+                    new_context.insert(name.to_owned(), goal.to_owned());
+                    return Ok(Some(new_context));
+                }
+                Expresion::Var(VarName::Anonimus) => {
+                    return Ok(None);
+                }
+                Expresion::Var(_) => {
+                    return Err("using vartype not suported for solving".into());
+                }
+            },
+        }
+    }
 }
 
 pub fn read_expresion(

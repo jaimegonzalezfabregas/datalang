@@ -7,6 +7,7 @@ use crate::{
 use super::{
     data_reader::Data,
     error::{FailureExplanation, ParserError},
+    Relation,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,8 +17,8 @@ pub struct InmediateRelation {
     pub args: Vec<Data>,
 }
 
-impl InmediateRelation {
-    pub fn get_rel_id(&self) -> RelId {
+impl Relation for InmediateRelation {
+    fn get_rel_id(&self) -> RelId {
         return RelId {
             identifier: self.rel_name.clone(),
             column_count: self.args.len(),

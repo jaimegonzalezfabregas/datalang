@@ -1,5 +1,4 @@
 use crate::lexer::LexogramType::*;
-use crate::parser::statement_reader::read_statement;
 use crate::{
     lexer,
     parser::{defered_relation_reader::read_defered_relation, error::FailureExplanation},
@@ -14,7 +13,7 @@ pub struct Update {
     pub goal: DeferedRelation,
 }
 
-pub fn read_conditional(
+pub fn read_update(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
@@ -33,7 +32,7 @@ pub fn read_conditional(
     }
     let mut cursor = start_cursor;
     let mut op_filter_rel = None;
-    let mut state = SpectingDeferedRelation;
+    let mut state = SpectingDeferedRelationFilter;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
@@ -63,7 +62,7 @@ pub fn read_conditional(
                     }
                 }
             }
-            (Update, SpectingTrueWhen) => state = SpectingDeferedRelationGoal,
+            (Update, SpectingUpdate) => state = SpectingDeferedRelationGoal,
             (_, SpectingDeferedRelationGoal) => {
                 match (
                     read_defered_relation(
@@ -73,7 +72,7 @@ pub fn read_conditional(
                         debug_margin.clone() + "   ",
                         debug_print,
                     )?,
-                    op_filter_rel
+                    op_filter_rel,
                 ) {
                     (Err(e), _) => {
                         return Ok(Err(FailureExplanation {
@@ -99,7 +98,7 @@ pub fn read_conditional(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "conditional".into(),
+                    if_it_was: "update".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: vec![],
                 }))
@@ -108,7 +107,7 @@ pub fn read_conditional(
     }
     Ok(Err(FailureExplanation {
         lex_pos: lexograms.len(),
-        if_it_was: "intensional".into(),
+        if_it_was: "update".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],
     }))

@@ -18,10 +18,27 @@ pub fn add_reverse_op1(op2: Data, res: Data) -> Result<Data, String> {
             if r.ends_with(&x) {
                 Ok(Data::String(r[0..r.len() - x.len()].to_string()))
             } else {
-                Err("cant operate on diferently typed literals".into())
+                Err("not reverseable opration".into())
             }
         }
-        (Data::Array(x), Data::Array(r)) => todo!(),
+        (Data::Array(x), Data::Array(r)) => {
+            let x_len = x.len();
+            let r_ends_with_x = r
+                .iter()
+                .skip(r.len() - x.len())
+                .zip(x)
+                .all(|(a, b)| a.to_owned() == b.to_owned());
+            if r_ends_with_x {
+                Ok(Data::Array(
+                    r.iter()
+                        .take(r.len() - x_len)
+                        .map(|e| e.to_owned())
+                        .collect(),
+                ))
+            } else {
+                Err("not reverseable opration".into())
+            }
+        }
         _ => Err("cant operate on diferently typed literals".into()),
     }
 }
@@ -33,10 +50,27 @@ pub fn add_reverse_op2(op1: Data, res: Data) -> Result<Data, String> {
             if r.starts_with(&x) {
                 Ok(Data::String(r[x.len()..].to_string()))
             } else {
-                Err("cant operate on diferently typed literals".into())
+                Err("not reverseable opration".into())
             }
         }
-        (Data::Array(x), Data::Array(r)) => todo!(),
+        (Data::Array(x), Data::Array(r)) => {
+            let x_len: usize = x.len();
+            let r_starts_with_x = r
+                .iter()
+                .take(r.len() - x.len())
+                .zip(x)
+                .all(|(a, b)| a.to_owned() == b.to_owned());
+            if r_starts_with_x {
+                Ok(Data::Array(
+                    r.iter()
+                        .skip(r.len() - x_len)
+                        .map(|e| e.to_owned())
+                        .collect(),
+                ))
+            } else {
+                Err("not reverseable opration".into())
+            }
+        }
         _ => Err("cant operate on diferently typed literals".into()),
     }
 }

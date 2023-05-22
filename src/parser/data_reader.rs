@@ -11,6 +11,8 @@ pub enum Data {
     Array(Vec<Data>),
 }
 
+
+
 impl Eq for Data {}
 
 impl hash::Hash for Data {

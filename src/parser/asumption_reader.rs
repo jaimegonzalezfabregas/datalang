@@ -1,7 +1,7 @@
 use super::{
     conditional_reader::Conditional,
     defered_relation_reader::{read_defered_relation, DeferedRelation},
-    error::{FailureExplanation, ParserError},
+    error::{FailureExplanation, ParserError}, update_reader::{Update, read_update}, inmediate_relation_reader::{read_inmediate_relation, InmediateRelation},
 };
 use crate::{
     lexer::{self},
@@ -10,8 +10,10 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Asumption {
-    Relation(DeferedRelation),
+    RelationInmediate(InmediateRelation),
+    RelationDefered(DeferedRelation),
     Conditional(Conditional),
+    Update(Update)
 }
 
 pub fn read_asumption(
@@ -22,16 +24,17 @@ pub fn read_asumption(
 ) -> Result<Result<(Asumption, usize), FailureExplanation>, ParserError> {
     let a;
     let b;
-    match read_conditional(
+    let c;
+    let d;
+    match read_inmediate_relation(
         lexograms,
         start_cursor,
         debug_margin.clone() + "   ",
         debug_print,
     )? {
-        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Conditional(ret), jump_to))),
+        Ok((i_rel, jump_to)) => return Ok(Ok((Asumption::RelationInmediate(i_rel), jump_to))),
         Err(e) => a = e,
     }
-
     match read_defered_relation(
         lexograms,
         start_cursor,
@@ -39,8 +42,26 @@ pub fn read_asumption(
         debug_margin.clone() + "   ",
         debug_print,
     )? {
-        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Relation(ret), jump_to))),
+        Ok((d_rel, jump_to)) => return Ok(Ok((Asumption::RelationDefered(d_rel), jump_to))),
         Err(e) => b = e,
+    }
+    match read_conditional(
+        lexograms,
+        start_cursor,
+        debug_margin.clone() + "   ",
+        debug_print,
+    )? {
+        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Conditional(ret), jump_to))),
+        Err(e) => c = e,
+    }
+    match read_update(
+        lexograms,
+        start_cursor,
+        debug_margin.clone() + "   ",
+        debug_print,
+    )? {
+        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Update(ret), jump_to))),
+        Err(e) => d = e,
     }
 
     Ok(Err(FailureExplanation {

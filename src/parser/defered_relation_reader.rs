@@ -5,18 +5,19 @@ use crate::{lexer, parser::list_reader::read_list};
 
 use super::asumption_reader::Asumption;
 use super::error::ParserError;
-use super::FailureExplanation;
+use super::{FailureExplanation, Relation};
 use crate::parser::expresion_reader::Expresion;
 
 #[derive(Debug, Clone)]
 pub struct DeferedRelation {
+    pub negated: bool,
     pub asumptions: Vec<Asumption>,
     pub rel_name: String,
     pub args: Vec<Expresion>,
 }
 
-impl DeferedRelation {
-    pub fn get_rel_id(&self) -> RelId {
+impl Relation for DeferedRelation {
+    fn get_rel_id(&self) -> RelId {
         return RelId {
             identifier: self.rel_name.clone(),
             column_count: self.args.len(),
@@ -33,9 +34,10 @@ pub fn read_defered_relation(
 ) -> Result<Result<(DeferedRelation, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
+        SpectingStatementIdentifierOrNegation,
         SpectingStatementIdentifier,
         SpectingAssuming,
-        SpectingStatementIdentifierOrAsumption,
+        SpectingStatementIdentifierOrAsumptionOrNegation,
         SpectingAsumption,
         SpectingComaBetweenAsumptionsOrEndOfAsumptions,
         SpectingStatementList,
@@ -48,16 +50,25 @@ pub fn read_defered_relation(
     }
 
     let mut cursor = start_cursor;
+    let mut negated = false;
     let mut op_rel_name = None;
     let mut args = vec![];
     let mut asumptions = vec![];
-    let mut state = SpectingStatementIdentifierOrAsumption;
+    let mut state = SpectingStatementIdentifierOrAsumptionOrNegation;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
             continue;
         }
         match (lex.l_type.to_owned(), state) {
+            (
+                OpNot,
+                SpectingStatementIdentifierOrAsumptionOrNegation
+                | SpectingStatementIdentifierOrNegation,
+            ) => {
+                negated = true;
+                state = SpectingStatementIdentifier;
+            }
             (_, SpectingAsumption) => {
                 match read_asumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
                     Ok((asumption, jump_to)) => {
@@ -75,7 +86,7 @@ pub fn read_defered_relation(
                 }
                 state = SpectingComaBetweenAsumptionsOrEndOfAsumptions
             }
-            (LeftKey, SpectingStatementIdentifierOrAsumption) => {
+            (LeftKey, SpectingStatementIdentifierOrAsumptionOrNegation) => {
                 state = SpectingAsumption;
             }
             (RightKey, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
@@ -84,10 +95,10 @@ pub fn read_defered_relation(
             (Coma, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
                 state = SpectingAsumption;
             }
-            (Assuming, SpectingAssuming) => state = SpectingStatementIdentifier,
+            (Assuming, SpectingAssuming) => state = SpectingStatementIdentifierOrNegation,
             (
                 Identifier(str),
-                SpectingStatementIdentifier | SpectingStatementIdentifierOrAsumption,
+                SpectingStatementIdentifier | SpectingStatementIdentifierOrAsumptionOrNegation,
             ) => {
                 op_rel_name = Some(str);
                 state = SpectingStatementList;
@@ -117,6 +128,7 @@ pub fn read_defered_relation(
                             if let Some(rel_name) = op_rel_name {
                                 return Ok(Ok((
                                     DeferedRelation {
+                                        negated,
                                         asumptions,
                                         rel_name,
                                         args,
@@ -134,6 +146,7 @@ pub fn read_defered_relation(
                 if let Some(rel_name) = op_rel_name {
                     return Ok(Ok((
                         DeferedRelation {
+                            negated,
                             asumptions,
                             rel_name,
                             args,

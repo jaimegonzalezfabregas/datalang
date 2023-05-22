@@ -9,6 +9,7 @@ use crate::{
 use super::defered_relation_reader::DeferedRelation;
 use super::error::ParserError;
 use super::statement_reader::Statement;
+use super::Relation;
 
 #[derive(Debug, Clone)]
 pub struct Conditional {
@@ -16,8 +17,8 @@ pub struct Conditional {
     pub relation: DeferedRelation,
 }
 
-impl Conditional {
-    pub fn get_rel_id(&self) -> RelId {
+impl Relation for Conditional {
+    fn get_rel_id(&self) -> RelId {
         self.relation.get_rel_id()
     }
 }
@@ -110,7 +111,7 @@ pub fn read_conditional(
     }
     Ok(Err(FailureExplanation {
         lex_pos: lexograms.len(),
-        if_it_was: "intensional".into(),
+        if_it_was: "conditional".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],
     }))
