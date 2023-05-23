@@ -1,6 +1,7 @@
 use std::hash;
 
 use super::error::ParserError;
+use crate::engine::var_context::VarContext;
 use crate::lexer::{self, LexogramType::*};
 use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
 
@@ -10,8 +11,6 @@ pub enum Data {
     String(String),
     Array(Vec<Data>),
 }
-
-
 
 impl Eq for Data {}
 
@@ -149,7 +148,7 @@ pub fn read_data_array(
                         }))
                     }
                     Ok((expresion, jump_to)) => {
-                        ret.push(match expresion.literalize(None) {
+                        ret.push(match expresion.literalize(&VarContext::new()) {
                             Ok(data) => data,
                             Err(err) => {
                                 return Ok(Err(FailureExplanation {

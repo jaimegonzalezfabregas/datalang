@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 mod conditional_truth;
-mod truth;
+pub mod truth;
 
 use crate::parser::{
-    conditional_reader::Conditional, data_reader::Data, defered_relation_reader::DeferedRelation,
-    expresion_reader::Expresion, inmediate_relation_reader::InmediateRelation, Relation,
+    conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
+    inmediate_relation_reader::InmediateRelation, Relation,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ use Command::*;
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
 
-use super::{Engine, RelId};
+use super::{var_context::VarContext, Engine, RelId};
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -71,25 +71,25 @@ impl Table {
 
     pub fn get_all_contents(
         self: &Table,
-        max_depth: usize,
-        caller_depth_map: Option<HashMap<RelId, usize>>,
+        caller_depth_map: Option<&HashMap<RelId, usize>>,
         engine: &Engine,
-    ) -> Result<Vec<Vec<Data>>, String> {
-        let mut depth_map = caller_depth_map.unwrap_or(HashMap::new()).clone();
+    ) -> Result<Vec<Truth>, String> {
+        let mut depth_map = caller_depth_map.unwrap_or(&HashMap::new()).to_owned();
+        const MAX_DEPTH: usize = 10;
         let go_deeper = if let Some(depth_count) = depth_map.get_mut(&self.rel_id) {
             *depth_count += 1;
-            depth_count.to_owned() < max_depth
+            depth_count.to_owned() < MAX_DEPTH
         } else {
             depth_map.insert(self.rel_id.to_owned(), 0);
-            0 < max_depth
+            0 < MAX_DEPTH
         };
         let mut ret = vec![];
 
         for command in &self.history {
             match (command, go_deeper) {
-                (IsTrueThat(truth), _) => ret.push(truth.get_data().clone()),
+                (IsTrueThat(truth), _) => ret.push(truth.to_owned()),
                 (Command::IsTrueWhen(conditional), true) => {
-                    ret.extend(conditional.get_data(engine, &depth_map))
+                    ret.extend(conditional.get_truths(engine, &depth_map))
                 }
                 _ => (),
             }
@@ -98,41 +98,18 @@ impl Table {
         Ok(ret)
     }
 
-    pub fn get_contents(
+    pub fn get_truths(
         self: &Table,
         filter: &DeferedRelation,
         engine: &Engine,
-    ) -> Result<Vec<Vec<Data>>, String> {
+    ) -> Result<Vec<Truth>, String> {
         self.check_relation(&filter)?;
 
-        let all_truths = self.get_all_contents(10, None, engine)?;
+        let all_truths = self.get_all_contents(None, engine)?;
 
         let mut matched_truths = vec![];
         for truth in all_truths {
-            let mut discard = false;
-            let mut context: HashMap<String, Data> = HashMap::new();
-
-            for check in truth.iter().zip(filter.to_owned().args) {
-                discard = match check {
-                    (truth_data, filter_expresion @ Expresion::Arithmetic(_, _, _)) => {
-                        let solution = filter_expresion.solve(&truth_data, &context);
-                        match solution {
-                            Ok(Some(new_context)) => {
-                                context = new_context;
-                                true
-                            }
-                            Ok(None) => true,
-                            Err(_) => false,
-                        }
-                    }
-                    _ => false,
-                };
-                if discard {
-                    break;
-                }
-            }
-
-            if !discard {
+            if let Ok(_) = truth.fits_filter(filter, VarContext::new()) {
                 matched_truths.push(truth.to_owned());
             }
         }

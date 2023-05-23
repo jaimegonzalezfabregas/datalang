@@ -1,3 +1,10 @@
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::task::Context;
+use std::vec;
+
+use crate::engine::var_context::VarContext;
+use crate::engine::{Engine, RelId};
 use crate::lexer::LexogramType::*;
 
 use crate::parser::defered_relation_reader::read_defered_relation;
@@ -7,7 +14,8 @@ use crate::lexer::{self};
 
 use super::defered_relation_reader::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
-use super::expresion_reader::Expresion;
+use super::expresion_reader::{Expresion, VarName};
+use super::Relation;
 
 #[derive(Clone, Copy)]
 enum AppendModes {
@@ -355,4 +363,145 @@ fn merge_statements(
         ),
         (Some(_), AppendModes::None, _) => unreachable!(),
     })
+}
+
+impl Statement {
+    pub fn get_context_universe(
+        &self,
+        engine: &Engine,
+        caller_depth_map: &HashMap<RelId, usize>,
+    ) -> HashSet<VarContext> {
+        match self {
+            Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
+                let mut deep_universe_a =
+                    statement_a.get_context_universe(engine, caller_depth_map);
+                let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
+
+                let mut full_deep_universe = HashSet::new();
+                for a_context in deep_universe_a {
+                    for b_context in deep_universe_b {
+                        full_deep_universe.insert(a_context.extend(b_context));
+                    }
+                }
+                full_deep_universe
+            }
+            Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
+                Some(table) => match table.get_all_contents(Some(caller_depth_map), engine) {
+                    Ok(table_truths) => {
+                        let mut ret = HashSet::new();
+                        for truth in table_truths {
+                            for (col_data, col_exp) in truth.get_data().iter().zip(rel.args) {
+                                match col_exp.solve(col_data, &VarContext::new()) {
+                                    Ok(new_context) => {
+                                        ret.insert(new_context);
+                                    }
+                                    Err(_) => (),
+                                }
+                            }
+                        }
+                        ret
+                    }
+                    Err(_) => HashSet::new(),
+                },
+                None => HashSet::new(),
+            },
+            _ => HashSet::new(),
+        }
+    }
+
+    pub fn get_posible_contexts(
+        &self,
+        engine: &Engine,
+        caller_depth_map: &HashMap<RelId, usize>,
+        universe: HashSet<VarContext>,
+    ) -> HashSet<VarContext> {
+        match self {
+            Statement::And(statement_a, statement_b) => {
+                let contexts_a =
+                    statement_a.get_posible_contexts(engine, caller_depth_map, universe);
+                let contexts_b =
+                    statement_b.get_posible_contexts(engine, caller_depth_map, universe);
+
+                contexts_a
+                    .intersection(&contexts_b)
+                    .map(|e| e.to_owned())
+                    .collect::<HashSet<VarContext>>()
+            }
+            Statement::Or(statement_a, statement_b) => {
+                let mut contexts_a =
+                    statement_a.get_posible_contexts(engine, caller_depth_map, universe);
+                let contexts_b =
+                    statement_b.get_posible_contexts(engine, caller_depth_map, universe);
+
+                contexts_a.extend(contexts_b);
+                contexts_a
+            }
+            Statement::Not(statement) => {
+                let contexts = statement.get_posible_contexts(engine, caller_depth_map, universe);
+                universe
+                    .difference(&contexts)
+                    .map(|e| e.to_owned())
+                    .collect()
+            }
+            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => universe
+                .iter()
+                .flat_map(|context| {
+                    let a = exp_a.literalize(context);
+                    let b = exp_b.literalize(context);
+                    match (exp_a, exp_b, a, b) {
+                        (_, _, Ok(data_a), Ok(data_b)) => {
+                            if data_a == data_b {
+                                vec![context]
+                            } else {
+                                vec![]
+                            }
+                        }
+                        (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
+                            match exp.solve(&goal, context) {
+                                Ok(new_context) => vec![&new_context],
+                                Err(_) => vec![],
+                            }
+                        }
+                        (_, _, Err(_), Err(_)) => vec![],
+                    }
+                })
+                .map(|e| e.to_owned())
+                .collect(),
+
+            Statement::ExpresionComparison(exp_a, exp_b, comp) => universe
+                .iter()
+                .filter(|context| {
+                    let a = exp_a.literalize(context);
+                    let b = exp_b.literalize(context);
+                    match (a, b) {
+                        (Ok(data_a), Ok(data_b)) => match comp {
+                            Comparison::Lt => data_a < data_b,
+                            Comparison::Gt => data_a > data_b,
+                            Comparison::Gte => data_a <= data_b,
+                            Comparison::Lte => data_a >= data_b,
+                            Comparison::Eq => unreachable!(),
+                        },
+                        _ => false,
+                    }
+                })
+                .map(|e| e.to_owned())
+                .collect(),
+
+            Statement::Relation(rel) => universe
+                .iter()
+                .filter(|context| match rel.apply(context.to_owned()) {
+                    Ok(query) => match engine.get_table(rel.get_rel_id()) {
+                        Some(table) => match table.get_all_contents(Some(caller_depth_map), engine)
+                        {
+                            Ok(e) => e.contains(&query),
+                            Err(_) => false,
+                        },
+                        None => false,
+                    },
+                    Err(_) => false,
+                })
+                .map(|e| e.to_owned())
+                .collect(),
+        }
+    }
 }

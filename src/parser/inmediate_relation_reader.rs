@@ -1,5 +1,5 @@
 use crate::{
-    engine::RelId,
+    engine::{var_context::VarContext, RelId},
     lexer::{self, LexogramType::*},
     parser::list_reader::read_list,
 };
@@ -86,7 +86,7 @@ pub fn read_inmediate_relation(
                         let mut literal_vec = vec![];
 
                         for exp in args {
-                            literal_vec.push(exp.literalize(None)?);
+                            literal_vec.push(exp.literalize(&VarContext::new())?);
                         }
 
                         Ok(Ok((

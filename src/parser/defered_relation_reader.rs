@@ -1,3 +1,7 @@
+use std::vec;
+
+use crate::engine::table::truth::{self, Truth};
+use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::asumption_reader::read_asumption;
@@ -22,6 +26,16 @@ impl Relation for DeferedRelation {
             identifier: self.rel_name.clone(),
             column_count: self.args.len(),
         };
+    }
+}
+
+impl DeferedRelation {
+    pub fn apply(&self, context: &VarContext) -> Result<Truth, String> {
+        let mut literal_vec = vec![];
+        for exp in &self.args {
+            literal_vec.push(exp.literalize(context)?)
+        }
+        Ok(Truth::from(literal_vec))
     }
 }
 
