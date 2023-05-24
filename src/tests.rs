@@ -94,6 +94,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn view_resolving_verbose_1_reverse() {
         let mut engine = Engine::new();
         assert_eq!(
@@ -159,13 +160,25 @@ mod tests {
             )
         );
     }
+    #[test]
+    fn view_resolving_5() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "[Truth { data: [Number(1.0)] }]",
+            engine.input(
+                "rel1(0) rel1(1) rel2(1) rel2(2) test(a) :- b=c && a=b && rel1(b) && rel2(c) test(_)?"
+                    .into(),
+                true
+            )
+        );
+    }
 
     #[test]
     fn equation_resolving() {
         let mut engine = Engine::new();
         assert_eq!(
             "[Truth { data: [Number(1.0)] }]",
-            engine.input("relSuc(suc) :- 0 = suc - 1 relSuc(_)?".into(), true)
+            engine.input("test(x) :- 0 = x - 1 test(_)?".into(), true)
         );
     }
 }

@@ -53,7 +53,7 @@ impl Expresion {
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        println!("\n------ call to solve with goal:{goal:?} at {self:?} at {caller_context:?}");
+        // println!("\n------ call to solve with goal:{goal:?} at {self:?} at {caller_context:?}");
 
         match self.literalize(&caller_context) {
             Ok(d) => {

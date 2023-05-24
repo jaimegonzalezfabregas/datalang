@@ -374,13 +374,19 @@ impl Statement {
                 let deep_universe_a = statement_a.get_context_universe(engine, caller_depth_map);
                 let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
 
-                let mut full_deep_universe = HashSet::new();
-                for a_context in deep_universe_a.iter().chain([VarContext::new()].iter()) {
-                    for b_context in deep_universe_b.iter().chain([VarContext::new()].iter()) {
-                        full_deep_universe.insert(a_context.extend(b_context));
+                match (deep_universe_a.len(), deep_universe_b.len()) {
+                    (0, _) => deep_universe_b,
+                    (_, 0) => deep_universe_a,
+                    (_, _) => {
+                        let mut product = HashSet::new();
+                        for a_context in deep_universe_a.iter() {
+                            for b_context in deep_universe_b.iter() {
+                                product.insert(a_context.extend(b_context));
+                            }
+                        }
+                        product
                     }
                 }
-                full_deep_universe
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => match table.get_all_contents(Some(caller_depth_map), engine) {
@@ -396,7 +402,6 @@ impl Statement {
                                 }
                             }
                         }
-                        ret.insert(VarContext::new());
                         ret
                     }
                     Err(_) => HashSet::new(),
@@ -406,7 +411,7 @@ impl Statement {
             _ => HashSet::from([VarContext::new()]),
         };
 
-        println!("\n posible universes for {self:?} are {ret:?}");
+        println!("\n posible universes for {self:?} are {ret:#?}");
 
         ret
     }
@@ -493,10 +498,7 @@ impl Statement {
             Statement::Relation(rel) => universe
                 .iter()
                 .filter(|context| match engine.query(rel, context) {
-                    Ok(vec) => {
-                        println!("\n{rel:?}\n{vec:?}\n{context:?}");
-                        vec.len() != 0
-                    }
+                    Ok(vec) => vec.len() != 0,
                     Err(_) => false,
                 })
                 .map(|e| e.to_owned())
