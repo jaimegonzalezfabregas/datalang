@@ -1,4 +1,2 @@
-rel(0) 
-rel(7) 
-relSuc(b) :- b=a+1 && rel(a)
+relSuc(suc) :- 0 = suc +1
 relSuc(_)?

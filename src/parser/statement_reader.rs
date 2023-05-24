@@ -417,13 +417,11 @@ impl Statement {
         universe: &HashSet<VarContext>,
     ) -> HashSet<VarContext> {
         let ret = match self {
-            Statement::And(statement_a, statement_b) => {
-                statement_b.get_posible_contexts(
-                    engine,
-                    caller_depth_map,
-                    &statement_a.get_posible_contexts(engine, caller_depth_map, universe),
-                )
-            }
+            Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
+                engine,
+                caller_depth_map,
+                &statement_a.get_posible_contexts(engine, caller_depth_map, universe),
+            ),
             Statement::Or(statement_a, statement_b) => {
                 let mut contexts_a =
                     statement_a.get_posible_contexts(engine, caller_depth_map, universe);
@@ -460,7 +458,9 @@ impl Statement {
                         }
                         (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
                             match exp.solve(&goal, context) {
-                                Ok(new_context) => vec![new_context],
+                                Ok(new_context) => {
+                                    vec![new_context]
+                                }
                                 Err(_) => vec![],
                             }
                         }

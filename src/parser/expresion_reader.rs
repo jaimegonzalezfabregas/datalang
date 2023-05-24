@@ -52,6 +52,9 @@ impl Expresion {
         caller_context: &VarContext,
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
+
+        println!("\n------ call to solve with goal:{goal:?} at {self:?} at {caller_context:?}");
+
         match self.literalize(&caller_context) {
             Ok(d) => {
                 if d == goal.to_owned() {
@@ -75,7 +78,7 @@ impl Expresion {
                         }
                         (Err(_), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
-                            b.solve(&new_goal, caller_context)
+                            a.solve(&new_goal, caller_context)
                         }
                         (Err(_), Err(_)) => {
                             Err("parece que esta expresión contiene varias incognitas".into())

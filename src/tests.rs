@@ -74,7 +74,7 @@ mod tests {
     fn view_resolving_verbose_1() {
         let mut engine = Engine::new();
         assert_eq!(
-            "[Truth { data: [Number(1.0)] } }]",
+            "[Truth { data: [Number(1.0)] }]",
             engine.input(
                 "rel(0) relSuc(suc) :- rel(a) && a = suc-1 relSuc(_)?".into(),
                 true
@@ -86,7 +86,7 @@ mod tests {
     fn view_resolving_verbose_2() {
         let mut engine = Engine::new();
         assert_eq!(
-            "[Truth { data: [Number(1.0)] } }]",
+            "[Truth { data: [Number(1.0)] }]",
             engine.input(
                 "rel(0) relSuc(suc) :- rel(a) && a+1 = suc relSuc(_)?".into(),
                 true
@@ -97,7 +97,7 @@ mod tests {
     fn view_resolving_verbose_1_reverse() {
         let mut engine = Engine::new();
         assert_eq!(
-            "[Truth { data: [Number(1.0)] } }]",
+            "[Truth { data: [Number(1.0)] }]",
             engine.input(
                 "rel(0) relSuc(suc) :- a = suc-1 && rel(a) relSuc(_)?".into(),
                 true
@@ -109,7 +109,7 @@ mod tests {
     fn view_resolving_verbose_2_reverse() {
         let mut engine = Engine::new();
         assert_eq!(
-            "[Truth { data: [Number(1.0)] } }]",
+            "[Truth { data: [Number(1.0)] }]",
             engine.input(
                 "rel(0) relSuc(suc) :- a+1 = suc && rel(a) relSuc(_)?".into(),
                 true
@@ -157,6 +157,15 @@ mod tests {
                     .into(),
                 true
             )
+        );
+    }
+
+    #[test]
+    fn equation_resolving() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "[Truth { data: [Number(1.0)] }]",
+            engine.input("relSuc(suc) :- 0 = suc - 1 relSuc(_)?".into(), true)
         );
     }
 }
