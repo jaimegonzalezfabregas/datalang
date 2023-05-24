@@ -369,14 +369,14 @@ impl Statement {
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
     ) -> HashSet<VarContext> {
-        match self {
+        let ret = match self {
             Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
                 let deep_universe_a = statement_a.get_context_universe(engine, caller_depth_map);
                 let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
 
                 let mut full_deep_universe = HashSet::new();
-                for a_context in &deep_universe_a {
-                    for b_context in &deep_universe_b {
+                for a_context in deep_universe_a.iter().chain([VarContext::new()].iter()) {
+                    for b_context in deep_universe_b.iter().chain([VarContext::new()].iter()) {
                         full_deep_universe.insert(a_context.extend(b_context));
                     }
                 }
@@ -403,7 +403,11 @@ impl Statement {
                 None => HashSet::new(),
             },
             _ => HashSet::new(),
-        }
+        };
+
+        println!("\n posible universes for {self:?} are {ret:?}");
+
+        ret
     }
 
     pub fn get_posible_contexts(
@@ -414,17 +418,11 @@ impl Statement {
     ) -> HashSet<VarContext> {
         let ret = match self {
             Statement::And(statement_a, statement_b) => {
-                let contexts_a =
-                    statement_a.get_posible_contexts(engine, caller_depth_map, universe);
-                let contexts_b =
-                    statement_b.get_posible_contexts(engine, caller_depth_map, universe);
-
-                // println!("\nAND: \n{contexts_a:?}\n{contexts_b:?}");
-
-                contexts_a
-                    .intersection(&contexts_b)
-                    .map(|e| e.to_owned())
-                    .collect::<HashSet<VarContext>>()
+                statement_b.get_posible_contexts(
+                    engine,
+                    caller_depth_map,
+                    &statement_a.get_posible_contexts(engine, caller_depth_map, universe),
+                )
             }
             Statement::Or(statement_a, statement_b) => {
                 let mut contexts_a =
@@ -503,6 +501,7 @@ impl Statement {
                 .map(|e| e.to_owned())
                 .collect(),
         };
+        println!("\n posible contexts for {self:?} on {universe:?} are {ret:?}");
 
         ret
     }

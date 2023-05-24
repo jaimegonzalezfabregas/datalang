@@ -1,4 +1,3 @@
-
 use crate::{
     engine::var_context::VarContext,
     parser::{
@@ -6,9 +5,23 @@ use crate::{
         inmediate_relation_reader::InmediateRelation,
     },
 };
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq)]
 pub struct Truth {
     data: Vec<Data>,
+}
+
+impl Ord for Truth {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .skip_while(|(a, b)| a == b)
+            .next() {
+                None => std::cmp::Ordering::Equal,
+                Some((a,b)) => a.cmp(b),
+            }
+    }
 }
 
 impl Truth {

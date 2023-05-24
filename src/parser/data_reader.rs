@@ -14,6 +14,30 @@ pub enum Data {
 
 impl Eq for Data {}
 
+impl Ord for Data {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Data::Number(x), Data::Number(y)) => {
+                if x == y {
+                    std::cmp::Ordering::Equal
+                } else if x < y {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            }
+            (Data::Number(_), Data::String(_)) => std::cmp::Ordering::Less,
+            (Data::Number(_), Data::Array(_)) => std::cmp::Ordering::Less,
+            (Data::String(_), Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::String(x), Data::String(y)) => x.cmp(y),
+            (Data::String(_), Data::Array(_)) => std::cmp::Ordering::Less,
+            (Data::Array(_), Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::Array(_), Data::String(_)) => std::cmp::Ordering::Greater,
+            (Data::Array(x), Data::Array(y)) => x.cmp(y),
+        }
+    }
+}
+
 impl hash::Hash for Data {
     fn hash<H>(&self, state: &mut H)
     where

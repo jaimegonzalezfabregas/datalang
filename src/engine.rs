@@ -82,7 +82,15 @@ impl Engine {
                         println!("\nexecuting: {line:?}");
                     }
                     match self.ingest_line(line) {
-                        Ok(Some(output)) => ret += &draw_table(output),
+                        Ok(Some(output)) => {
+                            let mut sorted_output = output.clone();
+                            sorted_output.sort();
+                            if debug_print {
+                                ret += &format!("{sorted_output:?}");
+                            } else {
+                                ret += &draw_table(sorted_output)
+                            }
+                        }
                         Ok(None) => (),
                         Err(err) => {
                             ret += &format!("An error ocurred on the execution step: \n {err:?}");
