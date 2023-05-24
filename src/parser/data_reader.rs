@@ -5,7 +5,7 @@ use crate::engine::var_context::VarContext;
 use crate::lexer::{self, LexogramType::*};
 use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Data {
     Number(f64),
     String(String),

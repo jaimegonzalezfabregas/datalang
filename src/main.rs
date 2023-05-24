@@ -40,11 +40,13 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
+const DEBUG_PRINT: bool = true;
+
 fn main() -> Result<(), DLErr> {
     let initializing_commands = read_to_string("example.dl")?;
 
     let mut engine = Engine::new();
-    engine.input(initializing_commands);
+    println!("{}", engine.input(initializing_commands, DEBUG_PRINT));
 
     let stdin = io::stdin();
 
@@ -61,7 +63,7 @@ fn main() -> Result<(), DLErr> {
             break;
         }
 
-        engine.input(buffer);
+        println!("{}", engine.input(buffer, DEBUG_PRINT));
     }
 
     Ok(())

@@ -1,4 +1,4 @@
-pub mod asumption_reader;
+pub mod assumption_reader;
 pub mod conditional_reader;
 pub mod data_reader;
 pub mod defered_relation_reader;
@@ -23,9 +23,10 @@ pub trait Relation {
     fn get_rel_id(&self) -> RelId;
 }
 
-const DEBUG_PRINT: bool = true;
-
-pub fn parse(lexograms: &Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
+pub fn parse(
+    lexograms: &Vec<lexer::Lexogram>,
+    debug_print: bool,
+) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];
     let mut cursor = 0;
 
@@ -33,7 +34,7 @@ pub fn parse(lexograms: &Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError>
         if cursor > i {
             continue;
         }
-        match read_line(&lexograms, i, "".into(), DEBUG_PRINT)? {
+        match read_line(&lexograms, i, "".into(), debug_print)? {
             Ok((statement, jump_to)) => {
                 ret.push(statement);
                 cursor = jump_to;

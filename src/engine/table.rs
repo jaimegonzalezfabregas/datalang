@@ -43,16 +43,16 @@ impl Table {
 
     pub fn add_rule(&mut self, rule: InmediateRelation) -> Result<(), String> {
         self.check_relation(&&rule)?;
-
+        println!("adding {rule:?}");
         match rule.negated {
-            true => self.history.push(IsTrueThat(Truth::from(rule))),
-            false => {
+            false => self.history.push(IsTrueThat(Truth::from(rule))),
+            true => {
                 let what_we_want_to_remove = &rule.args.to_owned();
                 self.history = self
                     .history
                     .iter()
                     .filter(|command| match command {
-                        IsTrueThat(truth) => truth.afirms(what_we_want_to_remove),
+                        IsTrueThat(truth) => !truth.afirms(what_we_want_to_remove),
                         IsTrueWhen(_) => true,
                     })
                     .map(|e| e.to_owned())

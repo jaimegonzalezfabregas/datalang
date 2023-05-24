@@ -1,13 +1,13 @@
 use std::vec;
 
-use crate::engine::table::truth::{self, Truth};
+use crate::engine::table::truth::Truth;
 use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
-use crate::parser::asumption_reader::read_asumption;
+use crate::parser::assumption_reader::read_assumption;
 use crate::{lexer, parser::list_reader::read_list};
 
-use super::asumption_reader::Asumption;
+use super::assumption_reader::Assumption;
 use super::error::ParserError;
 use super::{FailureExplanation, Relation};
 use crate::parser::expresion_reader::Expresion;
@@ -15,7 +15,7 @@ use crate::parser::expresion_reader::Expresion;
 #[derive(Debug, Clone)]
 pub struct DeferedRelation {
     pub negated: bool,
-    pub asumptions: Vec<Asumption>,
+    pub assumptions: Vec<Assumption>,
     pub rel_name: String,
     pub args: Vec<Expresion>,
 }
@@ -51,9 +51,9 @@ pub fn read_defered_relation(
         SpectingStatementIdentifierOrNegation,
         SpectingStatementIdentifier,
         SpectingAssuming,
-        SpectingStatementIdentifierOrAsumptionOrNegation,
-        SpectingAsumption,
-        SpectingComaBetweenAsumptionsOrEndOfAsumptions,
+        SpectingStatementIdentifierOrassumptionOrNegation,
+        Spectingassumption,
+        SpectingComaBetweenassumptionsOrEndOfassumptions,
         SpectingStatementList,
         SpectingQuery,
     }
@@ -67,8 +67,8 @@ pub fn read_defered_relation(
     let mut negated = false;
     let mut op_rel_name = None;
     let mut args = vec![];
-    let mut asumptions = vec![];
-    let mut state = SpectingStatementIdentifierOrAsumptionOrNegation;
+    let mut assumptions = vec![];
+    let mut state = SpectingStatementIdentifierOrassumptionOrNegation;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
@@ -77,42 +77,42 @@ pub fn read_defered_relation(
         match (lex.l_type.to_owned(), state) {
             (
                 OpNot,
-                SpectingStatementIdentifierOrAsumptionOrNegation
+                SpectingStatementIdentifierOrassumptionOrNegation
                 | SpectingStatementIdentifierOrNegation,
             ) => {
                 negated = true;
                 state = SpectingStatementIdentifier;
             }
-            (_, SpectingAsumption) => {
-                match read_asumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
-                    Ok((asumption, jump_to)) => {
+            (_, Spectingassumption) => {
+                match read_assumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
+                    Ok((assumption, jump_to)) => {
                         cursor = jump_to;
-                        asumptions.push(asumption);
+                        assumptions.push(assumption);
                     }
                     Err(err) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
                             if_it_was: "defered relation".into(),
-                            failed_because: format!("specting asumption").into(),
+                            failed_because: format!("specting assumption").into(),
                             parent_failure: vec![err],
                         }))
                     }
                 }
-                state = SpectingComaBetweenAsumptionsOrEndOfAsumptions
+                state = SpectingComaBetweenassumptionsOrEndOfassumptions
             }
-            (LeftKey, SpectingStatementIdentifierOrAsumptionOrNegation) => {
-                state = SpectingAsumption;
+            (LeftKey, SpectingStatementIdentifierOrassumptionOrNegation) => {
+                state = Spectingassumption;
             }
-            (RightKey, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
+            (RightKey, SpectingComaBetweenassumptionsOrEndOfassumptions) => {
                 state = SpectingAssuming;
             }
-            (Coma, SpectingComaBetweenAsumptionsOrEndOfAsumptions) => {
-                state = SpectingAsumption;
+            (Coma, SpectingComaBetweenassumptionsOrEndOfassumptions) => {
+                state = Spectingassumption;
             }
             (Assuming, SpectingAssuming) => state = SpectingStatementIdentifierOrNegation,
             (
                 Identifier(str),
-                SpectingStatementIdentifier | SpectingStatementIdentifierOrAsumptionOrNegation,
+                SpectingStatementIdentifier | SpectingStatementIdentifierOrassumptionOrNegation,
             ) => {
                 op_rel_name = Some(str);
                 state = SpectingStatementList;
@@ -143,7 +143,7 @@ pub fn read_defered_relation(
                                 return Ok(Ok((
                                     DeferedRelation {
                                         negated,
-                                        asumptions,
+                                        assumptions,
                                         rel_name,
                                         args,
                                     },
@@ -161,7 +161,7 @@ pub fn read_defered_relation(
                     return Ok(Ok((
                         DeferedRelation {
                             negated,
-                            asumptions,
+                            assumptions,
                             rel_name,
                             args,
                         },

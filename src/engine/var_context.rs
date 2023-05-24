@@ -46,11 +46,11 @@ impl VarContext {
         VarContext { op_map: None }
     }
 
-    pub fn extend(&self, b_context: VarContext) -> VarContext {
-        Self::from(match (self.op_map, b_context.op_map) {
+    pub fn extend(&self, b_context: &VarContext) -> VarContext {
+        Self::from(match (&self.op_map, &b_context.op_map) {
             (None, None) => None,
-            (None, Some(b)) => Some(b),
-            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b.to_owned()),
+            (Some(a), None) => Some(a.to_owned()),
             (Some(a), Some(b)) => {
                 if a.keys()
                     .any(|a_key| b.contains_key(a_key) && b.get(a_key) != a.get(a_key))
@@ -58,7 +58,7 @@ impl VarContext {
                     None
                 } else {
                     let mut join = a.clone();
-                    join.extend(b);
+                    join.extend(b.clone());
                     Some(join)
                 }
             }

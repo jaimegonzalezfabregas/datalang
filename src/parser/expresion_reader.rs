@@ -128,13 +128,8 @@ pub fn read_expresion(
             continue;
         }
 
-        match (
-            lex.l_type.to_owned(),
-            state,
-            only_literals.to_owned(),
-            op_ret.to_owned(),
-        ) {
-            (OpAdd, SpectingOperatorOrEnd, _, _) => {
+        match (lex.l_type.to_owned(), state, only_literals.to_owned()) {
+            (OpAdd, SpectingOperatorOrEnd, _) => {
                 append_mode = Some(Operation {
                     forward: add_direct,
                     reverse_op1: add_reverse_op1,
@@ -142,7 +137,7 @@ pub fn read_expresion(
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
-            (OpSub, SpectingOperatorOrEnd, _, _) => {
+            (OpSub, SpectingOperatorOrEnd, _) => {
                 append_mode = Some(Operation {
                     forward: substract_direct,
                     reverse_op1: substract_reverse_op1,
@@ -150,7 +145,7 @@ pub fn read_expresion(
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
-            (OpMul, SpectingOperatorOrEnd, _, _) => {
+            (OpMul, SpectingOperatorOrEnd, _) => {
                 append_mode = Some(Operation {
                     forward: multiply_direct,
                     reverse_op1: multiply_reverse_op1,
@@ -158,7 +153,7 @@ pub fn read_expresion(
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
-            (OpDiv, SpectingOperatorOrEnd, _, _) => {
+            (OpDiv, SpectingOperatorOrEnd, _) => {
                 append_mode = Some(Operation {
                     forward: divide_direct,
                     reverse_op1: divide_reverse_op1,
@@ -166,7 +161,7 @@ pub fn read_expresion(
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
-            (LeftParenthesis, SpectingItemOrOpenParenthesis, _, Some(ret)) => {
+            (LeftParenthesis, SpectingItemOrOpenParenthesis, _) => {
                 match read_expresion(
                     lexograms,
                     i,
@@ -176,14 +171,12 @@ pub fn read_expresion(
                 )? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
-                        op_ret = match &append_mode {
-                            Some(op) => Some(Expresion::Arithmetic(
-                                Box::new(ret),
-                                Box::new(e),
-                                op.to_owned(),
-                            )),
-                            None => Some(e),
-                        };
+                        op_ret = Some(match (&append_mode, op_ret) {
+                            (Some(op), Some(ret)) => {
+                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.clone())
+                            }
+                            _ => e,
+                        });
                         append_mode = None
                     }
                     Err(e) => {
@@ -199,9 +192,9 @@ pub fn read_expresion(
                 state = SpectingClosingParenthesis
             }
 
-            (RightParenthesis, SpectingClosingParenthesis, _, _) => state = SpectingOperatorOrEnd,
+            (RightParenthesis, SpectingClosingParenthesis, _) => state = SpectingOperatorOrEnd,
 
-            (_, SpectingItemOrOpenParenthesis, _, Some(ret)) => {
+            (_, SpectingItemOrOpenParenthesis, _) => {
                 match read_expresion_item(
                     lexograms,
                     i,
@@ -211,22 +204,19 @@ pub fn read_expresion(
                 )? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
-                        op_ret = match &append_mode {
-                            Some(op) => Some(Expresion::Arithmetic(
-                                Box::new(ret),
-                                Box::new(e),
-                                op.clone(),
-                            )),
-                            None => Some(e),
-                        };
+                        op_ret = Some(match (&append_mode, op_ret) {
+                            (Some(op), Some(ret)) => {
+                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.clone())
+                            }
+                            _ => e,
+                        });
                         append_mode = None
                     }
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
                             if_it_was: "expresion".into(),
-                            failed_because: format!("pattern missmatch on {:#?} state", state)
-                                .into(),
+                            failed_because: format!("Specting expresion item").into(),
                             parent_failure: (vec![e]),
                         }))
                     }
@@ -234,7 +224,9 @@ pub fn read_expresion(
                 state = SpectingOperatorOrEnd
             }
 
-            (_, SpectingOperatorOrEnd, _, Some(ret)) => return Ok(Ok((ret, i))),
+            (_, SpectingOperatorOrEnd, _) => {
+                return Ok(Ok((op_ret.unwrap_or_else(|| unreachable!()), i)))
+            }
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,

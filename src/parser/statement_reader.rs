@@ -1,6 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::task::Context;
 use std::vec;
 
 use crate::engine::var_context::VarContext;
@@ -14,7 +12,7 @@ use crate::lexer::{self};
 
 use super::defered_relation_reader::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
-use super::expresion_reader::{Expresion, VarName};
+use super::expresion_reader::Expresion;
 use super::Relation;
 
 #[derive(Clone, Copy)]
@@ -161,7 +159,7 @@ pub fn read_statement(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "expresion".into(),
+                    if_it_was: "statement".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: vec![],
                 }))
@@ -172,7 +170,7 @@ pub fn read_statement(
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
             lex_pos: lexograms.len(),
-            if_it_was: "expresion".into(),
+            if_it_was: "statement".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],
         })),
@@ -373,13 +371,12 @@ impl Statement {
     ) -> HashSet<VarContext> {
         match self {
             Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
-                let mut deep_universe_a =
-                    statement_a.get_context_universe(engine, caller_depth_map);
+                let deep_universe_a = statement_a.get_context_universe(engine, caller_depth_map);
                 let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
 
                 let mut full_deep_universe = HashSet::new();
-                for a_context in deep_universe_a {
-                    for b_context in deep_universe_b {
+                for a_context in &deep_universe_a {
+                    for b_context in &deep_universe_b {
                         full_deep_universe.insert(a_context.extend(b_context));
                     }
                 }
@@ -390,7 +387,7 @@ impl Statement {
                     Ok(table_truths) => {
                         let mut ret = HashSet::new();
                         for truth in table_truths {
-                            for (col_data, col_exp) in truth.get_data().iter().zip(rel.args) {
+                            for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
                                 match col_exp.solve(col_data, &VarContext::new()) {
                                     Ok(new_context) => {
                                         ret.insert(new_context);
@@ -413,7 +410,7 @@ impl Statement {
         &self,
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
-        universe: HashSet<VarContext>,
+        universe: &HashSet<VarContext>,
     ) -> HashSet<VarContext> {
         match self {
             Statement::And(statement_a, statement_b) => {
@@ -451,14 +448,14 @@ impl Statement {
                     match (exp_a, exp_b, a, b) {
                         (_, _, Ok(data_a), Ok(data_b)) => {
                             if data_a == data_b {
-                                vec![context]
+                                vec![context.to_owned()]
                             } else {
                                 vec![]
                             }
                         }
                         (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
                             match exp.solve(&goal, context) {
-                                Ok(new_context) => vec![&new_context],
+                                Ok(new_context) => vec![new_context],
                                 Err(_) => vec![],
                             }
                         }

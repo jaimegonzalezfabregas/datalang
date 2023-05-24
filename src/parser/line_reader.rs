@@ -1,5 +1,5 @@
 use super::{
-    asumption_reader::{read_asumption, Asumption},
+    assumption_reader::{read_assumption, Assumption},
     defered_relation_reader::{read_defered_relation, DeferedRelation},
     error::*,
 };
@@ -7,7 +7,7 @@ use crate::lexer;
 
 #[derive(Debug, Clone)]
 pub enum Line {
-    Asumption(Asumption),
+    Assumption(Assumption),
     Query(DeferedRelation),
 }
 
@@ -30,8 +30,8 @@ pub fn read_line(
         Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Query(defered_rel), jump_to))),
         Err(e) => a = e,
     }
-    match read_asumption(lexograms, start_cursor, debug_margin, debug_print)? {
-        Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Asumption(defered_rel), jump_to))),
+    match read_assumption(lexograms, start_cursor, debug_margin, debug_print)? {
+        Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Assumption(defered_rel), jump_to))),
         Err(e) => b = e,
     }
 

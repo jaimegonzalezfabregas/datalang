@@ -17,7 +17,7 @@ impl FailureExplanation {
         indentation: String,
     ) -> String {
         let mut ret = format!(
-            "{indentation}Error trying to read a \x1b[1m{}\x1b[0m failed because:",
+            "{indentation}Error trying to read a \x1b[1m{}\x1b[0m failed because:\n",
             self.if_it_was,
         );
         let error_lex = &lex_list[self.lex_pos];

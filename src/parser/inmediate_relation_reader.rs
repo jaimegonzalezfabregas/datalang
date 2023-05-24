@@ -41,7 +41,7 @@ pub fn read_inmediate_relation(
     use RelationParserStates::*;
 
     if debug_print {
-        println!("{debug_margin}read_literal_relation at {start_cursor}");
+        println!("{debug_margin}read_inmediate_relation at {start_cursor}");
     }
     let cursor = start_cursor;
     let mut op_rel_name = None;
@@ -78,7 +78,7 @@ pub fn read_inmediate_relation(
                 ) {
                     (Err(e), _) => Ok(Err(FailureExplanation {
                         lex_pos: i,
-                        if_it_was: "literal relation".into(),
+                        if_it_was: "inmediate relation".into(),
                         failed_because: "specting list".into(),
                         parent_failure: (vec![e]),
                     })),
@@ -104,7 +104,7 @@ pub fn read_inmediate_relation(
             _ => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "literal relation".into(),
+                    if_it_was: "inmediate relation".into(),
                     failed_because: format!("pattern missmatch on {:#?} state", state).into(),
                     parent_failure: vec![],
                 }))
@@ -113,7 +113,7 @@ pub fn read_inmediate_relation(
     }
     Ok(Err(FailureExplanation {
         lex_pos: lexograms.len(),
-        if_it_was: "literal relation".into(),
+        if_it_was: "inmediate relation".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],
     }))

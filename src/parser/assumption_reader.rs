@@ -1,7 +1,9 @@
 use super::{
     conditional_reader::Conditional,
     defered_relation_reader::{read_defered_relation, DeferedRelation},
-    error::{FailureExplanation, ParserError}, update_reader::{Update, read_update}, inmediate_relation_reader::{read_inmediate_relation, InmediateRelation},
+    error::{FailureExplanation, ParserError},
+    inmediate_relation_reader::{read_inmediate_relation, InmediateRelation},
+    update_reader::{read_update, Update},
 };
 use crate::{
     lexer::{self},
@@ -9,19 +11,19 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Asumption {
+pub enum Assumption {
     RelationInmediate(InmediateRelation),
     RelationDefered(DeferedRelation),
     Conditional(Conditional),
-    Update(Update)
+    Update(Update),
 }
 
-pub fn read_asumption(
+pub fn read_assumption(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
     debug_print: bool,
-) -> Result<Result<(Asumption, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(Assumption, usize), FailureExplanation>, ParserError> {
     let a;
     let b;
     let c;
@@ -32,8 +34,26 @@ pub fn read_asumption(
         debug_margin.clone() + "   ",
         debug_print,
     )? {
-        Ok((i_rel, jump_to)) => return Ok(Ok((Asumption::RelationInmediate(i_rel), jump_to))),
+        Ok((i_rel, jump_to)) => return Ok(Ok((Assumption::RelationInmediate(i_rel), jump_to))),
         Err(e) => a = e,
+    }
+    match read_conditional(
+        lexograms,
+        start_cursor,
+        debug_margin.clone() + "   ",
+        debug_print,
+    )? {
+        Ok((ret, jump_to)) => return Ok(Ok((Assumption::Conditional(ret), jump_to))),
+        Err(e) => b = e,
+    }
+    match read_update(
+        lexograms,
+        start_cursor,
+        debug_margin.clone() + "   ",
+        debug_print,
+    )? {
+        Ok((ret, jump_to)) => return Ok(Ok((Assumption::Update(ret), jump_to))),
+        Err(e) => c = e,
     }
     match read_defered_relation(
         lexograms,
@@ -42,32 +62,14 @@ pub fn read_asumption(
         debug_margin.clone() + "   ",
         debug_print,
     )? {
-        Ok((d_rel, jump_to)) => return Ok(Ok((Asumption::RelationDefered(d_rel), jump_to))),
-        Err(e) => b = e,
-    }
-    match read_conditional(
-        lexograms,
-        start_cursor,
-        debug_margin.clone() + "   ",
-        debug_print,
-    )? {
-        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Conditional(ret), jump_to))),
-        Err(e) => c = e,
-    }
-    match read_update(
-        lexograms,
-        start_cursor,
-        debug_margin.clone() + "   ",
-        debug_print,
-    )? {
-        Ok((ret, jump_to)) => return Ok(Ok((Asumption::Update(ret), jump_to))),
+        Ok((d_rel, jump_to)) => return Ok(Ok((Assumption::RelationDefered(d_rel), jump_to))),
         Err(e) => d = e,
     }
 
     Ok(Err(FailureExplanation {
         lex_pos: start_cursor,
-        if_it_was: "asumption".into(),
-        failed_because: "wasnt any type of asumption".into(),
-        parent_failure: vec![a, b, c,d],
+        if_it_was: "assumption".into(),
+        failed_because: "wasnt any type of assumption".into(),
+        parent_failure: vec![a, b, c, d],
     }))
 }

@@ -20,7 +20,7 @@ impl ConditionalTruth {
             .get_posible_contexts(
                 engine,
                 depth_map,
-                self.condition.get_context_universe(engine, depth_map),
+                &self.condition.get_context_universe(engine, depth_map),
             )
             .iter()
             .map(|c| self.result_template.apply(c))

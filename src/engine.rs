@@ -5,7 +5,7 @@ pub mod var_context;
 use crate::{
     lexer,
     parser::{
-        self, asumption_reader::Asumption, defered_relation_reader::DeferedRelation,
+        self, assumption_reader::Assumption, defered_relation_reader::DeferedRelation,
         inmediate_relation_reader::InmediateRelation, line_reader::Line, Relation,
     },
 };
@@ -41,16 +41,24 @@ pub struct Engine {
     tables: HashMap<RelId, Table>,
 }
 
-fn get_lines_from_chars(commands: String) -> Result<Vec<Line>, String> {
+fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<Line>, String> {
+    let commands = String::from("\n") + &raw_commands;
+
     let lex_res = lexer::lex(&commands);
 
-    println!("{lex_res:?}");
-
+    if debug_print {
+        println!("{lex_res:?}");
+    }
     match lex_res {
         Ok(lexic) => {
-            let ast_res = parser::parse(&lexic);
+            let ast_res = parser::parse(&lexic, debug_print);
             match ast_res {
-                Ok(ast_vec) => Ok(ast_vec),
+                Ok(ast_vec) => {
+                    if debug_print {
+                        println!("{ast_vec:?}");
+                    }
+                    Ok(ast_vec)
+                }
                 Err(err) => Err(err.print(&lexic, &commands)),
             }
         }
@@ -65,11 +73,14 @@ impl Engine {
         }
     }
 
-    pub fn input(self: &mut Engine, commands: String) -> String {
+    pub fn input(self: &mut Engine, commands: String, debug_print: bool) -> String {
         let ret = String::new();
-        match get_lines_from_chars(String::from("\n") + &commands) {
+        match get_lines_from_chars(commands, debug_print) {
             Ok(lines) => {
                 for line in lines {
+                    if debug_print {
+                        println!("\nexecuting: {line:?}");
+                    }
                     match self.ingest_line(line) {
                         Ok(Some(output)) => draw_table(output),
                         Ok(None) => (),
@@ -77,6 +88,9 @@ impl Engine {
                             println!("An error ocurred on the execution step: \n {err:?}");
                             break;
                         }
+                    }
+                    if debug_print {
+                        println!("\nengine_state: {self:#?}");
                     }
                 }
             }
@@ -93,8 +107,8 @@ impl Engine {
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
 
-        for assumption in &query.asumptions {
-            hypothetical_engine.ingest_asumption(assumption, context)?;
+        for assumption in &query.assumptions {
+            hypothetical_engine.ingest_assumption(assumption, context)?;
         }
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
@@ -104,13 +118,13 @@ impl Engine {
         }
     }
 
-    fn ingest_asumption(
+    fn ingest_assumption(
         self: &mut Engine,
-        asumption: &Asumption,
+        assumption: &Assumption,
         context: &VarContext,
     ) -> Result<(), RuntimeError> {
-        match asumption {
-            Asumption::Conditional(cond) => {
+        match assumption {
+            Assumption::Conditional(cond) => {
                 let rel_id = cond.get_rel_id();
                 let insertion_key = rel_id.clone();
 
@@ -123,8 +137,8 @@ impl Engine {
                 }
                 Ok(())
             }
-            Asumption::Update(_) => todo!(),
-            Asumption::RelationInmediate(rel) => {
+            Assumption::Update(_) => todo!(),
+            Assumption::RelationInmediate(rel) => {
                 let rel_id = rel.get_rel_id();
                 let insertion_key = rel_id.clone();
 
@@ -137,14 +151,14 @@ impl Engine {
                 }
                 Ok(())
             }
-            Asumption::RelationDefered(d_rel) => {
+            Assumption::RelationDefered(d_rel) => {
                 let mut data = vec![];
                 for exp in &d_rel.args {
                     data.push(exp.literalize(context)?);
                 }
 
-                self.ingest_asumption(
-                    &Asumption::RelationInmediate(InmediateRelation {
+                self.ingest_assumption(
+                    &Assumption::RelationInmediate(InmediateRelation {
                         negated: false,
                         rel_name: d_rel.rel_name.to_owned(),
                         args: data,
@@ -158,8 +172,8 @@ impl Engine {
     pub fn ingest_line(self: &mut Engine, line: Line) -> Result<Option<Vec<Truth>>, RuntimeError> {
         match line {
             Line::Query(q) => Ok(Some(self.query(q, &VarContext::new())?)),
-            Line::Asumption(asumption) => {
-                self.ingest_asumption(&asumption, &VarContext::new())?;
+            Line::Assumption(assumption) => {
+                self.ingest_assumption(&assumption, &VarContext::new())?;
                 Ok(None)
             }
         }
@@ -171,11 +185,11 @@ impl Engine {
 }
 
 fn draw_table(matrix: Vec<Truth>) {
-    let column_count = matrix[0].get_width();
     if matrix.len() == 0 {
         println!("Empty Result");
         return;
     }
+    let column_count = matrix[0].get_width();
 
     let col_width = matrix.iter().fold(vec![0; column_count], |acc, elm| {
         let mut ret = acc.clone();
