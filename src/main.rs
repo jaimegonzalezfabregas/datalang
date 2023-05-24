@@ -3,6 +3,8 @@ mod lexer;
 mod parser;
 mod tests;
 mod utils;
+mod custom_btree_set;
+
 use std::{fs::read_to_string, io};
 
 use crate::engine::Engine;
