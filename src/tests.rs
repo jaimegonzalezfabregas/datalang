@@ -1,4 +1,5 @@
 #[cfg(test)]
+
 mod tests {
     use crate::engine::Engine;
 
@@ -174,11 +175,20 @@ mod tests {
     }
 
     #[test]
-    fn equation_resolving() {
+    fn equation_resolving_1() {
         let mut engine = Engine::new();
         assert_eq!(
             "[Truth { data: [Number(1.0)] }]",
             engine.input("test(x) :- 0 = x - 1 test(_)?".into(), true)
+        );
+    }
+
+    #[test]
+    fn view_resolving_and_projection_1() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "[Truth { data: [Number(2.0)] }][][Truth { data: [Number(2.0)] }, Truth { data: [Number(3.0)] }]",
+            engine.input("rel(1) rel(2) rel(3) rel(4) inner(x) :- rel(x) && (rel(x+1) && rel(x-1)) inner(2)? inner(4)? inner(_)?".into(), true)
         );
     }
 }
