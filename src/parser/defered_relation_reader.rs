@@ -30,12 +30,35 @@ impl Relation for DeferedRelation {
 }
 
 impl DeferedRelation {
-    pub fn apply(&self, context: &VarContext) -> Result<Truth, String> {
+    pub fn to_truth(&self, context: &VarContext) -> Result<Truth, String> {
         let mut literal_vec = vec![];
         for exp in &self.args {
             literal_vec.push(exp.literalize(context)?)
         }
         Ok(Truth::from(literal_vec))
+    }
+
+    pub fn apply(&self, context: &VarContext) -> Result<DeferedRelation, String> {
+        let mut literalized_vec = vec![];
+        for exp in &self.args {
+            literalized_vec.push(match exp.literalize(context) {
+                Ok(data) => Expresion::Literal(data),
+                Err(_) => exp.clone(),
+            })
+        }
+        Ok(DeferedRelation::from((&self.rel_name, literalized_vec)))
+    }
+}
+
+impl From<(&String, Vec<Expresion>)> for DeferedRelation {
+    fn from(value: (&String, Vec<Expresion>)) -> Self {
+        let (rel_name, args) = value;
+        Self {
+            negated: false,
+            assumptions: vec![],
+            rel_name: rel_name.to_owned(),
+            args,
+        }
     }
 }
 

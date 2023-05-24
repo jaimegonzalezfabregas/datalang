@@ -412,12 +412,14 @@ impl Statement {
         caller_depth_map: &HashMap<RelId, usize>,
         universe: &HashSet<VarContext>,
     ) -> HashSet<VarContext> {
-        match self {
+        let ret = match self {
             Statement::And(statement_a, statement_b) => {
                 let contexts_a =
                     statement_a.get_posible_contexts(engine, caller_depth_map, universe);
                 let contexts_b =
                     statement_b.get_posible_contexts(engine, caller_depth_map, universe);
+
+                // println!("\nAND: \n{contexts_a:?}\n{contexts_b:?}");
 
                 contexts_a
                     .intersection(&contexts_b)
@@ -430,11 +432,16 @@ impl Statement {
                 let contexts_b =
                     statement_b.get_posible_contexts(engine, caller_depth_map, universe);
 
+                // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
+
                 contexts_a.extend(contexts_b);
                 contexts_a
             }
             Statement::Not(statement) => {
                 let contexts = statement.get_posible_contexts(engine, caller_depth_map, universe);
+
+                // println!("\nNOT: \n{contexts:?}");
+
                 universe
                     .difference(&contexts)
                     .map(|e| e.to_owned())
@@ -486,19 +493,17 @@ impl Statement {
 
             Statement::Relation(rel) => universe
                 .iter()
-                .filter(|context| match rel.apply(context.to_owned()) {
-                    Ok(query) => match engine.get_table(rel.get_rel_id()) {
-                        Some(table) => match table.get_all_contents(Some(caller_depth_map), engine)
-                        {
-                            Ok(e) => e.contains(&query),
-                            Err(_) => false,
-                        },
-                        None => false,
-                    },
+                .filter(|context| match engine.query(rel, context) {
+                    Ok(vec) => {
+                        println!("\n{rel:?}\n{vec:?}\n{context:?}");
+                        vec.len() != 0
+                    }
                     Err(_) => false,
                 })
                 .map(|e| e.to_owned())
                 .collect(),
-        }
+        };
+
+        ret
     }
 }

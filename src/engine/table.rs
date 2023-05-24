@@ -43,7 +43,6 @@ impl Table {
 
     pub fn add_rule(&mut self, rule: InmediateRelation) -> Result<(), String> {
         self.check_relation(&&rule)?;
-        println!("adding {rule:?}");
         match rule.negated {
             false => self.history.push(IsTrueThat(Truth::from(rule))),
             true => {

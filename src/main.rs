@@ -40,7 +40,7 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-const DEBUG_PRINT: bool = true;
+const DEBUG_PRINT: bool = false;
 
 fn main() -> Result<(), DLErr> {
     let initializing_commands = read_to_string("example.dl")?;

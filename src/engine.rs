@@ -74,7 +74,7 @@ impl Engine {
     }
 
     pub fn input(self: &mut Engine, commands: String, debug_print: bool) -> String {
-        let ret = String::new();
+        let mut ret = String::new();
         match get_lines_from_chars(commands, debug_print) {
             Ok(lines) => {
                 for line in lines {
@@ -82,15 +82,15 @@ impl Engine {
                         println!("\nexecuting: {line:?}");
                     }
                     match self.ingest_line(line) {
-                        Ok(Some(output)) => draw_table(output),
+                        Ok(Some(output)) => ret += &draw_table(output),
                         Ok(None) => (),
                         Err(err) => {
-                            println!("An error ocurred on the execution step: \n {err:?}");
+                            ret += &format!("An error ocurred on the execution step: \n {err:?}");
                             break;
                         }
                     }
                     if debug_print {
-                        println!("\nengine_state: {self:#?}");
+                        println!("\nengine_state: {self:?}");
                     }
                 }
             }
@@ -101,7 +101,7 @@ impl Engine {
 
     pub fn query(
         &self,
-        query: DeferedRelation,
+        query: &DeferedRelation,
         context: &VarContext,
     ) -> Result<Vec<Truth>, RuntimeError> {
         let rel_id = query.get_rel_id();
@@ -112,7 +112,7 @@ impl Engine {
         }
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
-            Ok(table.get_truths(&query, &hypothetical_engine)?)
+            Ok(table.get_truths(&query.apply(context)?, &hypothetical_engine)?)
         } else {
             Err(RuntimeError::RelationNotFound(rel_id))
         }
@@ -171,7 +171,7 @@ impl Engine {
 
     pub fn ingest_line(self: &mut Engine, line: Line) -> Result<Option<Vec<Truth>>, RuntimeError> {
         match line {
-            Line::Query(q) => Ok(Some(self.query(q, &VarContext::new())?)),
+            Line::Query(q) => Ok(Some(self.query(&q, &VarContext::new())?)),
             Line::Assumption(assumption) => {
                 self.ingest_assumption(&assumption, &VarContext::new())?;
                 Ok(None)
@@ -184,11 +184,11 @@ impl Engine {
     }
 }
 
-fn draw_table(matrix: Vec<Truth>) {
+fn draw_table(matrix: Vec<Truth>) -> String {
     if matrix.len() == 0 {
-        println!("Empty Result");
-        return;
+        return "\nEmpty Result\n".into();
     }
+    let mut ret = String::from("\n");
     let column_count = matrix[0].get_width();
 
     let col_width = matrix.iter().fold(vec![0; column_count], |acc, elm| {
@@ -201,18 +201,19 @@ fn draw_table(matrix: Vec<Truth>) {
     });
 
     for truth in matrix {
-        print!("(");
+        ret += &format!("(");
         for (i, elm) in truth.get_data().iter().enumerate() {
             let representation = elm.to_string();
-            print!("{representation}");
+            ret += &format!("{representation}");
 
             for _ in 0..col_width[i] - representation.len() {
-                print!(" ");
+                ret += &format!(" ");
             }
             if i != column_count - 1 {
-                print!(", ")
+                ret += &format!(", ")
             }
         }
-        print!(")\n");
+        ret += &format!(")\n");
     }
+    ret
 }

@@ -23,7 +23,11 @@ impl ConditionalTruth {
                 &self.condition.get_context_universe(engine, depth_map),
             )
             .iter()
-            .map(|c| self.result_template.apply(c))
+            // .map(|e| {
+            //     println!("contexts: {e:?}");
+            //     e
+            // })
+            .map(|c| self.result_template.to_truth(c))
             .filter(|e| match e {
                 Ok(_) => true,
                 Err(_) => false,
