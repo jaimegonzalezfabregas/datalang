@@ -1,2 +1,2 @@
-relSuc(suc) :- 0 = suc +1
+relSuc(suc) :- 0 = suc - 1 
 relSuc(_)?

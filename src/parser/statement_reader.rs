@@ -396,13 +396,14 @@ impl Statement {
                                 }
                             }
                         }
+                        ret.insert(VarContext::new());
                         ret
                     }
                     Err(_) => HashSet::new(),
                 },
                 None => HashSet::new(),
             },
-            _ => HashSet::new(),
+            _ => HashSet::from([VarContext::new()]),
         };
 
         println!("\n posible universes for {self:?} are {ret:?}");
