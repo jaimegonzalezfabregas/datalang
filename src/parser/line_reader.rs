@@ -1,3 +1,5 @@
+use core::fmt;
+
 use super::{
     assumption_reader::{read_assumption, Assumption},
     defered_relation_reader::{read_defered_relation, DeferedRelation},
@@ -9,6 +11,15 @@ use crate::lexer;
 pub enum Line {
     Assumption(Assumption),
     Query(DeferedRelation),
+}
+
+impl fmt::Display for Line {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Line::Assumption(ass) => write!(f, "{ass}"),
+            Line::Query(que) => write!(f, "{que}"),
+        }
+    }
 }
 
 pub fn read_line(

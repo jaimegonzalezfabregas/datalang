@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 mod conditional_truth;
 pub mod truth;
@@ -44,7 +44,7 @@ impl Table {
     pub fn add_rule(&mut self, rule: InmediateRelation) -> Result<(), String> {
         self.check_relation(&&rule)?;
         match rule.negated {
-            false => self.history.push(IsTrueThat(Truth::from(rule))),
+            false => self.history.push(IsTrueThat(Truth::from(&rule))),
             true => {
                 let what_we_want_to_remove = &rule.args.to_owned();
                 self.history = self
@@ -114,5 +114,26 @@ impl Table {
         }
 
         Ok(matched_truths)
+    }
+}
+
+impl fmt::Display for Table {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ret = String::new();
+
+        for command in self.history.iter() {
+            ret += &format!("{command}");
+        }
+
+        write!(f, "{}", ret)
+    }
+}
+
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IsTrueThat(truth) => write!(f, "{truth}\n"),
+            IsTrueWhen(conditional_truth) => write!(f, "{conditional_truth}\n"),
+        }
     }
 }

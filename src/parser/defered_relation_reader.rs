@@ -1,3 +1,4 @@
+use core::fmt;
 use std::vec;
 
 use crate::engine::table::truth::Truth;
@@ -35,7 +36,7 @@ impl DeferedRelation {
         for exp in &self.args {
             literal_vec.push(exp.literalize(context)?)
         }
-        Ok(Truth::from(literal_vec))
+        Ok(Truth::from(&(literal_vec, self.get_rel_id())))
     }
 
     pub fn apply(&self, context: &VarContext) -> Result<DeferedRelation, String> {
@@ -47,6 +48,46 @@ impl DeferedRelation {
             })
         }
         Ok(DeferedRelation::from((&self.rel_name, literalized_vec)))
+    }
+}
+
+impl fmt::Display for DeferedRelation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut args = String::new();
+
+        args += &"(";
+        for (i, d) in self.args.iter().enumerate() {
+            args += &format!("{d}");
+            if i != self.args.len() - 1 {
+                args += &",";
+            }
+        }
+        args += &")";
+
+        let mut assumptions = String::new();
+
+        assumptions += &"(";
+        for (i, d) in self.assumptions.iter().enumerate() {
+            assumptions += &format!("{d}");
+            if i != self.assumptions.len() - 1 {
+                assumptions += &",";
+            }
+        }
+        assumptions += &")";
+
+        let asumption_prefix = if self.assumptions.len() == 0 {
+            "".to_string()
+        } else {
+            format!("{{{assumptions}}}=>")
+        };
+
+        write!(
+            f,
+            "{}{}{}{args}",
+            asumption_prefix,
+            if self.negated { "!" } else { "" },
+            self.rel_name
+        )
     }
 }
 
