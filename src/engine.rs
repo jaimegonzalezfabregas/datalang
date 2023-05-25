@@ -9,14 +9,14 @@ use crate::{
         inmediate_relation_reader::InmediateRelation, line_reader::Line, Relation,
     },
 };
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, fmt, vec};
 
 use self::{
     table::{truth::Truth, Table},
     var_context::VarContext,
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd)]
 pub struct RelId {
     pub identifier: String,
     pub column_count: usize,
@@ -63,6 +63,17 @@ fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<L
             }
         }
         Err(e) => Err(e.print(&commands)),
+    }
+}
+
+impl fmt::Display for Engine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ret = String::new();
+        for (_, table) in self.tables {
+            ret += &format!("{table}");
+        }
+
+        write!(f, "{}", ret)
     }
 }
 

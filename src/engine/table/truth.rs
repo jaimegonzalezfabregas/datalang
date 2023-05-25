@@ -1,5 +1,7 @@
+use std::fmt;
+
 use crate::{
-    engine::var_context::VarContext,
+    engine::{var_context::VarContext, RelId},
     parser::{
         data_reader::Data, defered_relation_reader::DeferedRelation,
         inmediate_relation_reader::InmediateRelation,
@@ -7,7 +9,24 @@ use crate::{
 };
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq)]
 pub struct Truth {
+    rel_id: RelId,
     data: Vec<Data>,
+}
+
+impl fmt::Display for Truth {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut args = String::new();
+        args += &"(";
+        for (i, d) in self.data.iter().enumerate() {
+            args += &format!("{d}");
+            if i != self.data.len() {
+                args += &",";
+            }
+        }
+        args += &")";
+
+        write!(f, "{}{args}", self.rel_id.identifier)
+    }
 }
 
 impl Ord for Truth {
@@ -17,10 +36,11 @@ impl Ord for Truth {
             .iter()
             .zip(other.data.iter())
             .skip_while(|(a, b)| a == b)
-            .next() {
-                None => std::cmp::Ordering::Equal,
-                Some((a,b)) => a.cmp(b),
-            }
+            .next()
+        {
+            None => std::cmp::Ordering::Equal,
+            Some((a, b)) => a.cmp(b),
+        }
     }
 }
 

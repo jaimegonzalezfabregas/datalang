@@ -1,4 +1,4 @@
-use std::hash;
+use std::{fmt, hash};
 
 use super::error::ParserError;
 use crate::engine::var_context::VarContext;
@@ -10,6 +10,28 @@ pub enum Data {
     Number(f64),
     String(String),
     Array(Vec<Data>),
+}
+
+impl fmt::Display for Data {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Data::Number(x) => write!(f, "{x}"),
+            Data::String(x) => write!(f, "{x}"),
+            Data::Array(x) => {
+                let mut arr = String::new();
+                arr += &"[";
+                for (i, d) in x.iter().enumerate() {
+                    arr += &format!("{d}");
+                    if i != x.len() {
+                        arr += &",";
+                    }
+                }
+                arr += &"]";
+
+                write!(f, "{arr}")
+            }
+        }
+    }
 }
 
 impl Eq for Data {}

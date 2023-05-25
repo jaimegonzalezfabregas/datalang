@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::HashMap;
 
 use crate::{
@@ -14,6 +15,13 @@ pub struct ConditionalTruth {
     condition: Statement,
     result_template: DeferedRelation,
 }
+
+impl fmt::Display for ConditionalTruth {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{result_template} :- {condition}")
+    }
+}
+
 impl ConditionalTruth {
     pub fn get_truths(&self, engine: &Engine, depth_map: &HashMap<RelId, usize>) -> Vec<Truth> {
         self.condition
