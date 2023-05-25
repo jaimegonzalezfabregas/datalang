@@ -69,7 +69,7 @@ fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<L
 impl fmt::Display for Engine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut ret = String::new();
-        for (_, table) in self.tables {
+        for (_, table) in self.tables.iter() {
             ret += &format!("{table}");
         }
 
@@ -90,7 +90,7 @@ impl Engine {
             Ok(lines) => {
                 for line in lines {
                     if debug_print {
-                        println!("\nexecuting: {line:?}");
+                        println!("\nexecuting: {line}");
                     }
                     match self.ingest_line(line) {
                         Ok(Some(output)) => {

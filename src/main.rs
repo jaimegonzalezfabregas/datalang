@@ -74,13 +74,13 @@ fn main() -> Result<(), DLErr> {
                 }
             }
             if buffer.starts_with("/export") {
-                let file_path = buffer
+                let file_path: String = buffer
                     .chars()
                     .into_iter()
                     .skip_while(|c| c == &' ')
                     .skip(1)
                     .collect();
-                match write(file_path, engine.export()) {
+                match write(file_path, format!("{engine}")) {
                     Ok(_) => println!("ok"),
                     Err(err) => println!("export failed due to: {err}"),
                 }

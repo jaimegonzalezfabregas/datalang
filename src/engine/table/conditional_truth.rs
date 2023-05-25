@@ -18,7 +18,7 @@ pub struct ConditionalTruth {
 
 impl fmt::Display for ConditionalTruth {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{result_template} :- {condition}")
+        write!(f, "{} :- {}", self.result_template, self.condition)
     }
 }
 

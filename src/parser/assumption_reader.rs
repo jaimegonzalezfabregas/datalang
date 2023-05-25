@@ -1,3 +1,5 @@
+use core::fmt;
+
 use super::{
     conditional_reader::Conditional,
     defered_relation_reader::{read_defered_relation, DeferedRelation},
@@ -16,6 +18,17 @@ pub enum Assumption {
     RelationDefered(DeferedRelation),
     Conditional(Conditional),
     Update(Update),
+}
+
+impl fmt::Display for Assumption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Assumption::RelationInmediate(rel) => write!(f, "{rel}"),
+            Assumption::RelationDefered(rel) => write!(f, "{rel}"),
+            Assumption::Conditional(cond) => write!(f, "{cond}"),
+            Assumption::Update(upd) => write!(f, "{upd}"),
+        }
+    }
 }
 
 pub fn read_assumption(

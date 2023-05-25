@@ -1,3 +1,5 @@
+use std::fmt::{self};
+
 use crate::engine::var_context::VarContext;
 use crate::lexer;
 use crate::lexer::LexogramType::*;
@@ -11,14 +13,39 @@ use crate::parser::destructuring_array_reader::read_destructuring_array;
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
-    RestOfArray(String),
+    ExplodeArray(String),
     Anonimus,
 }
+
+impl fmt::Display for VarName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VarName::DestructuredArray(arr) => {
+                let mut ret = String::new();
+
+                ret += &"[";
+                for (i, d) in arr.iter().enumerate() {
+                    ret += &format!("{d}");
+                    if i != arr.len() {
+                        ret += &",";
+                    }
+                }
+                ret += &"]";
+                write!(f, "{ret}")
+            }
+            VarName::Direct(name) => write!(f, "{name}"),
+            VarName::ExplodeArray(name) => write!(f, "...{name}"),
+            VarName::Anonimus => write!(f, "_"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Operation<Op, Res> {
     pub forward: fn(Op, Op) -> Result<Res, String>,
     pub reverse_op1: fn(Op, Res) -> Result<Res, String>,
     pub reverse_op2: fn(Op, Res) -> Result<Res, String>,
+    pub to_string: String,
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +54,16 @@ pub enum Expresion {
     Arithmetic(Box<Expresion>, Box<Expresion>, Operation<Data, Data>),
     Literal(Data),
     Var(VarName),
+}
+
+impl fmt::Display for Expresion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expresion::Arithmetic(expa, expb, op) => write!(f, "{expa}{}{expb}", op.to_string),
+            Expresion::Literal(l) => write!(f, "{l}"),
+            Expresion::Var(v) => write!(f, "{v}"),
+        }
+    }
 }
 
 impl Expresion {
@@ -40,7 +77,7 @@ impl Expresion {
                 Some(value) => Ok(value.to_owned()),
                 None => Err(format!("var {str} not defined on context")),
             },
-            _ => Err(format!("no se ha podido literalizar: {self:?}")),
+            _ => Err(format!("no se ha podido literalizar: {self}")),
         };
 
         ret
@@ -53,7 +90,7 @@ impl Expresion {
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        // println!("\n------ call to solve with goal:{goal:?} at {self:?} at {caller_context:?}");
+        // println!("\n------ call to solve with goal:[{goal}] at [{self}] at {caller_context:?}");
 
         match self.literalize(&caller_context) {
             Ok(d) => {
@@ -137,6 +174,7 @@ pub fn read_expresion(
                     forward: add_direct,
                     reverse_op1: add_reverse_op1,
                     reverse_op2: add_reverse_op2,
+                    to_string: "+".into(),
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
@@ -145,6 +183,7 @@ pub fn read_expresion(
                     forward: substract_direct,
                     reverse_op1: substract_reverse_op1,
                     reverse_op2: substract_reverse_op2,
+                    to_string: "-".into(),
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
@@ -153,6 +192,7 @@ pub fn read_expresion(
                     forward: multiply_direct,
                     reverse_op1: multiply_reverse_op1,
                     reverse_op2: multiply_reverse_op2,
+                    to_string: "*".into(),
                 });
                 state = SpectingItemOrOpenParenthesis;
             }
@@ -161,6 +201,7 @@ pub fn read_expresion(
                     forward: divide_direct,
                     reverse_op1: divide_reverse_op1,
                     reverse_op2: divide_reverse_op2,
+                    to_string: "/".into(),
                 });
                 state = SpectingItemOrOpenParenthesis;
             }

@@ -44,7 +44,7 @@ pub fn read_destructuring_array(
                 state = SpectingIdentifierAfterDotDotDot;
             }
             (Identifier(str), SpectingIdentifierAfterDotDotDot) => {
-                ret.push(Expresion::Var(VarName::RestOfArray(str)));
+                ret.push(Expresion::Var(VarName::ExplodeArray(str)));
                 state = SpectingEnd;
             }
             (Coma, SpectingComaOrEnd) => state = SpectingItemOrDotDotDot,

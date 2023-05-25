@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::vec;
+use std::{fmt, vec};
 
 use crate::engine::var_context::VarContext;
 use crate::engine::{Engine, RelId};
@@ -39,6 +39,32 @@ pub enum Statement {
     Not(Box<Statement>),
     ExpresionComparison(Expresion, Expresion, Comparison),
     Relation(DeferedRelation),
+}
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::And(sta, stb) => write!(f, "({sta} && {stb})"),
+            Statement::Or(sta, stb) => write!(f, "({sta} || {stb})"),
+            Statement::Not(st) => write!(f, "!({st})"),
+            Statement::ExpresionComparison(sta, stb, Comparison::Eq) => {
+                write!(f, "({sta}={stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Lt) => {
+                write!(f, "({sta}<{stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Gt) => {
+                write!(f, "({sta}>{stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Gte) => {
+                write!(f, "({sta}>={stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Lte) => {
+                write!(f, "({sta}<={stb})")
+            }
+            Statement::Relation(rel) => write!(f, "{rel}"),
+        }
+    }
 }
 
 pub fn read_statement(

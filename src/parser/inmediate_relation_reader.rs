@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     engine::{var_context::VarContext, RelId},
     lexer::{self, LexogramType::*},
@@ -15,6 +17,28 @@ pub struct InmediateRelation {
     pub negated: bool,
     pub rel_name: String,
     pub args: Vec<Data>,
+}
+
+impl fmt::Display for InmediateRelation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut args = String::new();
+
+        args += &"(";
+        for (i, d) in self.args.iter().enumerate() {
+            args += &format!("{d}");
+            if i != self.args.len() {
+                args += &",";
+            }
+        }
+        args += &")";
+
+        write!(
+            f,
+            "{}{}{args}",
+            if self.negated { "!" } else { "" },
+            self.rel_name
+        )
+    }
 }
 
 impl Relation for InmediateRelation {

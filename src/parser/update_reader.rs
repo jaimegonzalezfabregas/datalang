@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::lexer::LexogramType::*;
 use crate::{
     lexer,
@@ -11,6 +13,12 @@ use super::error::ParserError;
 pub struct Update {
     pub filter: DeferedRelation,
     pub goal: DeferedRelation,
+}
+
+impl fmt::Display for Update {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -> {}", self.filter, self.goal)
+    }
 }
 
 pub fn read_update(

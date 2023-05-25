@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::statement_reader::read_statement;
@@ -15,6 +17,12 @@ use super::Relation;
 pub struct Conditional {
     pub conditional: Statement,
     pub relation: DeferedRelation,
+}
+
+impl fmt::Display for Conditional {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} :- {}", self.relation, self.conditional)
+    }
 }
 
 impl Relation for Conditional {

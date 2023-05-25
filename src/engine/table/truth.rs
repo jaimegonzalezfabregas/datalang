@@ -4,7 +4,7 @@ use crate::{
     engine::{var_context::VarContext, RelId},
     parser::{
         data_reader::Data, defered_relation_reader::DeferedRelation,
-        inmediate_relation_reader::InmediateRelation,
+        inmediate_relation_reader::InmediateRelation, Relation,
     },
 };
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq)]
@@ -85,14 +85,20 @@ impl Truth {
     }
 }
 
-impl From<Vec<Data>> for Truth {
-    fn from(value: Vec<Data>) -> Self {
-        Self { data: value }
+impl From<&InmediateRelation> for Truth {
+    fn from(value: &InmediateRelation) -> Self {
+        Self {
+            data: value.args.to_owned(),
+            rel_id: value.get_rel_id(),
+        }
     }
 }
 
-impl From<InmediateRelation> for Truth {
-    fn from(value: InmediateRelation) -> Self {
-        Self { data: value.args }
+impl From<&(Vec<Data>, RelId)> for Truth {
+    fn from(args: &(Vec<Data>, RelId)) -> Self {
+        Self {
+            data: args.0.to_owned(),
+            rel_id: args.1.to_owned(),
+        }
     }
 }

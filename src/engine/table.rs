@@ -44,7 +44,7 @@ impl Table {
     pub fn add_rule(&mut self, rule: InmediateRelation) -> Result<(), String> {
         self.check_relation(&&rule)?;
         match rule.negated {
-            false => self.history.push(IsTrueThat(Truth::from(rule))),
+            false => self.history.push(IsTrueThat(Truth::from(&rule))),
             true => {
                 let what_we_want_to_remove = &rule.args.to_owned();
                 self.history = self
@@ -121,7 +121,7 @@ impl fmt::Display for Table {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut ret = String::new();
 
-        for command in self.history {
+        for command in self.history.iter() {
             ret += &format!("{command}");
         }
 
@@ -133,7 +133,7 @@ impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             IsTrueThat(truth) => write!(f, "{truth}\n"),
-            IsTrueWhen(conditional__truth) => write!(f, "{conditional__truth}\n"),
+            IsTrueWhen(conditional_truth) => write!(f, "{conditional_truth}\n"),
         }
     }
 }
