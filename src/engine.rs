@@ -9,14 +9,14 @@ use crate::{
         inmediate_relation_reader::InmediateRelation, line_reader::Line, Relation,
     },
 };
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, fmt, vec};
 
 use self::{
     table::{truth::Truth, Table},
     var_context::VarContext,
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd)]
 pub struct RelId {
     pub identifier: String,
     pub column_count: usize,
@@ -66,6 +66,17 @@ fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<L
     }
 }
 
+impl fmt::Display for Engine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ret = String::new();
+        for (_, table) in self.tables.iter() {
+            ret += &format!("{table}");
+        }
+
+        write!(f, "{}", ret)
+    }
+}
+
 impl Engine {
     pub fn new() -> Self {
         Self {
@@ -79,10 +90,18 @@ impl Engine {
             Ok(lines) => {
                 for line in lines {
                     if debug_print {
-                        println!("\nexecuting: {line:?}");
+                        println!("\nexecuting: {line}");
                     }
                     match self.ingest_line(line) {
-                        Ok(Some(output)) => ret += &draw_table(output),
+                        Ok(Some(output)) => {
+                            let mut sorted_output = output.clone();
+                            sorted_output.sort();
+                            if debug_print {
+                                ret += &format!("{sorted_output:?}");
+                            } else {
+                                ret += &draw_table(sorted_output)
+                            }
+                        }
                         Ok(None) => (),
                         Err(err) => {
                             ret += &format!("An error ocurred on the execution step: \n {err:?}");

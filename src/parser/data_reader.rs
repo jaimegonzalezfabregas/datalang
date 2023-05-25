@@ -1,4 +1,4 @@
-use std::hash;
+use std::{fmt, hash};
 
 use super::error::ParserError;
 use crate::engine::var_context::VarContext;
@@ -12,7 +12,53 @@ pub enum Data {
     Array(Vec<Data>),
 }
 
+impl fmt::Display for Data {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Data::Number(x) => write!(f, "{x}"),
+            Data::String(x) => write!(f, "{x}"),
+            Data::Array(x) => {
+                let mut arr = String::new();
+                arr += &"[";
+                for (i, d) in x.iter().enumerate() {
+                    arr += &format!("{d}");
+                    if i != x.len() - 1 {
+                        arr += &",";
+                    }
+                }
+                arr += &"]";
+
+                write!(f, "{arr}")
+            }
+        }
+    }
+}
+
 impl Eq for Data {}
+
+impl Ord for Data {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Data::Number(x), Data::Number(y)) => {
+                if x == y {
+                    std::cmp::Ordering::Equal
+                } else if x < y {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                }
+            }
+            (Data::Number(_), Data::String(_)) => std::cmp::Ordering::Less,
+            (Data::Number(_), Data::Array(_)) => std::cmp::Ordering::Less,
+            (Data::String(_), Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::String(x), Data::String(y)) => x.cmp(y),
+            (Data::String(_), Data::Array(_)) => std::cmp::Ordering::Less,
+            (Data::Array(_), Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::Array(_), Data::String(_)) => std::cmp::Ordering::Greater,
+            (Data::Array(x), Data::Array(y)) => x.cmp(y),
+        }
+    }
+}
 
 impl hash::Hash for Data {
     fn hash<H>(&self, state: &mut H)

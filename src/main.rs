@@ -3,8 +3,8 @@ mod lexer;
 mod parser;
 mod tests;
 mod utils;
-mod custom_btree_set;
-
+use std::env::current_dir;
+use std::fs::write;
 use std::{fs::read_to_string, io};
 
 use crate::engine::Engine;
@@ -42,13 +42,11 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-const DEBUG_PRINT: bool = false;
+const DEBUG_PRINT: bool = true;
 
 fn main() -> Result<(), DLErr> {
-    let initializing_commands = read_to_string("example.dl")?;
-
+    println!("{:?}", current_dir());
     let mut engine = Engine::new();
-    println!("{}", engine.input(initializing_commands, DEBUG_PRINT));
 
     let stdin = io::stdin();
 
@@ -61,11 +59,40 @@ fn main() -> Result<(), DLErr> {
             .expect("Could not flush stdout");
         stdin.read_line(&mut buffer)?;
 
-        if buffer.eq("/exit\r\n") || buffer.eq("/exit\n") {
-            break;
+        if buffer.chars().nth(0).unwrap_or_else(|| unreachable!()) == '/' {
+            if buffer.starts_with("/exit") {
+                break;
+            }
+            if buffer.starts_with("/import") {
+                let file_path: String = buffer
+                    .chars()
+                    .into_iter()
+                    .skip_while(|c| c != &' ')
+                    .skip(1)
+                    .collect();
+                match read_to_string(file_path.trim()) {
+                    Ok(commands) => println!("{}", engine.input(commands, DEBUG_PRINT)),
+                    Err(err) => println!(
+                        "the file couldnt be read ({}), reason: {err}",
+                        file_path.trim()
+                    ),
+                }
+            }
+            if buffer.starts_with("/export") {
+                let file_path: String = buffer
+                    .chars()
+                    .into_iter()
+                    .skip_while(|c| c != &' ')
+                    .skip(1)
+                    .collect();
+                match write(file_path.trim(), format!("{engine}")) {
+                    Ok(_) => println!("ok"),
+                    Err(err) => println!("export failed due to: {err}"),
+                }
+            }
+        } else {
+            println!("{}", engine.input(buffer, DEBUG_PRINT));
         }
-
-        println!("{}", engine.input(buffer, DEBUG_PRINT));
     }
 
     Ok(())

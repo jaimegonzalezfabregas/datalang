@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::vec;
+use std::{fmt, vec};
 
 use crate::engine::var_context::VarContext;
 use crate::engine::{Engine, RelId};
@@ -39,6 +39,32 @@ pub enum Statement {
     Not(Box<Statement>),
     ExpresionComparison(Expresion, Expresion, Comparison),
     Relation(DeferedRelation),
+}
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::And(sta, stb) => write!(f, "({sta} && {stb})"),
+            Statement::Or(sta, stb) => write!(f, "({sta} || {stb})"),
+            Statement::Not(st) => write!(f, "!({st})"),
+            Statement::ExpresionComparison(sta, stb, Comparison::Eq) => {
+                write!(f, "({sta}={stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Lt) => {
+                write!(f, "({sta}<{stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Gt) => {
+                write!(f, "({sta}>{stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Gte) => {
+                write!(f, "({sta}>={stb})")
+            }
+            Statement::ExpresionComparison(sta, stb, Comparison::Lte) => {
+                write!(f, "({sta}<={stb})")
+            }
+            Statement::Relation(rel) => write!(f, "{rel}"),
+        }
+    }
 }
 
 pub fn read_statement(
@@ -369,18 +395,24 @@ impl Statement {
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
     ) -> HashSet<VarContext> {
-        match self {
+        let ret = match self {
             Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
                 let deep_universe_a = statement_a.get_context_universe(engine, caller_depth_map);
                 let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
 
-                let mut full_deep_universe = HashSet::new();
-                for a_context in &deep_universe_a {
-                    for b_context in &deep_universe_b {
-                        full_deep_universe.insert(a_context.extend(b_context));
+                match (deep_universe_a.len(), deep_universe_b.len()) {
+                    (0, _) => deep_universe_b,
+                    (_, 0) => deep_universe_a,
+                    (_, _) => {
+                        let mut product = HashSet::new();
+                        for a_context in deep_universe_a.iter() {
+                            for b_context in deep_universe_b.iter() {
+                                product.insert(a_context.extend(b_context));
+                            }
+                        }
+                        product
                     }
                 }
-                full_deep_universe
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => match table.get_all_contents(Some(caller_depth_map), engine) {
@@ -402,8 +434,12 @@ impl Statement {
                 },
                 None => HashSet::new(),
             },
-            _ => HashSet::new(),
-        }
+            _ => HashSet::from([VarContext::new()]),
+        };
+
+        println!("\n posible universes for {self:?} are {ret:#?}");
+
+        ret
     }
 
     pub fn get_posible_contexts(
@@ -413,19 +449,11 @@ impl Statement {
         universe: &HashSet<VarContext>,
     ) -> HashSet<VarContext> {
         let ret = match self {
-            Statement::And(statement_a, statement_b) => {
-                let contexts_a =
-                    statement_a.get_posible_contexts(engine, caller_depth_map, universe);
-                let contexts_b =
-                    statement_b.get_posible_contexts(engine, caller_depth_map, universe);
-
-                // println!("\nAND: \n{contexts_a:?}\n{contexts_b:?}");
-
-                contexts_a
-                    .intersection(&contexts_b)
-                    .map(|e| e.to_owned())
-                    .collect::<HashSet<VarContext>>()
-            }
+            Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
+                engine,
+                caller_depth_map,
+                &statement_a.get_posible_contexts(engine, caller_depth_map, universe),
+            ),
             Statement::Or(statement_a, statement_b) => {
                 let mut contexts_a =
                     statement_a.get_posible_contexts(engine, caller_depth_map, universe);
@@ -462,7 +490,9 @@ impl Statement {
                         }
                         (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
                             match exp.solve(&goal, context) {
-                                Ok(new_context) => vec![new_context],
+                                Ok(new_context) => {
+                                    vec![new_context]
+                                }
                                 Err(_) => vec![],
                             }
                         }
@@ -494,15 +524,13 @@ impl Statement {
             Statement::Relation(rel) => universe
                 .iter()
                 .filter(|context| match engine.query(rel, context) {
-                    Ok(vec) => {
-                        println!("\n{rel:?}\n{vec:?}\n{context:?}");
-                        vec.len() != 0
-                    }
+                    Ok(vec) => vec.len() != 0,
                     Err(_) => false,
                 })
                 .map(|e| e.to_owned())
                 .collect(),
         };
+        println!("\n posible contexts for {self:?} on {universe:?} are {ret:?}");
 
         ret
     }

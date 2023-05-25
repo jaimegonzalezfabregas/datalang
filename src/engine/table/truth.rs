@@ -1,14 +1,47 @@
+use std::fmt;
 
 use crate::{
-    engine::var_context::VarContext,
+    engine::{var_context::VarContext, RelId},
     parser::{
         data_reader::Data, defered_relation_reader::DeferedRelation,
-        inmediate_relation_reader::InmediateRelation,
+        inmediate_relation_reader::InmediateRelation, Relation,
     },
 };
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq)]
 pub struct Truth {
+    rel_id: RelId,
     data: Vec<Data>,
+}
+
+impl fmt::Display for Truth {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut args = String::new();
+        args += &"(";
+        for (i, d) in self.data.iter().enumerate() {
+            args += &format!("{d}");
+            if i != self.data.len() -1 {
+                args += &",";
+            }
+        }
+        args += &")";
+
+        write!(f, "{}{args}", self.rel_id.identifier)
+    }
+}
+
+impl Ord for Truth {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .skip_while(|(a, b)| a == b)
+            .next()
+        {
+            None => std::cmp::Ordering::Equal,
+            Some((a, b)) => a.cmp(b),
+        }
+    }
 }
 
 impl Truth {
@@ -52,14 +85,20 @@ impl Truth {
     }
 }
 
-impl From<Vec<Data>> for Truth {
-    fn from(value: Vec<Data>) -> Self {
-        Self { data: value }
+impl From<&InmediateRelation> for Truth {
+    fn from(value: &InmediateRelation) -> Self {
+        Self {
+            data: value.args.to_owned(),
+            rel_id: value.get_rel_id(),
+        }
     }
 }
 
-impl From<InmediateRelation> for Truth {
-    fn from(value: InmediateRelation) -> Self {
-        Self { data: value.args }
+impl From<&(Vec<Data>, RelId)> for Truth {
+    fn from(args: &(Vec<Data>, RelId)) -> Self {
+        Self {
+            data: args.0.to_owned(),
+            rel_id: args.1.to_owned(),
+        }
     }
 }

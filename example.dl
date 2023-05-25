@@ -1,17 +1,4 @@
-rel(0,1)
-rel(0,2)
-rel(1,1)
-!rel(0,1)
-!rel(0,0)
+rel1(0) rel1(1) 
+rel2(1) rel2(2) 
 
-rel(_,_)?
-rel(_,2)?
-rel(0,1)?
-
-rel2(a) :- rel(a,_) || rel(_,a)
-
-rel2(_)?
-
-rel3(a) :- rel(a,a)
-
-rel3(_)?
+test(a) :- rel1(b) && rel2(c) && b=c && a=b 
