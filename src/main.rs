@@ -3,6 +3,7 @@ mod lexer;
 mod parser;
 mod tests;
 mod utils;
+use std::env::current_dir;
 use std::fs::write;
 use std::{fs::read_to_string, io};
 
@@ -44,6 +45,7 @@ impl From<std::io::Error> for DLErr {
 const DEBUG_PRINT: bool = true;
 
 fn main() -> Result<(), DLErr> {
+    println!("{:?}", current_dir());
     let mut engine = Engine::new();
 
     let stdin = io::stdin();
@@ -65,22 +67,22 @@ fn main() -> Result<(), DLErr> {
                 let file_path: String = buffer
                     .chars()
                     .into_iter()
-                    .skip_while(|c| c == &' ')
+                    .skip_while(|c| c != &' ')
                     .skip(1)
                     .collect();
-                match read_to_string(file_path) {
+                match read_to_string(file_path.trim()) {
                     Ok(commands) => println!("{}", engine.input(commands, DEBUG_PRINT)),
-                    Err(err) => println!("the file couldnt be read, reason: {err}"),
+                    Err(err) => println!("the file couldnt be read ({}), reason: {err}",file_path.trim()),
                 }
             }
             if buffer.starts_with("/export") {
                 let file_path: String = buffer
                     .chars()
                     .into_iter()
-                    .skip_while(|c| c == &' ')
+                    .skip_while(|c| c != &' ')
                     .skip(1)
                     .collect();
-                match write(file_path, format!("{engine}")) {
+                match write(file_path.trim(), format!("{engine}")) {
                     Ok(_) => println!("ok"),
                     Err(err) => println!("export failed due to: {err}"),
                 }

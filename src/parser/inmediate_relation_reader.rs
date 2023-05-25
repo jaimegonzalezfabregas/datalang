@@ -26,7 +26,7 @@ impl fmt::Display for InmediateRelation {
         args += &"(";
         for (i, d) in self.args.iter().enumerate() {
             args += &format!("{d}");
-            if i != self.args.len() {
+            if i != self.args.len() - 1 {
                 args += &",";
             }
         }

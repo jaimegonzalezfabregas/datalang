@@ -19,7 +19,7 @@ impl fmt::Display for Truth {
         args += &"(";
         for (i, d) in self.data.iter().enumerate() {
             args += &format!("{d}");
-            if i != self.data.len() {
+            if i != self.data.len() -1 {
                 args += &",";
             }
         }

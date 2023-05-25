@@ -26,7 +26,7 @@ impl fmt::Display for VarName {
                 ret += &"[";
                 for (i, d) in arr.iter().enumerate() {
                     ret += &format!("{d}");
-                    if i != arr.len() {
+                    if i != arr.len() - 1 {
                         ret += &",";
                     }
                 }

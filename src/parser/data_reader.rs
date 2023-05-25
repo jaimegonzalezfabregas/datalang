@@ -22,7 +22,7 @@ impl fmt::Display for Data {
                 arr += &"[";
                 for (i, d) in x.iter().enumerate() {
                     arr += &format!("{d}");
-                    if i != x.len() {
+                    if i != x.len() - 1 {
                         arr += &",";
                     }
                 }

@@ -58,7 +58,7 @@ impl fmt::Display for DeferedRelation {
         args += &"(";
         for (i, d) in self.args.iter().enumerate() {
             args += &format!("{d}");
-            if i != self.args.len() {
+            if i != self.args.len() - 1 {
                 args += &",";
             }
         }
@@ -69,7 +69,7 @@ impl fmt::Display for DeferedRelation {
         assumptions += &"(";
         for (i, d) in self.assumptions.iter().enumerate() {
             assumptions += &format!("{d}");
-            if i != self.assumptions.len() {
+            if i != self.assumptions.len() - 1 {
                 assumptions += &",";
             }
         }
