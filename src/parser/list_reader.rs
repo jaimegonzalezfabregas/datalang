@@ -1,8 +1,10 @@
-use crate::{parser::{FailureExplanation, expresion_reader::read_expresion}, lexer};
 use crate::lexer::LexogramType::*;
+use crate::{
+    lexer,
+    parser::{expresion_reader::read_expresion, FailureExplanation},
+};
 
 use super::{error::ParserError, expresion_reader::Expresion};
-
 
 pub fn read_list(
     lexograms: &Vec<lexer::Lexogram>,
