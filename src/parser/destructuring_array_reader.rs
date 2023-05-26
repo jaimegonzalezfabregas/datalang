@@ -8,14 +8,13 @@ pub fn read_destructuring_array(
     start_cursor: usize,
     debug_margin: String,
     debug_print: bool,
-) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(VarName, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ArrayParserStates {
         SpectingItemOrEnd,
         SpectingIdentifierAfterDotDotDot,
         SpectingItemOrDotDotDot,
         SpectingComaOrEnd,
-        SpectingEnd,
         SpectingStart,
     }
     use ArrayParserStates::*;
@@ -45,12 +44,12 @@ pub fn read_destructuring_array(
             }
             (Identifier(str), SpectingIdentifierAfterDotDotDot) => {
                 ret.push(Expresion::Var(VarName::ExplodeArray(str)));
-                state = SpectingEnd;
+                state = SpectingItemOrEnd;
             }
             (Coma, SpectingComaOrEnd) => state = SpectingItemOrDotDotDot,
-            (RightBracket, SpectingComaOrEnd | SpectingEnd | SpectingItemOrEnd) => {
+            (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
                 println!("{debug_margin}end of destructuring array at {}", i + 1);
-                return Ok(Ok((Expresion::Var(VarName::DestructuredArray(ret)), i + 1)));
+                return Ok(Ok((VarName::DestructuredArray(ret), i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItemOrDotDotDot) => {
                 match read_expresion(
