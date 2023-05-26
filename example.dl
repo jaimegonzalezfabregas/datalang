@@ -1,4 +1,1 @@
-rel1(0) rel1(1) 
-rel2(1) rel2(2) 
-
-test(a) :- rel1(b) && rel2(c) && b=c && a=b 
+test(a+1) :- test(a) && a < 10 test(0) test(3)?

@@ -16,6 +16,8 @@ impl FailureExplanation {
         original_string: &String,
         indentation: String,
     ) -> String {
+        println!("{self:?}");
+
         let mut ret = format!(
             "{indentation}Error trying to read a \x1b[1m{}\x1b[0m failed because:\n",
             self.if_it_was,

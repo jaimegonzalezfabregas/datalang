@@ -318,7 +318,7 @@ pub fn read_expresion(
     match (state, op_ret) {
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
-            lex_pos: lexograms.len(),
+            lex_pos: lexograms.len()-1,
             if_it_was: "expresion".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],

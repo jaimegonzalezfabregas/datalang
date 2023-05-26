@@ -86,7 +86,7 @@ pub fn read_destructuring_array(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "destructuring_array".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

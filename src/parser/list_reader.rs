@@ -76,7 +76,7 @@ pub fn read_list(
         }
     }
     return Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "list".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

@@ -118,7 +118,7 @@ pub fn read_conditional(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "conditional".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

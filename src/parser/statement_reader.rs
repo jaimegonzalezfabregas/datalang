@@ -195,7 +195,7 @@ pub fn read_statement(
     match (state, op_ret) {
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
-            lex_pos: lexograms.len(),
+            lex_pos: lexograms.len()-1,
             if_it_was: "statement".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],
@@ -394,11 +394,14 @@ impl Statement {
         &self,
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
+        debug_print: bool,
     ) -> HashSet<VarContext> {
         let ret = match self {
             Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
-                let deep_universe_a = statement_a.get_context_universe(engine, caller_depth_map);
-                let deep_universe_b = statement_b.get_context_universe(engine, caller_depth_map);
+                let deep_universe_a =
+                    statement_a.get_context_universe(engine, caller_depth_map, debug_print);
+                let deep_universe_b =
+                    statement_b.get_context_universe(engine, caller_depth_map, debug_print);
 
                 match (deep_universe_a.len(), deep_universe_b.len()) {
                     (0, _) => deep_universe_b,
@@ -415,30 +418,33 @@ impl Statement {
                 }
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
-                Some(table) => match table.get_all_contents(Some(caller_depth_map), engine) {
-                    Ok(table_truths) => {
-                        let mut ret = HashSet::new();
-                        for truth in table_truths {
-                            for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
-                                match col_exp.solve(col_data, &VarContext::new()) {
-                                    Ok(new_context) => {
-                                        ret.insert(new_context);
+                Some(table) => {
+                    match table.get_all_contents(caller_depth_map, engine, debug_print) {
+                        Ok(table_truths) => {
+                            let mut ret = HashSet::new();
+                            for truth in table_truths {
+                                for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
+                                    match col_exp.solve(col_data, &VarContext::new()) {
+                                        Ok(new_context) => {
+                                            ret.insert(new_context);
+                                        }
+                                        Err(_) => (),
                                     }
-                                    Err(_) => (),
                                 }
                             }
+                            ret
                         }
-                        ret
+                        Err(_) => HashSet::new(),
                     }
-                    Err(_) => HashSet::new(),
-                },
+                }
                 None => HashSet::new(),
             },
             _ => HashSet::from([VarContext::new()]),
         };
 
-        println!("\n posible universes for {self:?} are {ret:#?}");
-
+        if debug_print {
+            println!("\n posible universes for {self} are {ret:#?}");
+        }
         ret
     }
 
@@ -447,18 +453,20 @@ impl Statement {
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
         universe: &HashSet<VarContext>,
+        debug_print: bool,
     ) -> HashSet<VarContext> {
         let ret = match self {
             Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
                 engine,
                 caller_depth_map,
-                &statement_a.get_posible_contexts(engine, caller_depth_map, universe),
+                &statement_a.get_posible_contexts(engine, caller_depth_map, universe, debug_print),
+                debug_print,
             ),
             Statement::Or(statement_a, statement_b) => {
                 let mut contexts_a =
-                    statement_a.get_posible_contexts(engine, caller_depth_map, universe);
+                    statement_a.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
                 let contexts_b =
-                    statement_b.get_posible_contexts(engine, caller_depth_map, universe);
+                    statement_b.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
 
                 // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
 
@@ -466,7 +474,7 @@ impl Statement {
                 contexts_a
             }
             Statement::Not(statement) => {
-                let contexts = statement.get_posible_contexts(engine, caller_depth_map, universe);
+                let contexts = statement.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
 
                 // println!("\nNOT: \n{contexts:?}");
 
@@ -523,15 +531,18 @@ impl Statement {
 
             Statement::Relation(rel) => universe
                 .iter()
-                .filter(|context| match engine.query(rel, context) {
-                    Ok(vec) => vec.len() != 0,
-                    Err(_) => false,
-                })
+                .filter(
+                    |context| match engine.query(rel, context, caller_depth_map, debug_print) {
+                        Ok(vec) => vec.len() != 0,
+                        Err(_) => false,
+                    },
+                )
                 .map(|e| e.to_owned())
                 .collect(),
         };
-        println!("\n posible contexts for {self:?} on {universe:?} are {ret:?}");
-
+        if debug_print {
+            println!("\n posible contexts for {self} on {universe:?} are {ret:?}");
+        }
         ret
     }
 }

@@ -193,4 +193,28 @@ mod tests {
             engine.input("rel([1,2,3]) rel([6,5,2]) rel([3,2,1]) test(a,b) :- rel([a,...b]) && a > 2 test(_,_)?".into(), false)
         );
     }
+
+    #[test]
+    fn arrays_2() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(3, [2,1])\n(6, [5,2])\n",
+            engine.input(
+                "test([a+1]) :- test([a]) && a < 10 test([0]) test(_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn arrays_3() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(3, [2,1])\n(6, [5,2])\n",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
+                false
+            )
+        );
+    }
 }

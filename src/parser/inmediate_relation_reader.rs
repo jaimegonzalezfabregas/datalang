@@ -136,7 +136,7 @@ pub fn read_inmediate_relation(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "inmediate relation".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

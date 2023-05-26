@@ -223,7 +223,7 @@ pub fn read_data_array(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len() - 1,
         if_it_was: "data_array".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],
