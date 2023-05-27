@@ -1,3 +1,94 @@
+
+use std::cell::RefCell;
+
+thread_local!(static ENTER_EXIT_LOGGER_LEVEL : RefCell<u16> = RefCell::new(1));
+
+struct EnterExitLogger{
+    msg: String
+}
+
+impl Drop for EnterExitLogger {
+    fn drop(&mut self) {
+        self.exit()
+    }
+}
+impl EnterExitLogger{
+
+    fn new(msg: String) -> EnterExitLogger{
+        let ret = EnterExitLogger{
+            msg
+        };
+        ret.enter();
+
+        ret
+    }
+
+    fn current_level() -> u16 {
+        ENTER_EXIT_LOGGER_LEVEL.with(|level| {
+            level.clone().into_inner()
+        })
+    }
+
+    pub fn current_indent()  -> String {
+        let level = Self::current_level();
+        let mut ret: String = "".to_string();
+        for _i in 0..level {
+            ret = ret + "    ";
+        }
+        ret.to_string()
+    }
+
+    fn enter(&self){
+        println!("{} --> {}", Self::current_indent(), self.msg );
+        ENTER_EXIT_LOGGER_LEVEL.with(|level| {
+            *level.borrow_mut() = Self::current_level() + 1;
+        });
+    }
+
+    fn exit(&self){
+        ENTER_EXIT_LOGGER_LEVEL.with(|level| {
+            *level.borrow_mut() = Self::current_level() - 1;
+        });
+        println!("{} <-- {}", Self::current_indent(), self.msg );
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::EnterExitLogger;
+
+    fn hanoi(discs: u16, pole_from: u16, pole_to: u16 ){
+        let _eel = EnterExitLogger::new(format!("{} discos del polo {} al polo {}", discs, pole_from, pole_to) );
+        fn compute_aux_pole( pole_from: u16, pole_to: u16 ) -> Result<u16,String> {
+            match (pole_from, pole_to) {
+                (1, 3) => { Ok(2) }
+                (3, 1) => { Ok(2) }
+                (1, 2) => { Ok(3) }
+                (2, 1) => { Ok(3) }
+                (2, 3) => { Ok(1) }
+                (3, 2) => { Ok(1) }
+                (_,_) => Err(format!("aux_pole error: {} {}", pole_from, pole_to) )
+            }
+        }
+        if discs == 1 {
+            println!( "{} Se mueve el disco del polo {} al polo {}", EnterExitLogger::current_indent(), pole_from, pole_to );
+        }
+        else {
+            let pole_aux = compute_aux_pole(pole_from, pole_to).expect("Malos polos");
+            hanoi(discs - 1, pole_from, pole_aux);
+            hanoi(1, pole_from, pole_to);
+            hanoi(discs - 1, pole_aux, pole_to);
+        }
+    }
+
+    #[test]
+    fn test_hanoi(){
+        hanoi(3, 1, 3);
+    }
+}
+
+
 pub fn print_hilighted(
     base_string: &String,
     start: usize,
