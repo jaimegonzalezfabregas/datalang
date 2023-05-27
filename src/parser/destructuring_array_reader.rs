@@ -48,7 +48,6 @@ pub fn read_destructuring_array(
             }
             (Coma, SpectingComaOrEnd) => state = SpectingItemOrDotDotDot,
             (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
-                println!("{debug_margin}end of destructuring array at {}", i + 1);
                 return Ok(Ok((VarName::DestructuredArray(ret), i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItemOrDotDotDot) => {
@@ -56,7 +55,7 @@ pub fn read_destructuring_array(
                     lexograms,
                     i,
                     false,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(err) => {
@@ -86,7 +85,7 @@ pub fn read_destructuring_array(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len()-1,
+        lex_pos: lexograms.len() - 1,
         if_it_was: "destructuring_array".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

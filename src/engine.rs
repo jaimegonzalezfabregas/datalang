@@ -96,6 +96,7 @@ impl Engine {
                         Ok(Some(output)) => {
                             let mut sorted_output = output.clone();
                             sorted_output.sort();
+
                             if debug_print {
                                 ret += &format!("{sorted_output:?}");
                             } else {
@@ -107,9 +108,6 @@ impl Engine {
                             ret += &format!("An error ocurred on the execution step: \n {err:?}");
                             break;
                         }
-                    }
-                    if debug_print {
-                        println!("\nengine_state: {self:?}");
                     }
                 }
             }
@@ -141,7 +139,37 @@ impl Engine {
                 &query.apply(context)?,
                 &hypothetical_engine,
                 caller_depth_map,
-                debug_margin.to_owned() + "   ",
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            )?)
+        } else {
+            Err(RuntimeError::RelationNotFound(rel_id))
+        }
+    }
+    pub fn query_exists(
+        &self,
+        query: &DeferedRelation,
+        context: &&VarContext,
+        caller_depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
+        debug_print: bool,
+    ) -> Result<bool, RuntimeError> {
+        if debug_print {
+            println!("{debug_margin}query exists {query}, with context: {context:?}")
+        }
+        let rel_id = query.get_rel_id();
+        let mut hypothetical_engine = self.clone();
+
+        for assumption in &query.assumptions {
+            hypothetical_engine.ingest_assumption(assumption, context)?;
+        }
+
+        if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
+            Ok(table.contains(
+                &query.apply(context)?,
+                &hypothetical_engine,
+                caller_depth_map,
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             )?)
         } else {
@@ -178,7 +206,7 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_rule(rel.to_owned())?;
+                    table.add_truth(rel.to_owned())?;
                 }
                 Ok(())
             }
@@ -211,7 +239,7 @@ impl Engine {
                 &q,
                 &VarContext::new(),
                 &HashMap::new(),
-                debug_margin.to_owned() + "   ",
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             )?)),
             Line::Assumption(assumption) => {

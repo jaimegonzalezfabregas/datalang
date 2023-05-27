@@ -13,7 +13,7 @@ use super::error::ParserError;
 use super::statement_reader::Statement;
 use super::Relation;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conditional {
     pub conditional: Statement,
     pub relation: DeferedRelation,
@@ -62,7 +62,7 @@ pub fn read_conditional(
                     lexograms,
                     i,
                     false,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(e) => {
@@ -83,7 +83,7 @@ pub fn read_conditional(
             (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
             (_, SpectingCondition) => {
                 match (
-                    read_statement(lexograms, i, debug_margin.to_owned() + "   ", debug_print)?,
+                    read_statement(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)?,
                     base_relation,
                 ) {
                     (Err(e), _) => {

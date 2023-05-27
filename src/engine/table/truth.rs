@@ -7,7 +7,7 @@ use crate::{
         inmediate_relation_reader::InmediateRelation, Relation,
     },
 };
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub struct Truth {
     rel_id: RelId,
     data: Vec<Data>,
@@ -19,7 +19,7 @@ impl fmt::Display for Truth {
         args += &"(";
         for (i, d) in self.data.iter().enumerate() {
             args += &format!("{d}");
-            if i != self.data.len() -1 {
+            if i != self.data.len() - 1 {
                 args += &",";
             }
         }

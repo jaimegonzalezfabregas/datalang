@@ -47,7 +47,7 @@ pub fn read_list(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(e) => {

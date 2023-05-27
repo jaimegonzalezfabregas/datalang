@@ -12,7 +12,7 @@ use crate::{
     parser::conditional_reader::read_conditional,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Assumption {
     RelationInmediate(InmediateRelation),
     RelationDefered(DeferedRelation),
@@ -44,7 +44,7 @@ pub fn read_assumption(
     match read_inmediate_relation(
         lexograms,
         start_cursor,
-        debug_margin.to_owned() + "   ",
+        debug_margin.to_owned() + "|  ",
         debug_print,
     )? {
         Ok((i_rel, jump_to)) => return Ok(Ok((Assumption::RelationInmediate(i_rel), jump_to))),
@@ -53,7 +53,7 @@ pub fn read_assumption(
     match read_conditional(
         lexograms,
         start_cursor,
-        debug_margin.to_owned() + "   ",
+        debug_margin.to_owned() + "|  ",
         debug_print,
     )? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Conditional(ret), jump_to))),
@@ -62,7 +62,7 @@ pub fn read_assumption(
     match read_update(
         lexograms,
         start_cursor,
-        debug_margin.to_owned() + "   ",
+        debug_margin.to_owned() + "|  ",
         debug_print,
     )? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Update(ret), jump_to))),
@@ -72,7 +72,7 @@ pub fn read_assumption(
         lexograms,
         start_cursor,
         false,
-        debug_margin.to_owned() + "   ",
+        debug_margin.to_owned() + "|  ",
         debug_print,
     )? {
         Ok((d_rel, jump_to)) => return Ok(Ok((Assumption::RelationDefered(d_rel), jump_to))),

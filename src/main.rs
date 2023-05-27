@@ -43,12 +43,20 @@ impl From<std::io::Error> for DLErr {
 }
 
 const DEBUG_PRINT: bool = false;
+const AUTO_RUN: bool = true;
 
 fn main() -> Result<(), DLErr> {
     println!("{:?}", current_dir());
     let mut engine = Engine::new();
 
     let stdin = io::stdin();
+
+    if AUTO_RUN {
+        println!(
+            "{}",
+            engine.input(read_to_string("debug_input.dl")?, DEBUG_PRINT)
+        );
+    }
 
     loop {
         let mut buffer = String::new();
@@ -72,7 +80,10 @@ fn main() -> Result<(), DLErr> {
                     .collect();
                 match read_to_string(file_path.trim()) {
                     Ok(commands) => println!("{}", engine.input(commands, DEBUG_PRINT)),
-                    Err(err) => println!("the file couldnt be read ({}), reason: {err}",file_path.trim()),
+                    Err(err) => println!(
+                        "the file couldnt be read ({}), reason: {err}",
+                        file_path.trim()
+                    ),
                 }
             }
             if buffer.starts_with("/export") {

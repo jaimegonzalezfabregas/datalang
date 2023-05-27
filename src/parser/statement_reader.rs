@@ -22,7 +22,7 @@ enum AppendModes {
     Or,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Comparison {
     Eq,
     Lt,
@@ -31,7 +31,7 @@ pub enum Comparison {
     Lte,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Statement {
     // resolvable to a bolean
     And(Box<Statement>, Box<Statement>),
@@ -126,7 +126,7 @@ pub fn read_statement(
                 match read_statement(
                     lexograms,
                     i + 1,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((new_statement, jump_to)) => {
@@ -163,7 +163,7 @@ pub fn read_statement(
                 match read_statement_item(
                     lexograms,
                     i,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((new_statement, jump_to)) => {
@@ -204,7 +204,7 @@ pub fn read_statement(
     match (state, op_ret) {
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
-            lex_pos: lexograms.len()-1,
+            lex_pos: lexograms.len() - 1,
             if_it_was: "statement".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],
@@ -254,7 +254,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((def_rel, jump_to)) => {
@@ -267,7 +267,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -300,7 +300,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((second_expresion, jump_to)) => {
@@ -401,26 +401,66 @@ fn merge_statements(
 impl Statement {
     pub fn get_context_universe(
         &self,
+        filter: &DeferedRelation,
         engine: &Engine,
+        base_context: &VarContext,
         caller_depth_map: &HashMap<RelId, usize>,
         debug_margin: String,
         debug_print: bool,
     ) -> HashSet<VarContext> {
         if debug_print {
-            println!("{debug_margin} get context universe of {self}")
+            println!("{debug_margin}get context universe of {self}")
         }
         let ret = match self {
-            Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
+            Statement::Or(statement_a, statement_b) => {
                 let deep_universe_a = statement_a.get_context_universe(
+                    filter,
                     engine,
+                    base_context,
                     caller_depth_map,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
                 let deep_universe_b = statement_b.get_context_universe(
+                    filter,
                     engine,
+                    base_context,
                     caller_depth_map,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                );
+
+                match (deep_universe_a.len(), deep_universe_b.len()) {
+                    (0, _) => deep_universe_b,
+                    (_, 0) => deep_universe_a,
+                    (_, _) => {
+                        let mut product = HashSet::new();
+                        for a_context in deep_universe_a.into_iter() {
+                            product.insert(a_context);
+                        }
+                        for b_context in deep_universe_b.into_iter() {
+                            product.insert(b_context);
+                        }
+                        product
+                    }
+                }
+            }
+
+            Statement::And(statement_a, statement_b) => {
+                let deep_universe_a = statement_a.get_context_universe(
+                    filter,
+                    engine,
+                    base_context,
+                    caller_depth_map,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                );
+                let deep_universe_b = statement_b.get_context_universe(
+                    filter,
+                    engine,
+                    base_context,
+                    caller_depth_map,
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
 
@@ -440,36 +480,41 @@ impl Statement {
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
-                    match table.get_all_contents(
+                    let table_truths = table.get_content_iter(
+                        filter,
                         caller_depth_map,
                         engine,
-                        debug_margin.to_owned() + "   ",
+                        debug_margin.to_owned() + "|  ",
                         debug_print,
-                    ) {
-                        Ok(table_truths) => {
-                            let mut ret = HashSet::new();
-                            for truth in table_truths {
-                                for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
-                                    match col_exp.solve(col_data, &VarContext::new()) {
-                                        Ok(new_context) => {
-                                            ret.insert(new_context);
-                                        }
-                                        Err(_) => (),
+                    );
+                    let mut ret = HashSet::new();
+                    for truth in table_truths {
+                        let mut unfiteable = false;
+                        let mut context = base_context.clone();
+
+                        for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
+                            if !unfiteable {
+                                match col_exp.solve(col_data, &context) {
+                                    Ok(new_context) => context = new_context,
+                                    Err(_) => {
+                                        unfiteable = true;
                                     }
                                 }
                             }
-                            ret
                         }
-                        Err(_) => HashSet::new(),
+                        if !unfiteable {
+                            ret.insert(context);
+                        }
                     }
+                    ret
                 }
                 None => HashSet::new(),
             },
-            _ => HashSet::from([VarContext::new()]),
+            _ => HashSet::from([base_context.to_owned()]),
         };
 
         if debug_print {
-            println!("{debug_margin}posible universes for {self} are {ret:#?}");
+            println!("{debug_margin}* posible universes for {self} are {ret:?}");
         }
         ret
     }
@@ -482,7 +527,9 @@ impl Statement {
         debug_margin: String,
         debug_print: bool,
     ) -> HashSet<VarContext> {
-        println!("{debug_margin} get posible contexts of {self}");
+        if debug_print {
+            println!("{debug_margin}get posible contexts of {self}");
+        }
         let ret = match self {
             Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
                 engine,
@@ -491,10 +538,10 @@ impl Statement {
                     engine,
                     caller_depth_map,
                     universe,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 ),
-                debug_margin.to_owned() + "   ",
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             ),
             Statement::Or(statement_a, statement_b) => {
@@ -502,14 +549,14 @@ impl Statement {
                     engine,
                     caller_depth_map,
                     universe,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
                 let contexts_b = statement_b.get_posible_contexts(
                     engine,
                     caller_depth_map,
                     universe,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
 
@@ -523,7 +570,7 @@ impl Statement {
                     engine,
                     caller_depth_map,
                     universe,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
 
@@ -582,23 +629,23 @@ impl Statement {
 
             Statement::Relation(rel) => universe
                 .iter()
-                .filter(|context| {
-                    match engine.query(
-                        rel,
-                        context,
-                        caller_depth_map,
-                        debug_margin.to_owned() + "   ",
-                        debug_print,
-                    ) {
-                        Ok(vec) => vec.len() != 0,
-                        Err(_) => false,
-                    }
-                })
+                // .filter(|context| { // creo que no es necesario por la forma en la que hacemos la busqueda del universos
+                //     match engine.query_exists(
+                //         rel,
+                //         context,
+                //         caller_depth_map,
+                //         debug_margin.to_owned() + "|  ",
+                //         debug_print,
+                //     ) {
+                //         Ok(ret) => ret,
+                //         Err(_) => false,
+                //     }
+                // })
                 .map(|e| e.to_owned())
                 .collect(),
         };
         if debug_print {
-            println!("{debug_margin}posible contexts for {self} on {universe:?} are {ret:?}");
+            println!("{debug_margin}* posible contexts for {self} on {universe:?} are {ret:?}");
         }
         ret
     }

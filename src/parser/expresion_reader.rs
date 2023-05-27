@@ -9,7 +9,7 @@ use super::error::{FailureExplanation, ParserError};
 use crate::engine::operations::*;
 use crate::parser::destructuring_array_reader::read_destructuring_array;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
@@ -40,7 +40,7 @@ impl fmt::Display for VarName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Operation<Op, Res> {
     pub forward: fn(Op, Op) -> Result<Res, String>,
     pub reverse_op1: fn(Op, Res) -> Result<Res, String>,
@@ -48,7 +48,7 @@ pub struct Operation<Op, Res> {
     pub to_string: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Expresion {
     // resolvable to a value
     Arithmetic(Box<Expresion>, Box<Expresion>, Operation<Data, Data>),
@@ -244,7 +244,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -277,7 +277,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -318,7 +318,7 @@ pub fn read_expresion(
     match (state, op_ret) {
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
-            lex_pos: lexograms.len()-1,
+            lex_pos: lexograms.len() - 1,
             if_it_was: "expresion".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],
@@ -345,14 +345,14 @@ pub fn read_expresion_item(
             match read_data(
                 lexograms,
                 start_cursor,
-                debug_margin.to_owned() + "   ",
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             )? {
                 Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
                 Err(a) => match read_destructuring_array(
                     lexograms,
                     start_cursor,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((ret, jump_to)) => Ok(Ok((Expresion::Var(ret), jump_to))),

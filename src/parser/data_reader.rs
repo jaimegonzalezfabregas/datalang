@@ -116,7 +116,7 @@ pub fn read_data(
             match read_data_array(
                 lexograms,
                 start_cursor,
-                debug_margin.to_owned() + "   ",
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             )? {
                 Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
@@ -174,7 +174,6 @@ pub fn read_data_array(
 
             (Coma, SpectingComaOrEnd) => state = SpectingItem,
             (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
-                println!("{debug_margin}end of data_array at {}", i + 1);
                 return Ok(Ok((ret, i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItem) => {
@@ -182,7 +181,7 @@ pub fn read_data_array(
                     lexograms,
                     i,
                     true,
-                    debug_margin.to_owned() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(e) => {

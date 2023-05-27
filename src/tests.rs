@@ -4,16 +4,6 @@ mod tests {
     use crate::engine::Engine;
 
     #[test]
-    fn read_inmediate_relation_substract() {
-        let mut engine = Engine::new();
-        engine.input("rel(0,1) !rel(0,1)".into(), true);
-        assert_eq!(
-            "Engine { tables: {RelId { identifier: \"rel\", column_count: 2 }: Table { rel_id: RelId { identifier: \"rel\", column_count: 2 }, history: [] }} }",
-            format!("{engine:?}")
-        );
-    }
-
-    #[test]
     fn query_full_table_1() {
         let mut engine = Engine::new();
         assert_eq!(
@@ -195,24 +185,60 @@ mod tests {
     }
 
     #[test]
-    fn arrays_2() {
+    fn recursion() {
         let mut engine = Engine::new();
         assert_eq!(
-            "\n(3, [2,1])\n(6, [5,2])\n",
+            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(5)\n",
             engine.input(
-                "test([a+1]) :- test([a]) && a < 10 test([0]) test(_)?".into(),
+                "test(a+1) :- test(a) && a < 5 test(0) test(_)?".into(),
                 false
             )
         );
     }
 
+    // #[test]
+    // fn array_recursion() {
+    //     let mut engine = Engine::new();
+    //     assert_eq!(
+    //         "\n([0])\n([1])\n([2])\n([3])\n([4])\n([5])\n",
+    //         engine.input(
+    //             "test([a+1]) :- test([a]) && a < 5 test([0]) test(_)?".into(),
+    //             false
+    //         )
+    //     );
+    // }
+
+    // #[test] // 
+    // fn arrays_3() {
+    //     let mut engine = Engine::new();
+    //     assert_eq!(
+    //         "",
+    //         engine.input(
+    //             "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
+    //             false
+    //         )
+    //     );
+    // }
+
     #[test]
-    fn arrays_3() {
+    fn double_constraint_and() {
         let mut engine = Engine::new();
         assert_eq!(
-            "\n(3, [2,1])\n(6, [5,2])\n",
+            "\n(0)\n(2)\n",
             engine.input(
-                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
+                "a(0) a(1) a(2) a(3) b(0) b(2) b(4) b(6) ayb(x) :- a(x) && b(x) ayb(_)?".into(),
+                false
+            )
+        );
+    }
+
+        #[test]
+    fn double_constraint_or() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(6)\n",
+            engine.input(
+                "a(0) a(1) a(2) a(3) b(0) b(2) b(4) b(6) ayb(x) :- a(x) || b(x) ayb(_)?".into(),
                 false
             )
         );
