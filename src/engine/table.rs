@@ -70,41 +70,76 @@ impl Table {
 
     pub fn get_all_contents(
         self: &Table,
-        caller_depth_map: Option<&HashMap<RelId, usize>>,
+        caller_depth_map: &HashMap<RelId, usize>,
         engine: &Engine,
+        debug_margin: String,
+        debug_print: bool,
     ) -> Result<Vec<Truth>, String> {
-        let mut depth_map = caller_depth_map.unwrap_or(&HashMap::new()).to_owned();
-        const MAX_DEPTH: usize = 10;
+        if debug_print {
+            println!(
+                "{debug_margin} get all contents of {}",
+                self.rel_id.identifier
+            )
+        }
+
+        let mut depth_map = caller_depth_map.to_owned();
+        const MAX_DEPTH: usize = 5;
+
         let go_deeper = if let Some(depth_count) = depth_map.get_mut(&self.rel_id) {
-            *depth_count += 1;
-            depth_count.to_owned() < MAX_DEPTH
+            *depth_count -= 1;
+            depth_count.to_owned() > 0
         } else {
-            depth_map.insert(self.rel_id.to_owned(), 0);
-            0 < MAX_DEPTH
+            depth_map.insert(self.rel_id.to_owned(), MAX_DEPTH);
+            true
         };
         let mut ret = vec![];
 
         for command in &self.history {
             match (command, go_deeper) {
                 (IsTrueThat(truth), _) => ret.push(truth.to_owned()),
-                (Command::IsTrueWhen(conditional), true) => {
-                    ret.extend(conditional.get_truths(engine, &depth_map))
-                }
+                (Command::IsTrueWhen(conditional), true) => ret.extend(conditional.get_truths(
+                    engine,
+                    &depth_map,
+                    debug_margin.to_owned() + "|   ",
+                    debug_print,
+                )),
                 _ => (),
             }
+        }
+
+        if debug_print {
+            println!(
+                "{debug_margin} got all contents of {}",
+                self.rel_id.identifier
+            )
         }
 
         Ok(ret)
     }
 
-    pub fn get_truths(
+    pub fn get_filtered_truths(
         self: &Table,
         filter: &DeferedRelation,
         engine: &Engine,
+        caller_depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
+        debug_print: bool,
     ) -> Result<Vec<Truth>, String> {
+        if debug_print {
+            println!(
+                "{debug_margin} get filtered truths of {} with filter {filter}",
+                self.rel_id.identifier
+            );
+        }
+
         self.check_relation(&filter)?;
 
-        let all_truths = self.get_all_contents(None, engine)?;
+        let all_truths = self.get_all_contents(
+            caller_depth_map,
+            engine,
+            debug_margin.to_owned() + "   ",
+            debug_print,
+        )?;
 
         let mut matched_truths = vec![];
         for truth in all_truths {

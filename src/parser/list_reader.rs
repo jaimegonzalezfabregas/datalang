@@ -49,7 +49,7 @@ pub fn read_list(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(e) => {
@@ -78,7 +78,7 @@ pub fn read_list(
         }
     }
     return Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "list".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

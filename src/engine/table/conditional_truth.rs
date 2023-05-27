@@ -23,12 +23,29 @@ impl fmt::Display for ConditionalTruth {
 }
 
 impl ConditionalTruth {
-    pub fn get_truths(&self, engine: &Engine, depth_map: &HashMap<RelId, usize>) -> Vec<Truth> {
+    pub fn get_truths(
+        &self,
+        engine: &Engine,
+        depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
+        debug_print: bool,
+    ) -> Vec<Truth> {
+        if debug_print {
+            println!("{debug_margin} getting truths of {self}");
+        }
+
         self.condition
             .get_posible_contexts(
                 engine,
                 depth_map,
-                &self.condition.get_context_universe(engine, depth_map),
+                &self.condition.get_context_universe(
+                    engine,
+                    depth_map,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                ),
+                debug_margin.to_owned() + "   ",
+                debug_print,
             )
             .iter()
             // .map(|e| {

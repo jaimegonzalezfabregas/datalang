@@ -8,14 +8,13 @@ pub fn read_destructuring_array(
     start_cursor: usize,
     debug_margin: String,
     debug_print: bool,
-) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(VarName, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ArrayParserStates {
         SpectingItemOrEnd,
         SpectingIdentifierAfterDotDotDot,
         SpectingItemOrDotDotDot,
         SpectingComaOrEnd,
-        SpectingEnd,
         SpectingStart,
     }
     use ArrayParserStates::*;
@@ -45,19 +44,19 @@ pub fn read_destructuring_array(
             }
             (Identifier(str), SpectingIdentifierAfterDotDotDot) => {
                 ret.push(Expresion::Var(VarName::ExplodeArray(str)));
-                state = SpectingEnd;
+                state = SpectingItemOrEnd;
             }
             (Coma, SpectingComaOrEnd) => state = SpectingItemOrDotDotDot,
-            (RightBracket, SpectingComaOrEnd | SpectingEnd | SpectingItemOrEnd) => {
+            (RightBracket, SpectingComaOrEnd | SpectingItemOrEnd) => {
                 println!("{debug_margin}end of destructuring array at {}", i + 1);
-                return Ok(Ok((Expresion::Var(VarName::DestructuredArray(ret)), i + 1)));
+                return Ok(Ok((VarName::DestructuredArray(ret), i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItemOrDotDotDot) => {
                 match read_expresion(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(err) => {
@@ -87,7 +86,7 @@ pub fn read_destructuring_array(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "destructuring_array".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

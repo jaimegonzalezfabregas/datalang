@@ -42,7 +42,7 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-const DEBUG_PRINT: bool = true;
+const DEBUG_PRINT: bool = false;
 
 fn main() -> Result<(), DLErr> {
     println!("{:?}", current_dir());
