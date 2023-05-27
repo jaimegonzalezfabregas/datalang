@@ -52,7 +52,7 @@ pub fn read_update(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(e) => {
@@ -77,7 +77,7 @@ pub fn read_update(
                         lexograms,
                         i,
                         false,
-                        debug_margin.clone() + "   ",
+                        debug_margin.to_owned() + "   ",
                         debug_print,
                     )?,
                     op_filter_rel,

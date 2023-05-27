@@ -95,7 +95,7 @@ pub fn read_inmediate_relation(
                         lexograms,
                         i,
                         true,
-                        debug_margin.clone() + "   ",
+                        debug_margin.to_owned() + "   ",
                         debug_print,
                     )?,
                     op_rel_name,

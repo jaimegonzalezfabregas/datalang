@@ -116,7 +116,7 @@ pub fn read_data(
             match read_data_array(
                 lexograms,
                 start_cursor,
-                debug_margin.clone() + "   ",
+                debug_margin.to_owned() + "   ",
                 debug_print,
             )? {
                 Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
@@ -182,7 +182,7 @@ pub fn read_data_array(
                     lexograms,
                     i,
                     true,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(e) => {

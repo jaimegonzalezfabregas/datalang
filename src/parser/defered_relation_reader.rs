@@ -148,7 +148,7 @@ pub fn read_defered_relation(
                 state = SpectingStatementIdentifier;
             }
             (_, Spectingassumption) => {
-                match read_assumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
+                match read_assumption(lexograms, i, debug_margin.to_owned() + "   ", debug_print)? {
                     Ok((assumption, jump_to)) => {
                         cursor = jump_to;
                         assumptions.push(assumption);
@@ -186,7 +186,7 @@ pub fn read_defered_relation(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(e) => {

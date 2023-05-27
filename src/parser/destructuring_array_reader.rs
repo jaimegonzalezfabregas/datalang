@@ -56,7 +56,7 @@ pub fn read_destructuring_array(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Err(err) => {

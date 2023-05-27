@@ -244,7 +244,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -277,7 +277,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -345,14 +345,14 @@ pub fn read_expresion_item(
             match read_data(
                 lexograms,
                 start_cursor,
-                debug_margin.clone() + "   ",
+                debug_margin.to_owned() + "   ",
                 debug_print,
             )? {
                 Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
                 Err(a) => match read_destructuring_array(
                     lexograms,
                     start_cursor,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((ret, jump_to)) => Ok(Ok((Expresion::Var(ret), jump_to))),

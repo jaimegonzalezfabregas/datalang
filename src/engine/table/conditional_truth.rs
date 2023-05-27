@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{backtrace, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     engine::{Engine, RelId},
@@ -27,17 +27,24 @@ impl ConditionalTruth {
         &self,
         engine: &Engine,
         depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
         debug_print: bool,
     ) -> Vec<Truth> {
-        println!("{}", backtrace::Backtrace::capture());
+        if debug_print {
+            println!("{debug_margin} getting truths of {self}");
+        }
 
         self.condition
             .get_posible_contexts(
                 engine,
                 depth_map,
-                &self
-                    .condition
-                    .get_context_universe(engine, depth_map, debug_print),
+                &self.condition.get_context_universe(
+                    engine,
+                    depth_map,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                ),
+                debug_margin.to_owned() + "   ",
                 debug_print,
             )
             .iter()

@@ -123,7 +123,12 @@ pub fn read_statement(
                 SpectingStatementOrOpenParenthesis | SpectingStatementOrNegationOrOpenParenthesis,
                 _,
             ) => {
-                match read_statement(lexograms, i + 1, debug_margin.clone() + "   ", debug_print)? {
+                match read_statement(
+                    lexograms,
+                    i + 1,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                )? {
                     Ok((new_statement, jump_to)) => {
                         cursor = jump_to;
 
@@ -155,8 +160,12 @@ pub fn read_statement(
                 SpectingStatementOrOpenParenthesis | SpectingStatementOrNegationOrOpenParenthesis,
                 _,
             ) => {
-                match read_statement_item(lexograms, i, debug_margin.clone() + "   ", debug_print)?
-                {
+                match read_statement_item(
+                    lexograms,
+                    i,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                )? {
                     Ok((new_statement, jump_to)) => {
                         cursor = jump_to;
 
@@ -245,7 +254,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((def_rel, jump_to)) => {
@@ -258,7 +267,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -291,7 +300,7 @@ pub fn read_statement_item(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "   ",
                     debug_print,
                 )? {
                     Ok((second_expresion, jump_to)) => {
@@ -394,14 +403,26 @@ impl Statement {
         &self,
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
         debug_print: bool,
     ) -> HashSet<VarContext> {
+        if debug_print {
+            println!("{debug_margin} get context universe of {self}")
+        }
         let ret = match self {
             Statement::Or(statement_a, statement_b) | Statement::And(statement_a, statement_b) => {
-                let deep_universe_a =
-                    statement_a.get_context_universe(engine, caller_depth_map, debug_print);
-                let deep_universe_b =
-                    statement_b.get_context_universe(engine, caller_depth_map, debug_print);
+                let deep_universe_a = statement_a.get_context_universe(
+                    engine,
+                    caller_depth_map,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                );
+                let deep_universe_b = statement_b.get_context_universe(
+                    engine,
+                    caller_depth_map,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                );
 
                 match (deep_universe_a.len(), deep_universe_b.len()) {
                     (0, _) => deep_universe_b,
@@ -419,7 +440,12 @@ impl Statement {
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
-                    match table.get_all_contents(caller_depth_map, engine, debug_print) {
+                    match table.get_all_contents(
+                        caller_depth_map,
+                        engine,
+                        debug_margin.to_owned() + "   ",
+                        debug_print,
+                    ) {
                         Ok(table_truths) => {
                             let mut ret = HashSet::new();
                             for truth in table_truths {
@@ -443,7 +469,7 @@ impl Statement {
         };
 
         if debug_print {
-            println!("\n posible universes for {self} are {ret:#?}");
+            println!("{debug_margin}posible universes for {self} are {ret:#?}");
         }
         ret
     }
@@ -453,20 +479,39 @@ impl Statement {
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
         universe: &HashSet<VarContext>,
+        debug_margin: String,
         debug_print: bool,
     ) -> HashSet<VarContext> {
+        println!("{debug_margin} get posible contexts of {self}");
         let ret = match self {
             Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
                 engine,
                 caller_depth_map,
-                &statement_a.get_posible_contexts(engine, caller_depth_map, universe, debug_print),
+                &statement_a.get_posible_contexts(
+                    engine,
+                    caller_depth_map,
+                    universe,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                ),
+                debug_margin.to_owned() + "   ",
                 debug_print,
             ),
             Statement::Or(statement_a, statement_b) => {
-                let mut contexts_a =
-                    statement_a.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
-                let contexts_b =
-                    statement_b.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
+                let mut contexts_a = statement_a.get_posible_contexts(
+                    engine,
+                    caller_depth_map,
+                    universe,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                );
+                let contexts_b = statement_b.get_posible_contexts(
+                    engine,
+                    caller_depth_map,
+                    universe,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                );
 
                 // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
 
@@ -474,7 +519,13 @@ impl Statement {
                 contexts_a
             }
             Statement::Not(statement) => {
-                let contexts = statement.get_posible_contexts(engine, caller_depth_map, universe, debug_print);
+                let contexts = statement.get_posible_contexts(
+                    engine,
+                    caller_depth_map,
+                    universe,
+                    debug_margin.to_owned() + "   ",
+                    debug_print,
+                );
 
                 // println!("\nNOT: \n{contexts:?}");
 
@@ -531,17 +582,23 @@ impl Statement {
 
             Statement::Relation(rel) => universe
                 .iter()
-                .filter(
-                    |context| match engine.query(rel, context, caller_depth_map, debug_print) {
+                .filter(|context| {
+                    match engine.query(
+                        rel,
+                        context,
+                        caller_depth_map,
+                        debug_margin.to_owned() + "   ",
+                        debug_print,
+                    ) {
                         Ok(vec) => vec.len() != 0,
                         Err(_) => false,
-                    },
-                )
+                    }
+                })
                 .map(|e| e.to_owned())
                 .collect(),
         };
         if debug_print {
-            println!("\n posible contexts for {self} on {universe:?} are {ret:?}");
+            println!("{debug_margin}posible contexts for {self} on {universe:?} are {ret:?}");
         }
         ret
     }

@@ -92,7 +92,7 @@ impl Engine {
                     if debug_print {
                         println!("\nexecuting: {line}");
                     }
-                    match self.ingest_line(line, debug_print) {
+                    match self.ingest_line(line, String::new(), debug_print) {
                         Ok(Some(output)) => {
                             let mut sorted_output = output.clone();
                             sorted_output.sort();
@@ -123,8 +123,12 @@ impl Engine {
         query: &DeferedRelation,
         context: &VarContext,
         caller_depth_map: &HashMap<RelId, usize>,
+        debug_margin: String,
         debug_print: bool,
     ) -> Result<Vec<Truth>, RuntimeError> {
+        if debug_print {
+            println!("{debug_margin}query {query}, with context: {context:?}")
+        }
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
 
@@ -133,10 +137,11 @@ impl Engine {
         }
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
-            Ok(table.get_truths(
+            Ok(table.get_filtered_truths(
                 &query.apply(context)?,
                 &hypothetical_engine,
                 caller_depth_map,
+                debug_margin.to_owned() + "   ",
                 debug_print,
             )?)
         } else {
@@ -198,6 +203,7 @@ impl Engine {
     pub fn ingest_line(
         self: &mut Engine,
         line: Line,
+        debug_margin: String,
         debug_print: bool,
     ) -> Result<Option<Vec<Truth>>, RuntimeError> {
         match line {
@@ -205,6 +211,7 @@ impl Engine {
                 &q,
                 &VarContext::new(),
                 &HashMap::new(),
+                debug_margin.to_owned() + "   ",
                 debug_print,
             )?)),
             Line::Assumption(assumption) => {

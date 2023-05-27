@@ -1,1 +1,8 @@
-test(a+1) :- test(a) && a < 10 test(0) test(3)?
+test(a+1) :- test(a) && a < 20 
+test(0) 
+
+test(_)?
+
+ (0)
+...
+(20)

@@ -35,7 +35,7 @@ pub fn read_line(
         lexograms,
         start_cursor,
         true,
-        debug_margin.clone() + "   ",
+        debug_margin.to_owned() + "   ",
         debug_print,
     )? {
         Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Query(defered_rel), jump_to))),
