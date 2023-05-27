@@ -73,12 +73,9 @@ mod tests {
         fn compute_aux_pole( pole_from: u16, pole_to: u16 ) -> Result<u16,String> {
             EnterExitLogger!( "calculo palo que me queda si uso {} y {}", pole_from, pole_to );
             match (pole_from, pole_to) {
-                (1, 3) => { Ok(2) }
-                (3, 1) => { Ok(2) }
-                (1, 2) => { Ok(3) }
-                (2, 1) => { Ok(3) }
-                (2, 3) => { Ok(1) }
-                (3, 2) => { Ok(1) }
+                (1, 3) | (3, 1) => { Ok(2) }
+                (1, 2) | (2, 1) => { Ok(3) }
+                (2, 3) | (3, 2) => { Ok(1) }
                 (_,_) => Err(format!("aux_pole error: {} {}", pole_from, pole_to) )
             }
         }
