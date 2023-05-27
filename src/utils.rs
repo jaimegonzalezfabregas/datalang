@@ -53,14 +53,25 @@ impl EnterExitLogger{
     }
 }
 
+#[macro_export]
+macro_rules! EnterExitLogger {
+    ($msg:expr, $($args:expr),+ ) => {
+        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar = EnterExitLogger::new(format!( $msg, $($args),+ ));
+    };
+    ($msg:expr  ) => {
+        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar = EnterExitLogger::new($msg);
+    };
+
+}
 
 #[cfg(test)]
 mod tests {
     use crate::utils::EnterExitLogger;
 
     fn hanoi(discs: u16, pole_from: u16, pole_to: u16 ){
-        let _eel = EnterExitLogger::new(format!("{} discos del polo {} al polo {}", discs, pole_from, pole_to) );
+        EnterExitLogger!( "{} discos del polo {} al polo {}", discs, pole_from, pole_to );
         fn compute_aux_pole( pole_from: u16, pole_to: u16 ) -> Result<u16,String> {
+            EnterExitLogger!( "calculo palo que me queda si uso {} y {}", pole_from, pole_to );
             match (pole_from, pole_to) {
                 (1, 3) => { Ok(2) }
                 (3, 1) => { Ok(2) }
