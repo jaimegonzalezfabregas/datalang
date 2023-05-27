@@ -56,10 +56,10 @@ impl EnterExitLogger{
 #[macro_export]
 macro_rules! EnterExitLogger {
     ($msg:expr, $($args:expr),+ ) => {
-        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar = EnterExitLogger::new(format!( $msg, $($args),+ ));
+        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar_jamas_nunca_no = EnterExitLogger::new(format!( $msg, $($args),+ ));
     };
     ($msg:expr  ) => {
-        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar = EnterExitLogger::new($msg);
+        let _un_nombre_de_variable_que_nunca_nadie_va_a_usar_jamas_nunca_no = EnterExitLogger::new($msg.to_string());
     };
 
 }
@@ -96,6 +96,17 @@ mod tests {
     #[test]
     fn test_hanoi(){
         hanoi(3, 1, 3);
+    }
+
+    #[test]
+    fn test_nested_for(){
+        EnterExitLogger!("Tablas del 1 al 10");
+        for i in 1..10 {
+            EnterExitLogger!("Tabla del {}", i );
+            for j in 1..10{
+                EnterExitLogger!("{} x {} = {}", i, j, i*j );
+            }
+        }
     }
 }
 
