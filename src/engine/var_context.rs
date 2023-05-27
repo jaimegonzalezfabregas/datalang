@@ -1,5 +1,6 @@
 use crate::parser::data_reader::Data;
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
@@ -11,6 +12,23 @@ pub struct VarContext {
 impl Hash for VarContext {
     fn hash<H: Hasher>(&self, state: &mut H) {
         format!("{self:?}").hash(state);
+    }
+}
+
+impl fmt::Display for VarContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.op_map {
+            Some(map) => {
+                let mut ret = String::new();
+                ret += "|";
+                for (key, value) in map.iter() {
+                    ret += &format!("{key}:{value}|");
+                }
+
+                write!(f, "{}", ret)
+            }
+            None => write!(f, "no context"),
+        }
     }
 }
 

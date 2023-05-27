@@ -99,9 +99,8 @@ impl Engine {
 
                             if debug_print {
                                 ret += &format!("{sorted_output:?}");
-                            } else {
-                                ret += &draw_table(sorted_output)
                             }
+                            ret += &draw_table(sorted_output)
                         }
                         Ok(None) => (),
                         Err(err) => {

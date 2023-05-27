@@ -42,7 +42,7 @@ impl From<std::io::Error> for DLErr {
     }
 }
 
-const DEBUG_PRINT: bool = false;
+const DEBUG_PRINT: bool = true;
 const AUTO_RUN: bool = true;
 
 fn main() -> Result<(), DLErr> {

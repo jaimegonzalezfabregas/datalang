@@ -409,7 +409,7 @@ impl Statement {
         debug_print: bool,
     ) -> HashSet<VarContext> {
         if debug_print {
-            println!("{debug_margin}get context universe of {self}")
+            println!("{debug_margin}get context universe of {self} knowing that {base_context:?}")
         }
         let ret = match self {
             Statement::Or(statement_a, statement_b) => {
@@ -464,19 +464,13 @@ impl Statement {
                     debug_print,
                 );
 
-                match (deep_universe_a.len(), deep_universe_b.len()) {
-                    (0, _) => deep_universe_b,
-                    (_, 0) => deep_universe_a,
-                    (_, _) => {
-                        let mut product = HashSet::new();
-                        for a_context in deep_universe_a.iter() {
-                            for b_context in deep_universe_b.iter() {
-                                product.insert(a_context.extend(b_context));
-                            }
-                        }
-                        product
+                let mut product = HashSet::new();
+                for a_context in deep_universe_a.iter() {
+                    for b_context in deep_universe_b.iter() {
+                        product.insert(a_context.extend(b_context));
                     }
                 }
+                product
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
@@ -495,8 +489,16 @@ impl Statement {
                         for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
                             if !unfiteable {
                                 match col_exp.solve(col_data, &context) {
-                                    Ok(new_context) => context = new_context,
+                                    Ok(new_context) => {
+                                        if debug_print {
+                                            println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
+                                        }
+                                        context = new_context
+                                    }
                                     Err(_) => {
+                                        if debug_print {
+                                            println!("{debug_margin}fitting {col_data} to {col_exp} failed");
+                                        }
                                         unfiteable = true;
                                     }
                                 }

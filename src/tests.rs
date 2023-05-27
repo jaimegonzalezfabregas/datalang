@@ -171,7 +171,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(2)\n\nEmpty Result\n\n(2)\n(3)\n",
-            engine.input("rel(1) rel(2) rel(3) rel(4) inner(x) :- rel(x) && (rel(x+1) && rel(x-1)) inner(2)? inner(4)? inner(_)?".into(), false)
+            engine.input("rel(1) rel(2) rel(3) rel(4) inner(x) :- rel(x) && rel(x+1) && rel(x-1) inner(2)? inner(4)? inner(_)?".into(), false)
         );
     }
 
