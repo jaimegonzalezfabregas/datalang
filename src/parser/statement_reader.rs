@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
 use crate::engine::var_context::VarContext;
+use crate::engine::var_context_universe::VarContextUniverse;
 use crate::engine::{Engine, RelId};
 use crate::lexer::LexogramType::*;
 
@@ -407,7 +408,7 @@ impl Statement {
         caller_depth_map: &HashMap<RelId, usize>,
         debug_margin: String,
         debug_print: bool,
-    ) -> HashSet<VarContext> {
+    ) -> VarContextUniverse {
         if debug_print {
             println!("{debug_margin}get context universe of {self} knowing that {base_context:?}")
         }
@@ -430,20 +431,7 @@ impl Statement {
                     debug_print,
                 );
 
-                match (deep_universe_a.len(), deep_universe_b.len()) {
-                    (0, _) => deep_universe_b,
-                    (_, 0) => deep_universe_a,
-                    (_, _) => {
-                        let mut product = HashSet::new();
-                        for a_context in deep_universe_a.into_iter() {
-                            product.insert(a_context);
-                        }
-                        for b_context in deep_universe_b.into_iter() {
-                            product.insert(b_context);
-                        }
-                        product
-                    }
-                }
+                deep_universe_a.and(deep_universe_b)
             }
 
             Statement::And(statement_a, statement_b) => {
@@ -464,13 +452,7 @@ impl Statement {
                     debug_print,
                 );
 
-                let mut product = HashSet::new();
-                for a_context in deep_universe_a.iter() {
-                    for b_context in deep_universe_b.iter() {
-                        product.insert(a_context.extend(b_context));
-                    }
-                }
-                product
+                deep_universe_a.or(deep_universe_b)
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
@@ -481,7 +463,7 @@ impl Statement {
                         debug_margin.to_owned() + "|  ",
                         debug_print,
                     );
-                    let mut ret = HashSet::new();
+                    let mut ret = VarContextUniverse::new_restricting();
                     for truth in table_truths {
                         let mut unfiteable = false;
                         let mut context = base_context.clone();
@@ -510,9 +492,9 @@ impl Statement {
                     }
                     ret
                 }
-                None => HashSet::new(),
+                None => VarContextUniverse::new_restricting(),
             },
-            _ => HashSet::from([base_context.to_owned()]),
+            _ => VarContextUniverse::new_unrestricting(),
         };
 
         if debug_print {
@@ -525,10 +507,10 @@ impl Statement {
         &self,
         engine: &Engine,
         caller_depth_map: &HashMap<RelId, usize>,
-        universe: &HashSet<VarContext>,
+        universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
-    ) -> HashSet<VarContext> {
+    ) -> VarContextUniverse {
         if debug_print {
             println!("{debug_margin}get posible contexts of {self}");
         }
@@ -564,8 +546,7 @@ impl Statement {
 
                 // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
 
-                contexts_a.extend(contexts_b);
-                contexts_a
+                contexts_a.or(contexts_b)
             }
             Statement::Not(statement) => {
                 let contexts = statement.get_posible_contexts(
@@ -578,73 +559,60 @@ impl Statement {
 
                 // println!("\nNOT: \n{contexts:?}");
 
-                universe
-                    .difference(&contexts)
-                    .map(|e| e.to_owned())
-                    .collect()
+                universe.difference(&contexts)
             }
-            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => universe
-                .iter()
-                .flat_map(|context| {
-                    let a = exp_a.literalize(context);
-                    let b = exp_b.literalize(context);
-                    match (exp_a, exp_b, a, b) {
-                        (_, _, Ok(data_a), Ok(data_b)) => {
-                            if data_a == data_b {
-                                vec![context.to_owned()]
-                            } else {
-                                vec![]
-                            }
-                        }
-                        (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
-                            match exp.solve(&goal, context) {
-                                Ok(new_context) => {
-                                    vec![new_context]
+            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
+                let fitting_contexts = universe
+                    .iter()
+                    .flat_map(|context| {
+                        let a = exp_a.literalize(&context);
+                        let b = exp_b.literalize(&context);
+                        match (exp_a, exp_b, a, b) {
+                            (_, _, Ok(data_a), Ok(data_b)) => {
+                                if data_a == data_b {
+                                    vec![context.to_owned()]
+                                } else {
+                                    vec![]
                                 }
-                                Err(_) => vec![],
                             }
+                            (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
+                                match exp.solve(&goal, &context) {
+                                    Ok(new_context) => {
+                                        vec![new_context]
+                                    }
+                                    Err(_) => vec![],
+                                }
+                            }
+                            (_, _, Err(_), Err(_)) => vec![],
                         }
-                        (_, _, Err(_), Err(_)) => vec![],
-                    }
-                })
-                .map(|e| e.to_owned())
-                .collect(),
+                    })
+                    .collect::<Vec<VarContext>>();
 
-            Statement::ExpresionComparison(exp_a, exp_b, comp) => universe
-                .iter()
-                .filter(|context| {
-                    let a = exp_a.literalize(context);
-                    let b = exp_b.literalize(context);
-                    match (a, b) {
-                        (Ok(data_a), Ok(data_b)) => match comp {
-                            Comparison::Lt => data_a < data_b,
-                            Comparison::Gt => data_a > data_b,
-                            Comparison::Gte => data_a <= data_b,
-                            Comparison::Lte => data_a >= data_b,
-                            Comparison::Eq => unreachable!(),
-                        },
-                        _ => false,
-                    }
-                })
-                .map(|e| e.to_owned())
-                .collect(),
+                VarContextUniverse::from(fitting_contexts)
+            }
 
-            Statement::Relation(rel) => universe
-                .iter()
-                // .filter(|context| { // creo que no es necesario por la forma en la que hacemos la busqueda del universos
-                //     match engine.query_exists(
-                //         rel,
-                //         context,
-                //         caller_depth_map,
-                //         debug_margin.to_owned() + "|  ",
-                //         debug_print,
-                //     ) {
-                //         Ok(ret) => ret,
-                //         Err(_) => false,
-                //     }
-                // })
-                .map(|e| e.to_owned())
-                .collect(),
+            Statement::ExpresionComparison(exp_a, exp_b, comp) => {
+                let fitting_contexts = universe
+                    .iter()
+                    .filter(|context| {
+                        let a = exp_a.literalize(context);
+                        let b = exp_b.literalize(context);
+                        match (a, b) {
+                            (Ok(data_a), Ok(data_b)) => match comp {
+                                Comparison::Lt => data_a < data_b,
+                                Comparison::Gt => data_a > data_b,
+                                Comparison::Gte => data_a <= data_b,
+                                Comparison::Lte => data_a >= data_b,
+                                Comparison::Eq => unreachable!(),
+                            },
+                            _ => false,
+                        }
+                    })
+                    .collect::<Vec<VarContext>>();
+
+                VarContextUniverse::from(fitting_contexts)
+            }
+            Statement::Relation(rel) => universe.to_owned(),
         };
         if debug_print {
             println!("{debug_margin}* posible contexts for {self} on {universe:?} are {ret:?}");

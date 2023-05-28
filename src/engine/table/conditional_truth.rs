@@ -69,7 +69,7 @@ impl ConditionalTruth {
             //     println!("contexts: {e:?}");
             //     e
             // })
-            .map(|c| self.template.to_truth(c))
+            .map(|c| self.template.to_truth(&c))
             .filter(|e| match e {
                 Ok(_) => true,
                 Err(_) => false,

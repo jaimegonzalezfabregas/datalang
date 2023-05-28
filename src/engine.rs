@@ -1,6 +1,7 @@
 pub mod operations;
 pub mod table;
 pub mod var_context;
+pub mod var_context_universe;
 
 use crate::{
     lexer,
