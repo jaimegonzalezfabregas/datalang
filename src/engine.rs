@@ -84,7 +84,7 @@ impl fmt::Display for Engine {
 impl Engine {
     pub fn new() -> Self {
         Self {
-            recursion_limit: 6,
+            recursion_limit: 5,
             tables: HashMap::new(),
         }
     }
@@ -133,7 +133,7 @@ impl Engine {
         debug_print: bool,
     ) -> Result<Vec<Truth>, RuntimeError> {
         if debug_print {
-            println!("{debug_margin}query {query}, with context: {context:?}")
+            println!("{debug_margin}query {query}, with context: {context}")
         }
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();

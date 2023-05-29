@@ -498,9 +498,6 @@ impl Statement {
                         }
                         let a = exp_a.literalize(&context);
                         let b = exp_b.literalize(&context);
-                        if debug_print {
-                            println!("{debug_margin}{exp_a}: {a:#?}, {exp_b}: {b:#?}");
-                        }
                         match (exp_a, exp_b, a, b) {
                             (_, _, Ok(data_a), Ok(data_b)) => {
                                   if debug_print {
@@ -558,10 +555,15 @@ impl Statement {
                 (VarContextUniverse::from(fitting_contexts), self.to_owned())
             }
             Statement::Relation(rel) => {
+                if debug_print {
+                    println!("{debug_margin}recursive relation querry");
+                }
                 let ret = match engine.get_table(rel.get_rel_id()) {
                     Some(table) => {
                         let mut ret = VarContextUniverse::new_restricting();
-
+                        if debug_print {
+                            println!("{debug_margin}tabla encontrada");
+                        }
                         for base_context in universe.iter() {
                             let table_truths = table.get_content_iter(
                                 rel.clone_n_apply(&base_context),
@@ -604,16 +606,55 @@ impl Statement {
                         }
                         ret
                     }
-                    None => VarContextUniverse::new_restricting(),
+                    None => {
+                        if debug_print {
+                            println!("{debug_margin}tabla no encontrada {self}");
+                        }
+                        VarContextUniverse::new_restricting()
+                    }
                 };
 
-                (ret, Statement::True)
+                let mut dealed_full_results = ret.is_restricting();
+                if dealed_full_results {
+                    for context in ret.iter() {
+                        println!("checking if {rel} is solved on {context}");
+                        for arg in &rel.args {
+                            if !arg.fully_defined(&context) {
+                                dealed_full_results = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                let dealed_any_results = ret.len() > 0;
+
+                let mut empty_due_to_universe = !dealed_any_results;
+                if empty_due_to_universe {
+                    for context in universe.iter() {
+                        for arg in &rel.args {
+                            if !arg.fully_defined(&context) {
+                                empty_due_to_universe = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if dealed_full_results && dealed_any_results || empty_due_to_universe {
+                    (ret, Statement::True)
+                } else {
+                    (VarContextUniverse::new_unrestricting(), self.to_owned())
+                }
             }
 
             Statement::True => (universe.to_owned(), Statement::True),
         };
         if debug_print {
-            println!("{debug_margin}* universe for {self} based on {universe} is {}, simplifing to {}",ret.0,ret.1);
+            println!(
+                "{debug_margin}* universe for {self} based on {universe} is {}, simplifing to {}",
+                ret.0, ret.1
+            );
         }
         ret
     }

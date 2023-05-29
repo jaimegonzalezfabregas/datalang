@@ -1,1 +1,6 @@
-reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true rightSideUp(a,ret) :- reverse(a,rev) && reverse(rev,ret) rightSideUp([1,2,3,4],_)?
+rel(1) rel(2) rel(3) rel(4) 
+inner(x) :- rel(x) && rel(x+1) && rel(x-1) 
+
+#inner(2)? 
+inner(4)? 
+#inner(_)?

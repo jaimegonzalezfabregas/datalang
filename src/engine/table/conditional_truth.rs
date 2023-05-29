@@ -54,18 +54,24 @@ impl ConditionalTruth {
             }
         }
 
+        let mut results = VarContextUniverse::new_unrestricting();
+        if base_context.len() != 0 {
+            results.insert(base_context);
+        }
+        let mut last_results = results.clone();
+
         if debug_print {
-            println!("{debug_margin}base context is {base_context}");
+            println!("{debug_margin}base universe is {results}");
         }
 
-        let mut results = VarContextUniverse::new_restricting();
-        results.insert(base_context);
-        let mut last_results_len = 0;
-
         let mut simplified_statement = self.condition.to_owned();
-
-        while (results.len() == last_results_len) {
-            last_results_len = results.len();
+        let mut first = true;
+        while first || results != last_results {
+            first = false;
+            if debug_print {
+                println!("{debug_margin}simplifing from {results}, {simplified_statement}");
+            }
+            last_results = results.to_owned();
 
             (results, simplified_statement) = simplified_statement.get_posible_contexts(
                 engine,
@@ -74,6 +80,10 @@ impl ConditionalTruth {
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             );
+            if debug_print {
+                println!("{debug_margin}simplifing to {results}, {simplified_statement}");
+                println!("{debug_margin}repeating if {} != {}", results, last_results);
+            }
         }
 
         let ret = results

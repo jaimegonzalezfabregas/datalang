@@ -64,6 +64,10 @@ impl VarContext {
 
         ret
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 
 impl From<HashMap<String, Data>> for VarContext {

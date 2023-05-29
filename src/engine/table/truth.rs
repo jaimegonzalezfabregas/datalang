@@ -62,7 +62,7 @@ impl Truth {
         debug_print: bool,
     ) -> Result<VarContext, String> {
         if debug_print{
-            print!("{debug_margin}check if {self} fits {filter}");
+            println!("{debug_margin}check if {self} fits {filter}");
         }
         let mut context = caller_context;
         let mut pinned = vec![false; self.get_width()];

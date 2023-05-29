@@ -44,6 +44,17 @@ mod tests {
             )
         );
     }
+    #[test]
+    fn view_1_2() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(0)\n(1)\n(2)\n",
+            engine.input(
+                "rel(0,1) rel(1,2) test(a) :- rel(a,_) || rel(_,a) test(_)?".into(),
+                false
+            )
+        );
+    }
 
     #[test]
     fn view_2() {
@@ -176,6 +187,19 @@ mod tests {
     }
 
     #[test]
+    fn double_data_source_for_var() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(1)\n(2)\n(3)\n(4)\n(5)\n(6)\n",
+            engine.input(
+                "a(1) a(2) a(3) b(4) b(5) b(6) test(ret) :- (a(t) || b(t)) && t = ret test(_)?"
+                    .into(),
+                false
+            )
+        );
+    }
+
+    #[test]
     fn arrays_1() {
         let mut engine = Engine::new();
         assert_eq!(
@@ -273,9 +297,21 @@ mod tests {
     fn double_deduction() {
         let mut engine = Engine::new();
         assert_eq!(
-            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(6)\n",
+            "\n([1,6,3,5], [1,6,3,5])\n",
             engine.input(
-                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true right_side_up(a,ret) :- reverse(a,rev) && reverse(rev,ret) right_side_up([1,2,3,4],_)?".into(),
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true rightSideUp(a,ret) :- reverse(a,rev) && reverse(rev,ret) rightSideUp([1,6,3,5],_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn triple_deduction() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n([1,2,3,4], [4,3,2,1])\n",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true badReverse(a,ret) :- reverse(a,mid1) && reverse(mid1,mid2) && reverse(mid2,ret) badReverse([1,2,3,4],_)?".into(),
                 false
             )
         );

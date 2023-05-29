@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt};
 
 use super::var_context::VarContext;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VarContextUniverse {
     contents: Option<HashSet<VarContext>>,
 }
@@ -102,7 +102,14 @@ impl VarContextUniverse {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = VarContext> {
-        return self.contents.to_owned().into_iter().flatten();
+        match &self.contents {
+            Some(set) => set.to_owned().into_iter(),
+            None => {
+                let mut ret = VarContextUniverse::new_restricting();
+                ret.insert(VarContext::new());
+                ret.iter()
+            }
+        }
     }
 
     pub fn new_restricting() -> Self {
@@ -152,7 +159,7 @@ impl VarContextUniverse {
     }
 
     pub(crate) fn len(&self) -> usize {
-        match self.contents {
+        match &self.contents {
             Some(set) => set.len(),
             None => 0,
         }
