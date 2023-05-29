@@ -1,0 +1,1 @@
+reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true rightSideUp(a,ret) :- reverse(a,rev) && reverse(rev,ret) rightSideUp([1,2,3,4],_)?

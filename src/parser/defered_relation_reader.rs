@@ -1,5 +1,5 @@
 use core::fmt;
-use std::vec;
+use std::{hash, vec};
 
 use crate::engine::table::truth::Truth;
 use crate::engine::var_context::VarContext;
@@ -13,12 +13,30 @@ use super::error::ParserError;
 use super::{FailureExplanation, Relation};
 use crate::parser::expresion_reader::Expresion;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct DeferedRelation {
     pub negated: bool,
     pub assumptions: Vec<Assumption>,
     pub rel_name: String,
     pub args: Vec<Expresion>,
+}
+
+impl PartialEq for DeferedRelation {
+    fn eq(&self, other: &Self) -> bool {
+        self.negated == other.negated
+            && self.assumptions.iter().eq(other.assumptions.iter())
+            && self.rel_name == other.rel_name
+            && self.args == other.args
+    }
+}
+
+impl hash::Hash for DeferedRelation {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: hash::Hasher,
+    {
+        format!("{self:?}").hash(state);
+    }
 }
 
 impl Relation for DeferedRelation {
@@ -39,7 +57,7 @@ impl DeferedRelation {
         Ok(Truth::from(&(literal_vec, self.get_rel_id())))
     }
 
-    pub fn apply(&self, context: &VarContext) -> Result<DeferedRelation, String> {
+    pub fn clone_n_apply(&self, context: &VarContext) -> DeferedRelation {
         let mut literalized_vec = vec![];
         for exp in &self.args {
             literalized_vec.push(match exp.literalize(context) {
@@ -47,7 +65,7 @@ impl DeferedRelation {
                 Err(_) => exp.clone(),
             })
         }
-        Ok(DeferedRelation::from((&self.rel_name, literalized_vec)))
+        DeferedRelation::from((&self.rel_name, literalized_vec))
     }
 }
 
@@ -148,7 +166,7 @@ pub fn read_defered_relation(
                 state = SpectingStatementIdentifier;
             }
             (_, Spectingassumption) => {
-                match read_assumption(lexograms, i, debug_margin.clone() + "   ", debug_print)? {
+                match read_assumption(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)? {
                     Ok((assumption, jump_to)) => {
                         cursor = jump_to;
                         assumptions.push(assumption);
@@ -186,7 +204,7 @@ pub fn read_defered_relation(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(e) => {
@@ -246,7 +264,7 @@ pub fn read_defered_relation(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len() - 1,
         if_it_was: "defered relation".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

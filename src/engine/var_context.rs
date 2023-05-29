@@ -1,11 +1,12 @@
 use crate::parser::data_reader::Data;
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VarContext {
-    op_map: Option<HashMap<String, Data>>,
+    map: HashMap<String, Data>,
 }
 
 impl Hash for VarContext {
@@ -14,68 +15,59 @@ impl Hash for VarContext {
     }
 }
 
+impl fmt::Display for VarContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ret = String::new();
+        ret += "|";
+        for (key, value) in self.map.iter() {
+            ret += &format!("{key}:{value}|");
+        }
+
+        write!(f, "{}", ret)
+    }
+}
+
 impl VarContext {
     pub fn get(&self, var_name: &String) -> Option<Data> {
-        match &self.op_map {
-            Some(map) => match map.get(var_name) {
-                Some(ret) => Some(ret.to_owned()),
-                None => None,
-            },
+        match self.map.get(var_name) {
+            Some(ret) => Some(ret.to_owned()),
             None => None,
         }
     }
 
     pub fn set(&mut self, var_name: String, value: Data) {
-        match self.op_map {
-            None => {
-                self.op_map = Some(HashMap::new());
-            }
-            Some(_) => (),
-        }
-        match &mut self.op_map {
-            None => {
-                unreachable!()
-            }
-            Some(map) => {
-                map.insert(var_name, value);
-            }
-        }
+        self.map.insert(var_name, value);
     }
 
     pub(crate) fn new() -> VarContext {
-        VarContext { op_map: None }
+        VarContext {
+            map: HashMap::new(),
+        }
     }
 
-    pub fn extend(&self, b_context: &VarContext) -> VarContext {
-        Self::from(match (&self.op_map, &b_context.op_map) {
-            (None, None) => None,
-            (None, Some(b)) => Some(b.to_owned()),
-            (Some(a), None) => Some(a.to_owned()),
-            (Some(a), Some(b)) => {
-                if a.keys()
-                    .any(|a_key| b.contains_key(a_key) && b.get(a_key) != a.get(a_key))
-                {
-                    None
-                } else {
-                    let mut join = a.clone();
-                    join.extend(b.clone());
-                    Some(join)
-                }
-            }
-        })
+    pub fn extend(&self, b_context: &VarContext) -> Option<VarContext> {
+        let a = &self.map;
+        let b = &b_context.map;
+
+        let ret = if a
+            .keys()
+            .any(|a_key| b.contains_key(a_key) && b.get(a_key) != a.get(a_key))
+        {
+            None
+        } else {
+            let mut join = a.clone();
+            join.extend(b.clone());
+            Some(Self::from(join))
+        };
+
+        // println!("extending {self} y {b_context} results in {ret:?}");
+
+        ret
     }
 }
 
 impl From<HashMap<String, Data>> for VarContext {
     fn from(value: HashMap<String, Data>) -> Self {
-        Self {
-            op_map: Some(value),
-        }
-    }
-}
-
-impl From<Option<HashMap<String, Data>>> for VarContext {
-    fn from(value: Option<HashMap<String, Data>>) -> Self {
-        Self { op_map: value }
+        Self { map: value }
     }
 }

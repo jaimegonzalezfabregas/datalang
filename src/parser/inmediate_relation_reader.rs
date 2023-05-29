@@ -12,7 +12,7 @@ use super::{
     Relation,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InmediateRelation {
     pub negated: bool,
     pub rel_name: String,
@@ -95,7 +95,7 @@ pub fn read_inmediate_relation(
                         lexograms,
                         i,
                         true,
-                        debug_margin.clone() + "   ",
+                        debug_margin.to_owned() + "|  ",
                         debug_print,
                     )?,
                     op_rel_name,
@@ -136,7 +136,7 @@ pub fn read_inmediate_relation(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "inmediate relation".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

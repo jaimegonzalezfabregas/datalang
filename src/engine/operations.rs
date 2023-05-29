@@ -7,6 +7,7 @@ pub fn add_direct(op1: Data, op2: Data) -> Result<Data, String> {
         (Data::Array(x), Data::Array(y)) => {
             Data::Array(x.iter().chain(y.iter()).map(|e| e.clone()).collect())
         }
+        (Data::Array(x), data) => Data::Array(x.iter().chain(vec![data].iter()).cloned().collect()),
         _ => return Err("cant operate on diferently typed literals".into()),
     })
 }
@@ -86,7 +87,7 @@ pub fn substract_direct(op1: Data, op2: Data) -> Result<Data, String> {
 
 pub fn substract_reverse_op1(op2: Data, res: Data) -> Result<Data, String> {
     Ok(match (op2, res) {
-        (Data::Number(x), Data::Number(r)) => Data::Number(x - r),
+        (Data::Number(x), Data::Number(r)) => Data::Number(r + x),
         (Data::String(_), Data::String(_)) => return Err("cant substract strings".into()),
         (Data::Array(_), Data::Array(_)) => return Err("cant substract arrays".into()),
         _ => return Err("cant operate on diferently typed literals".into()),
@@ -95,7 +96,7 @@ pub fn substract_reverse_op1(op2: Data, res: Data) -> Result<Data, String> {
 
 pub fn substract_reverse_op2(op1: Data, res: Data) -> Result<Data, String> {
     Ok(match (op1, res) {
-        (Data::Number(x), Data::Number(r)) => Data::Number(x + r),
+        (Data::Number(x), Data::Number(r)) => Data::Number(r - x),
         (Data::String(_), Data::String(_)) => return Err("cant substract strings".into()),
         (Data::Array(_), Data::Array(_)) => return Err("cant substract arrays".into()),
         _ => return Err("cant operate on diferently typed literals".into()),

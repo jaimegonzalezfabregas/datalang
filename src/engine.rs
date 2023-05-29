@@ -1,6 +1,8 @@
 pub mod operations;
+pub mod recursion_tally;
 pub mod table;
 pub mod var_context;
+pub mod var_context_universe;
 
 use crate::{
     lexer,
@@ -12,6 +14,7 @@ use crate::{
 use std::{collections::HashMap, fmt, vec};
 
 use self::{
+    recursion_tally::RecursionTally,
     table::{truth::Truth, Table},
     var_context::VarContext,
 };
@@ -38,6 +41,7 @@ impl From<String> for RuntimeError {
 
 #[derive(Debug, Clone)]
 pub struct Engine {
+    recursion_limit: usize,
     tables: HashMap<RelId, Table>,
 }
 
@@ -80,8 +84,13 @@ impl fmt::Display for Engine {
 impl Engine {
     pub fn new() -> Self {
         Self {
+            recursion_limit: 6,
             tables: HashMap::new(),
         }
+    }
+
+    pub fn set_recursion_limit(&mut self, rl: usize) {
+        self.recursion_limit = rl;
     }
 
     pub fn input(self: &mut Engine, commands: String, debug_print: bool) -> String {
@@ -92,24 +101,21 @@ impl Engine {
                     if debug_print {
                         println!("\nexecuting: {line}");
                     }
-                    match self.ingest_line(line) {
+                    match self.ingest_line(line, String::new(), debug_print) {
                         Ok(Some(output)) => {
                             let mut sorted_output = output.clone();
                             sorted_output.sort();
+
                             if debug_print {
                                 ret += &format!("{sorted_output:?}");
-                            } else {
-                                ret += &draw_table(sorted_output)
                             }
+                            ret += &draw_table(sorted_output)
                         }
                         Ok(None) => (),
                         Err(err) => {
                             ret += &format!("An error ocurred on the execution step: \n {err:?}");
                             break;
                         }
-                    }
-                    if debug_print {
-                        println!("\nengine_state: {self:?}");
                     }
                 }
             }
@@ -122,7 +128,13 @@ impl Engine {
         &self,
         query: &DeferedRelation,
         context: &VarContext,
+        recursion_tally: &RecursionTally,
+        debug_margin: String,
+        debug_print: bool,
     ) -> Result<Vec<Truth>, RuntimeError> {
+        if debug_print {
+            println!("{debug_margin}query {query}, with context: {context:?}")
+        }
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
 
@@ -131,7 +143,43 @@ impl Engine {
         }
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
-            Ok(table.get_truths(&query.apply(context)?, &hypothetical_engine)?)
+            Ok(table.get_filtered_truths(
+                &query.clone_n_apply(context),
+                &hypothetical_engine,
+                recursion_tally,
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            )?)
+        } else {
+            Err(RuntimeError::RelationNotFound(rel_id))
+        }
+    }
+    pub fn query_exists(
+        &self,
+        query: &DeferedRelation,
+        context: &VarContext,
+        recursion_tally: &RecursionTally,
+        debug_margin: String,
+        debug_print: bool,
+    ) -> Result<bool, RuntimeError> {
+        if debug_print {
+            println!("{debug_margin}query exists {query}, with context: {context:?}")
+        }
+        let rel_id = query.get_rel_id();
+        let mut hypothetical_engine = self.clone();
+
+        for assumption in &query.assumptions {
+            hypothetical_engine.ingest_assumption(assumption, context)?;
+        }
+
+        if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
+            Ok(table.contains(
+                &query.clone_n_apply(context),
+                &hypothetical_engine,
+                recursion_tally,
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            )?)
         } else {
             Err(RuntimeError::RelationNotFound(rel_id))
         }
@@ -166,7 +214,7 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_rule(rel.to_owned())?;
+                    table.add_truth(rel.to_owned())?;
                 }
                 Ok(())
             }
@@ -188,13 +236,25 @@ impl Engine {
         }
     }
 
-    pub fn ingest_line(self: &mut Engine, line: Line) -> Result<Option<Vec<Truth>>, RuntimeError> {
+    pub fn ingest_line(
+        self: &mut Engine,
+        line: Line,
+        debug_margin: String,
+        debug_print: bool,
+    ) -> Result<Option<Vec<Truth>>, RuntimeError> {
         match line {
-            Line::Query(q) => Ok(Some(self.query(&q, &VarContext::new())?)),
+            Line::Query(q) => Ok(Some(self.query(
+                &q,
+                &VarContext::new(),
+                &RecursionTally::new(self.recursion_limit),
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            )?)),
             Line::Assumption(assumption) => {
                 self.ingest_assumption(&assumption, &VarContext::new())?;
                 Ok(None)
             }
+            Line::Comment(_) => Ok(None),
         }
     }
 

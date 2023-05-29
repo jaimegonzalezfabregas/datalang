@@ -9,7 +9,7 @@ use crate::{
 use super::defered_relation_reader::DeferedRelation;
 use super::error::ParserError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Update {
     pub filter: DeferedRelation,
     pub goal: DeferedRelation,
@@ -52,7 +52,7 @@ pub fn read_update(
                     lexograms,
                     i,
                     false,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Err(e) => {
@@ -77,7 +77,7 @@ pub fn read_update(
                         lexograms,
                         i,
                         false,
-                        debug_margin.clone() + "   ",
+                        debug_margin.to_owned() + "|  ",
                         debug_print,
                     )?,
                     op_filter_rel,
@@ -114,7 +114,7 @@ pub fn read_update(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len(),
+        lex_pos: lexograms.len()-1,
         if_it_was: "update".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

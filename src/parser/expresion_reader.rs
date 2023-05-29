@@ -9,7 +9,7 @@ use super::error::{FailureExplanation, ParserError};
 use crate::engine::operations::*;
 use crate::parser::destructuring_array_reader::read_destructuring_array;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
@@ -40,7 +40,7 @@ impl fmt::Display for VarName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Operation<Op, Res> {
     pub forward: fn(Op, Op) -> Result<Res, String>,
     pub reverse_op1: fn(Op, Res) -> Result<Res, String>,
@@ -48,7 +48,7 @@ pub struct Operation<Op, Res> {
     pub to_string: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Expresion {
     // resolvable to a value
     Arithmetic(Box<Expresion>, Box<Expresion>, Operation<Data, Data>),
@@ -75,9 +75,34 @@ impl Expresion {
             Expresion::Literal(e) => Ok(e),
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(value) => Ok(value.to_owned()),
-                None => Err(format!("var {str} not defined on context")),
+                None => Err(format!("literalize error: var {str} not defined on context")),
             },
-            _ => Err(format!("no se ha podido literalizar: {self}")),
+            Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
+                let mut datas = vec![];
+                for e in exp_vec.iter() {
+                    match e {
+                        Expresion::Var(VarName::ExplodeArray(var_name)) => {
+                            let var_value = match context.get(var_name){
+                                Some(ret) => ret,
+                                None =>return Err(format!(
+                                    "no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"
+                                )),
+                            };
+                            match var_value {
+                                Data::Array(arr) => datas.extend(arr),
+                                _ =>     return Err(format!("no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"))
+                                
+                            }
+                        }
+                        _ => datas.push(e.literalize(context)?),
+                    }
+                }
+
+                Ok(Data::Array(datas))
+            }
+            _ => Err(format!(
+                "no se ha podido literalizar: {self} en el contexto {context}"
+            )),
         };
 
         ret
@@ -87,17 +112,19 @@ impl Expresion {
         self: &Expresion,
         goal: &Data,
         caller_context: &VarContext,
+        debug_margin: String,
+        debug_print: bool,
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
         // println!("\n------ call to solve with goal:[{goal}] at [{self}] at {caller_context:?}");
 
-        match self.literalize(&caller_context) {
+        let ret = match self.literalize(&caller_context) {
             Ok(d) => {
                 if d == goal.to_owned() {
-                    Ok(caller_context.to_owned())
+                    caller_context.to_owned()
                 } else {
-                    Err("La literalizacion y el goal no coinciden".into())
+                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
                 }
             }
             Err(_) => match self {
@@ -107,18 +134,20 @@ impl Expresion {
 
                     match (literalize_a, literalize_b) {
                         (Ok(_), Ok(_)) => {
-                            Err("parece que se intentan operar dos datos incompatibles".into())
+                            return Err("parece que se intentan operar dos datos incompatibles".into())
                         }
                         (Ok(op_1), Err(_)) => {
                             let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
-                            b.solve(&new_goal, caller_context)
+                            b.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)?
                         }
                         (Err(_), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
-                            a.solve(&new_goal, caller_context)
+                            a.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)?
                         }
                         (Err(_), Err(_)) => {
-                            Err("parece que esta expresión contiene varias incognitas".into())
+                            return Err("parece que esta expresión contiene varias incognitas".into())
                         }
                     }
                 }
@@ -126,16 +155,65 @@ impl Expresion {
                 Expresion::Var(VarName::Direct(name)) => {
                     let mut new_context = caller_context.to_owned();
                     new_context.set(name.to_owned(), goal.to_owned());
-                    return Ok(new_context);
+                    new_context
                 }
                 Expresion::Var(VarName::Anonimus) => {
-                    return Ok(caller_context.to_owned());
+                    caller_context.to_owned()
                 }
-                Expresion::Var(_) => {
-                    return Err("using vartype not suported for solving".into());
+                Expresion::Var(VarName::DestructuredArray(template_arr)) => {
+                    if let Data::Array(goal_arr) = goal {
+                        if goal_arr.len() < template_arr.len() {
+                            return Err("unmatchable arrays".into());
+                        }
+
+                        let mut new_context = caller_context.to_owned();
+                        let mut last_i = 0;
+
+                        for (i, array_position) in template_arr.iter().enumerate() {
+                            last_i = i;
+                            if let Expresion::Var(VarName::ExplodeArray(x)) = array_position {
+                                match if x != "_" {
+                                    Expresion::Var(VarName::Direct(x.to_owned()))
+                                } else {
+                                    Expresion::Var(VarName::Anonimus)
+                                }
+                                .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)
+                                {
+                                    Ok(newer_context) => new_context = newer_context,
+                                    Err(msg) => {
+                                        return Err(format!("at array position {i} error: {msg}"))
+                                    }
+                                }
+                                last_i = goal_arr.len()-1;
+                            } else {
+                                match array_position.solve(&goal_arr[i], &new_context,debug_margin.to_owned() + "|  ",
+                                    debug_print) {
+                                    Ok(newer_context) => new_context = newer_context,
+                                    Err(msg) => {
+                                        return Err(format!("at array position {i} error: {msg}"))
+                                    }
+                                }
+                            }
+                        }
+                        if last_i == goal_arr.len()-1{
+                            new_context
+                        }else{
+                         return Err("cant destructure an array with unmatching size".into());
+                        }
+                    } else {
+                        return Err("cant destructure a non array goal to an array".into());
+                    }
                 }
+                Expresion::Var(VarName::ExplodeArray(_)) => unreachable!(),
             },
+        };
+
+        if debug_print{
+            println!("{debug_margin} solving de {self} con goal {goal} ha resultado en {ret}")
         }
+
+        Ok(ret)
     }
 }
 
@@ -210,7 +288,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -243,7 +321,7 @@ pub fn read_expresion(
                     lexograms,
                     i,
                     only_literals,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
                     Ok((e, jump_to)) => {
@@ -284,7 +362,7 @@ pub fn read_expresion(
     match (state, op_ret) {
         (SpectingOperatorOrEnd, Some(ret)) => Ok(Ok((ret, lexograms.len()))),
         _ => Ok(Err(FailureExplanation {
-            lex_pos: lexograms.len(),
+            lex_pos: lexograms.len() - 1,
             if_it_was: "expresion".into(),
             failed_because: "file ended".into(),
             parent_failure: vec![],
@@ -311,17 +389,17 @@ pub fn read_expresion_item(
             match read_data(
                 lexograms,
                 start_cursor,
-                debug_margin.clone() + "   ",
+                debug_margin.to_owned() + "|  ",
                 debug_print,
             )? {
                 Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
                 Err(a) => match read_destructuring_array(
                     lexograms,
                     start_cursor,
-                    debug_margin.clone() + "   ",
+                    debug_margin.to_owned() + "|  ",
                     debug_print,
                 )? {
-                    Ok(ret) => Ok(Ok(ret)),
+                    Ok((ret, jump_to)) => Ok(Ok((Expresion::Var(ret), jump_to))),
 
                     Err(b) => Ok(Err(FailureExplanation {
                         lex_pos: start_cursor,

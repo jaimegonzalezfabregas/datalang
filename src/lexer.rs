@@ -6,6 +6,7 @@ use crate::utils::*;
 
 #[derive(Debug, Clone)]
 pub enum LexogramType {
+    Comment,
     RightParenthesis,
     LeftParenthesis,
     RightBracket,
@@ -39,6 +40,7 @@ pub enum LexogramType {
     Any,
     Query,
     Update,
+    True,
 }
 #[derive(Debug, Clone)]
 pub struct Lexogram {
@@ -100,6 +102,8 @@ fn parse(w: String) -> Result<Option<LexogramType>, LexerErrorMsg> {
 
 fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerErrorMsg> {
     let reserved_lexograms = HashMap::from([
+        ("#",LexogramType::Comment),
+        ("true", LexogramType::True),
         (":", LexogramType::CharColon),
         (")", LexogramType::RightParenthesis),
         ("(", LexogramType::LeftParenthesis),
