@@ -38,7 +38,8 @@ impl ConditionalTruth {
 
         for (filter, template) in filter.args.iter().zip(self.template.args.to_owned()) {
             match filter.literalize(&base_context) {
-                Ok(data) => match template.solve(&data, &base_context) {
+                Ok(data) => match template.solve(&data, &base_context,debug_margin.to_owned() + "|  ",
+                                    debug_print) {
                     Ok(new_context) => base_context = new_context,
                     Err(_) => (),
                 },

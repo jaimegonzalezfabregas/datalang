@@ -75,7 +75,7 @@ impl Expresion {
             Expresion::Literal(e) => Ok(e),
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(value) => Ok(value.to_owned()),
-                None => Err(format!("var {str} not defined on context")),
+                None => Err(format!("literalize error: var {str} not defined on context")),
             },
             Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
                 let mut datas = vec![];
@@ -112,17 +112,19 @@ impl Expresion {
         self: &Expresion,
         goal: &Data,
         caller_context: &VarContext,
+        debug_margin: String,
+        debug_print: bool,
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
         // println!("\n------ call to solve with goal:[{goal}] at [{self}] at {caller_context:?}");
 
-        match self.literalize(&caller_context) {
+        let ret = match self.literalize(&caller_context) {
             Ok(d) => {
                 if d == goal.to_owned() {
-                    Ok(caller_context.to_owned())
+                    caller_context.to_owned()
                 } else {
-                    Err("La literalizacion y el goal no coinciden".into())
+                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
                 }
             }
             Err(_) => match self {
@@ -132,18 +134,20 @@ impl Expresion {
 
                     match (literalize_a, literalize_b) {
                         (Ok(_), Ok(_)) => {
-                            Err("parece que se intentan operar dos datos incompatibles".into())
+                            return Err("parece que se intentan operar dos datos incompatibles".into())
                         }
                         (Ok(op_1), Err(_)) => {
                             let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
-                            b.solve(&new_goal, caller_context)
+                            b.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)?
                         }
                         (Err(_), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
-                            a.solve(&new_goal, caller_context)
+                            a.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)?
                         }
                         (Err(_), Err(_)) => {
-                            Err("parece que esta expresión contiene varias incognitas".into())
+                            return Err("parece que esta expresión contiene varias incognitas".into())
                         }
                     }
                 }
@@ -151,10 +155,10 @@ impl Expresion {
                 Expresion::Var(VarName::Direct(name)) => {
                     let mut new_context = caller_context.to_owned();
                     new_context.set(name.to_owned(), goal.to_owned());
-                    return Ok(new_context);
+                    new_context
                 }
                 Expresion::Var(VarName::Anonimus) => {
-                    return Ok(caller_context.to_owned());
+                    caller_context.to_owned()
                 }
                 Expresion::Var(VarName::DestructuredArray(template_arr)) => {
                     if let Data::Array(goal_arr) = goal {
@@ -163,22 +167,28 @@ impl Expresion {
                         }
 
                         let mut new_context = caller_context.to_owned();
+                        let mut last_i = 0;
+
                         for (i, array_position) in template_arr.iter().enumerate() {
+                            last_i = i;
                             if let Expresion::Var(VarName::ExplodeArray(x)) = array_position {
                                 match if x != "_" {
                                     Expresion::Var(VarName::Direct(x.to_owned()))
                                 } else {
                                     Expresion::Var(VarName::Anonimus)
                                 }
-                                .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context)
+                                .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context,debug_margin.to_owned() + "|  ",
+                                    debug_print)
                                 {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
                                     }
                                 }
+                                last_i = goal_arr.len()-1;
                             } else {
-                                match array_position.solve(&goal_arr[i], &new_context) {
+                                match array_position.solve(&goal_arr[i], &new_context,debug_margin.to_owned() + "|  ",
+                                    debug_print) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
@@ -186,15 +196,24 @@ impl Expresion {
                                 }
                             }
                         }
-
-                        return Ok(new_context);
+                        if last_i == goal_arr.len()-1{
+                            new_context
+                        }else{
+                         return Err("cant destructure an array with unmatching size".into());
+                        }
                     } else {
                         return Err("cant destructure a non array goal to an array".into());
                     }
                 }
                 Expresion::Var(VarName::ExplodeArray(_)) => unreachable!(),
             },
+        };
+
+        if debug_print{
+            println!("{debug_margin} solving de {self} con goal {goal} ha resultado en {ret}")
         }
+
+        Ok(ret)
     }
 }
 

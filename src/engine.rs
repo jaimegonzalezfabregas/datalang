@@ -84,7 +84,7 @@ impl fmt::Display for Engine {
 impl Engine {
     pub fn new() -> Self {
         Self {
-            recursion_limit: 7,
+            recursion_limit: 6,
             tables: HashMap::new(),
         }
     }
@@ -144,7 +144,7 @@ impl Engine {
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
             Ok(table.get_filtered_truths(
-                &query.apply(context)?,
+                &query.clone_n_apply(context),
                 &hypothetical_engine,
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",
@@ -174,7 +174,7 @@ impl Engine {
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
             Ok(table.contains(
-                &query.apply(context)?,
+                &query.clone_n_apply(context),
                 &hypothetical_engine,
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",

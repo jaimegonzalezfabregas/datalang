@@ -473,7 +473,7 @@ impl Statement {
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
                     let table_truths = table.get_content_iter(
-                        filter,
+                        rel.clone_n_apply(base_context),
                         recursion_tally.to_owned(),
                         engine.to_owned(),
                         debug_margin.to_owned() + "|  ",
@@ -486,16 +486,21 @@ impl Statement {
 
                         for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
                             if !unfiteable {
-                                match col_exp.solve(col_data, &context) {
+                                match col_exp.solve(
+                                    col_data,
+                                    &context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(new_context) => {
                                         if debug_print {
                                             println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
                                         }
                                         context = new_context
                                     }
-                                    Err(_) => {
+                                    Err(err) => {
                                         if debug_print {
-                                            println!("{debug_margin}fitting {col_data} to {col_exp} failed");
+                                            println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
                                         }
                                         unfiteable = true;
                                     }
@@ -515,8 +520,20 @@ impl Statement {
                 let a = exp_a.literalize(base_context);
                 let b = exp_b.literalize(base_context);
                 match (exp_a, exp_b, a, b) {
+                    (_, _, Ok(a_data), Ok(b_data)) => {
+                        let mut ret = VarContextUniverse::new_restricting();
+                        if a_data == b_data {
+                            ret.insert(base_context.to_owned());
+                        }
+                        ret
+                    }
                     (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
-                        match exp.solve(&goal, &VarContext::new()) {
+                        match exp.solve(
+                            &goal,
+                            &VarContext::new(),
+                            debug_margin.to_owned() + "|  ",
+                            debug_print,
+                        ) {
                             Ok(new_context) => {
                                 let mut ret = VarContextUniverse::new_unrestricting();
                                 ret.insert(new_context);
@@ -601,21 +618,43 @@ impl Statement {
                 universe.difference(&contexts)
             }
             Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
+                if debug_print {
+                    println!(
+                        "{debug_margin}equality of {exp_a} and {exp_b} on universe {universe}"
+                    );
+                }
                 let fitting_contexts = universe
                     .iter()
                     .flat_map(|context| {
+                        if debug_print {
+                            println!("{debug_margin}for context {context}");
+                        }
                         let a = exp_a.literalize(&context);
                         let b = exp_b.literalize(&context);
+                        if debug_print {
+                            println!("{debug_margin}{exp_a}: {a:#?}, {exp_b}: {b:#?}");
+                        }
                         match (exp_a, exp_b, a, b) {
                             (_, _, Ok(data_a), Ok(data_b)) => {
+                                  if debug_print {
+                                    println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");
+                                }
                                 if data_a == data_b {
                                     vec![context.to_owned()]
                                 } else {
                                     vec![]
                                 }
                             }
-                            (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
-                                match exp.solve(&goal, &context) {
+                            (literalized_exp, exp, Ok(goal), Err(_)) | (exp, literalized_exp, Err(_), Ok(goal)) => {
+                                if debug_print {
+                                    println!("{debug_margin}{literalized_exp} was literalized to {goal}, trying to backwards solve");
+                                }
+                                match exp.solve(
+                                    &goal,
+                                    &context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(new_context) => {
                                         vec![new_context]
                                     }

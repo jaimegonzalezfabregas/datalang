@@ -7,6 +7,7 @@ pub fn add_direct(op1: Data, op2: Data) -> Result<Data, String> {
         (Data::Array(x), Data::Array(y)) => {
             Data::Array(x.iter().chain(y.iter()).map(|e| e.clone()).collect())
         }
+        (Data::Array(x), data) => Data::Array(x.iter().chain(vec![data].iter()).cloned().collect()),
         _ => return Err("cant operate on diferently typed literals".into()),
     })
 }

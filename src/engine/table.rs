@@ -103,7 +103,7 @@ impl Table {
 
     pub fn get_content_iter(
         self: &Table,
-        filter: &DeferedRelation,
+        filter: DeferedRelation,
         mut recursion_tally: RecursionTally,
         engine: Engine,
         debug_margin: String,
@@ -111,7 +111,7 @@ impl Table {
     ) -> ContentIterator {
         if debug_print {
             println!(
-                "{debug_margin}get all contents of {} ",
+                "{debug_margin}get all contents of {} with filter {filter}",
                 self.rel_id.identifier
             )
         }
@@ -119,7 +119,7 @@ impl Table {
         let go_deeper = recursion_tally.go_deeper(&self.rel_id);
 
         ContentIterator {
-            filter: filter.to_owned(),
+            filter,
             condition_vec: if go_deeper {
                 self.conditions.to_owned().into_iter().collect()
             } else {
@@ -151,7 +151,7 @@ impl Table {
         self.check_relation(&filter)?;
 
         let all_truths = self.get_content_iter(
-            filter,
+            filter.to_owned(),
             recursion_tally.to_owned(),
             engine.to_owned(),
             debug_margin.to_owned() + "|  ",
@@ -160,7 +160,12 @@ impl Table {
 
         let mut matched_truths = vec![];
         for truth in all_truths {
-            if let Ok(_) = truth.fits_filter(filter, VarContext::new()) {
+            if let Ok(_) = truth.fits_filter(
+                filter,
+                VarContext::new(),
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            ) {
                 matched_truths.push(truth.to_owned());
             }
         }
@@ -186,7 +191,7 @@ impl Table {
         self.check_relation(&filter)?;
 
         let all_truths = self.get_content_iter(
-            &self.open_filter(),
+            self.open_filter(),
             recursion_tally.to_owned(),
             engine.to_owned(),
             debug_margin.to_owned() + "|  ",
@@ -194,7 +199,8 @@ impl Table {
         );
 
         for truth in all_truths {
-            if let Ok(_) = truth.fits_filter(filter, VarContext::new()) {
+            if let Ok(_) = truth.fits_filter(filter, VarContext::new(),debug_margin.to_owned() + "|  ",
+                                    debug_print) {
                 return Ok(true);
             }
         }

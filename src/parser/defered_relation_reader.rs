@@ -57,7 +57,7 @@ impl DeferedRelation {
         Ok(Truth::from(&(literal_vec, self.get_rel_id())))
     }
 
-    pub fn apply(&self, context: &VarContext) -> Result<DeferedRelation, String> {
+    pub fn clone_n_apply(&self, context: &VarContext) -> DeferedRelation {
         let mut literalized_vec = vec![];
         for exp in &self.args {
             literalized_vec.push(match exp.literalize(context) {
@@ -65,7 +65,7 @@ impl DeferedRelation {
                 Err(_) => exp.clone(),
             })
         }
-        Ok(DeferedRelation::from((&self.rel_name, literalized_vec)))
+        DeferedRelation::from((&self.rel_name, literalized_vec))
     }
 }
 

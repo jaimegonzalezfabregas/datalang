@@ -210,12 +210,36 @@ mod tests {
     }
 
     #[test]
-    fn arrays_3() {
+    fn arrays_append() {
         let mut engine = Engine::new();
         assert_eq!(
-            "([1,2],[2,1])",
+            "\n([1,2,3,4], [4,3,2,1])\n",
             engine.input(
-                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- true reverse([1,2,3,4],_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn arrays_recursion() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n([1,2,3,4], [4,3,2,1])\n",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true reverse([1,2,3,4],_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn recursion_base_case_using_tautology() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n([1,2,3,4], [4,3,2,1])\n",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- 1 = 1 reverse([1,2,3,4],_)?".into(),
                 false
             )
         );
@@ -240,6 +264,18 @@ mod tests {
             "\n(0)\n(1)\n(2)\n(3)\n(4)\n(6)\n",
             engine.input(
                 "a(0) a(1) a(2) a(3) b(0) b(2) b(4) b(6) ayb(x) :- a(x) || b(x) ayb(_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn double_deduction() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(6)\n",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true right_side_up(a,ret) :- reverse(a,rev) && reverse(rev,ret) right_side_up([1,2,3,4],_)?".into(),
                 false
             )
         );
