@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 
 use super::var_context::VarContext;
 
@@ -21,6 +21,25 @@ impl From<Vec<VarContext>> for VarContextUniverse {
     }
 }
 
+impl fmt::Display for VarContextUniverse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ret = String::new();
+
+        match &self.contents {
+            Some(contexts) => {
+                ret += "[";
+                for context in contexts {
+                    ret += &format!("{context},");
+                }
+                ret += "]";
+            }
+            None => ret = "Unrestrictive".into(),
+        }
+
+        write!(f, "{}", ret)
+    }
+}
+
 impl VarContextUniverse {
     pub fn new_unrestricting() -> Self {
         Self { contents: None }
@@ -30,33 +49,35 @@ impl VarContextUniverse {
         self.contents.is_some()
     }
 
-    pub fn or(self, other: Self) -> Self {
+    pub fn or(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
         let mut ret = Self { contents: None };
 
-        match self.contents {
+        match &self.contents {
             Some(contexts) => {
                 for context in contexts {
-                    ret.insert(context);
+                    ret.insert(context.to_owned());
                 }
             }
 
             None => (),
         }
-        match other.contents {
+        match &other.contents {
             Some(contexts) => {
                 for context in contexts {
-                    ret.insert(context);
+                    ret.insert(context.to_owned());
                 }
             }
 
             None => (),
         }
-
+        if debug_print {
+            println!("{debug_margin}{self} or {other} = {ret}");
+        }
         ret
     }
 
-    pub fn and(self, other: Self) -> Self {
-        match (&self.contents, &other.contents) {
+    pub fn and(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
+        let ret = match (&self.contents, &other.contents) {
             (Some(a), Some(b)) => {
                 let mut ret_set = HashSet::new();
                 for context_a in a {
@@ -70,10 +91,14 @@ impl VarContextUniverse {
                     contents: Some(ret_set),
                 }
             }
-            (None, Some(_)) => other,
-            (Some(_), None) => self,
+            (None, Some(_)) => other.to_owned(),
+            (Some(_), None) => self.to_owned(),
             (None, None) => Self::new_unrestricting(),
+        };
+        if debug_print {
+            println!("{debug_margin}{self} and {other} = {ret}");
         }
+        ret
     }
 
     pub fn iter(&self) -> impl Iterator<Item = VarContext> {

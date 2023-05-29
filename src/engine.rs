@@ -1,4 +1,5 @@
 pub mod operations;
+pub mod recursion_tally;
 pub mod table;
 pub mod var_context;
 pub mod var_context_universe;
@@ -13,6 +14,7 @@ use crate::{
 use std::{collections::HashMap, fmt, vec};
 
 use self::{
+    recursion_tally::RecursionTally,
     table::{truth::Truth, Table},
     var_context::VarContext,
 };
@@ -39,6 +41,7 @@ impl From<String> for RuntimeError {
 
 #[derive(Debug, Clone)]
 pub struct Engine {
+    recursion_limit: usize,
     tables: HashMap<RelId, Table>,
 }
 
@@ -81,8 +84,13 @@ impl fmt::Display for Engine {
 impl Engine {
     pub fn new() -> Self {
         Self {
+            recursion_limit: 7,
             tables: HashMap::new(),
         }
+    }
+
+    pub fn set_recursion_limit(&mut self, rl: usize) {
+        self.recursion_limit = rl;
     }
 
     pub fn input(self: &mut Engine, commands: String, debug_print: bool) -> String {
@@ -120,7 +128,7 @@ impl Engine {
         &self,
         query: &DeferedRelation,
         context: &VarContext,
-        caller_depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<Vec<Truth>, RuntimeError> {
@@ -138,7 +146,7 @@ impl Engine {
             Ok(table.get_filtered_truths(
                 &query.apply(context)?,
                 &hypothetical_engine,
-                caller_depth_map,
+                recursion_tally,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             )?)
@@ -149,8 +157,8 @@ impl Engine {
     pub fn query_exists(
         &self,
         query: &DeferedRelation,
-        context: &&VarContext,
-        caller_depth_map: &HashMap<RelId, usize>,
+        context: &VarContext,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<bool, RuntimeError> {
@@ -168,7 +176,7 @@ impl Engine {
             Ok(table.contains(
                 &query.apply(context)?,
                 &hypothetical_engine,
-                caller_depth_map,
+                recursion_tally,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             )?)
@@ -238,7 +246,7 @@ impl Engine {
             Line::Query(q) => Ok(Some(self.query(
                 &q,
                 &VarContext::new(),
-                &HashMap::new(),
+                &RecursionTally::new(self.recursion_limit),
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             )?)),
@@ -246,6 +254,7 @@ impl Engine {
                 self.ingest_assumption(&assumption, &VarContext::new())?;
                 Ok(None)
             }
+            Line::Comment(_) => Ok(None),
         }
     }
 

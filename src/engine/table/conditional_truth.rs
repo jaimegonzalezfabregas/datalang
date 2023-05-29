@@ -1,8 +1,7 @@
 use core::fmt;
-use std::collections::HashMap;
 
 use crate::{
-    engine::{var_context::VarContext, Engine, RelId},
+    engine::{recursion_tally::RecursionTally, var_context::VarContext, Engine},
     parser::{
         conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
         statement_reader::Statement,
@@ -27,12 +26,12 @@ impl ConditionalTruth {
         &self,
         filter: &DeferedRelation,
         engine: &Engine,
-        depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Vec<Truth> {
         if debug_print {
-            println!("{debug_margin} getting truths of {self}");
+            println!("{debug_margin}getting truths of {self}");
         }
 
         let mut base_context = VarContext::new();
@@ -47,19 +46,24 @@ impl ConditionalTruth {
             }
         }
 
+        if debug_print {
+            println!("{debug_margin}base context is {base_context}");
+        }
+
         let univese_of_contexts = &self.condition.get_context_universe(
             filter,
             engine,
             &base_context,
-            depth_map,
+            recursion_tally,
             debug_margin.to_owned() + "|  ",
             debug_print,
         );
 
-        self.condition
+        let ret = self
+            .condition
             .get_posible_contexts(
                 engine,
-                depth_map,
+                recursion_tally,
                 univese_of_contexts,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
@@ -72,13 +76,22 @@ impl ConditionalTruth {
             .map(|c| self.template.to_truth(&c))
             .filter(|e| match e {
                 Ok(_) => true,
-                Err(_) => false,
+                Err(err) => {
+                    println!("{err:?}");
+                    false
+                }
             })
             .map(|e| match e {
                 Ok(res) => res,
                 Err(_) => unreachable!(),
             })
-            .collect()
+            .collect();
+
+        if debug_print {
+            println!("{debug_margin}* truths of {self} are {ret:?}");
+        }
+
+        ret
     }
     pub fn from(c: Conditional) -> Self {
         ConditionalTruth {

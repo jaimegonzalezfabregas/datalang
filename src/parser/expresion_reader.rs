@@ -77,7 +77,32 @@ impl Expresion {
                 Some(value) => Ok(value.to_owned()),
                 None => Err(format!("var {str} not defined on context")),
             },
-            _ => Err(format!("no se ha podido literalizar: {self}")),
+            Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
+                let mut datas = vec![];
+                for e in exp_vec.iter() {
+                    match e {
+                        Expresion::Var(VarName::ExplodeArray(var_name)) => {
+                            let var_value = match context.get(var_name){
+                                Some(ret) => ret,
+                                None =>return Err(format!(
+                                    "no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"
+                                )),
+                            };
+                            match var_value {
+                                Data::Array(arr) => datas.extend(arr),
+                                _ =>     return Err(format!("no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"))
+                                
+                            }
+                        }
+                        _ => datas.push(e.literalize(context)?),
+                    }
+                }
+
+                Ok(Data::Array(datas))
+            }
+            _ => Err(format!(
+                "no se ha podido literalizar: {self} en el contexto {context}"
+            )),
         };
 
         ret

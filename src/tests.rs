@@ -187,38 +187,39 @@ mod tests {
     #[test]
     fn recursion() {
         let mut engine = Engine::new();
+        engine.set_recursion_limit(70);
         assert_eq!(
-            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(5)\n",
+            "\n(0 )\n(1 )\n(2 )\n(3 )\n(4 )\n(5 )\n(6 )\n(7 )\n(8 )\n(9 )\n(10)\n(11)\n(12)\n(13)\n(14)\n(15)\n(16)\n(17)\n(18)\n(19)\n(20)\n(21)\n(22)\n(23)\n(24)\n(25)\n(26)\n(27)\n(28)\n(29)\n(30)\n(31)\n(32)\n(33)\n(34)\n(35)\n(36)\n(37)\n(38)\n(39)\n(40)\n",
             engine.input(
-                "test(a+1) :- test(a) && a < 5 test(0) test(_)?".into(),
+                "test(a+1) :- test(a) && a < 40 test(0) test(_)?".into(),
                 false
             )
         );
     }
 
-    // #[test]
-    // fn array_recursion() {
-    //     let mut engine = Engine::new();
-    //     assert_eq!(
-    //         "\n([0])\n([1])\n([2])\n([3])\n([4])\n([5])\n",
-    //         engine.input(
-    //             "test([a+1]) :- test([a]) && a < 5 test([0]) test(_)?".into(),
-    //             false
-    //         )
-    //     );
-    // }
+    #[test]
+    fn array_recursion() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n([0])\n([1])\n([2])\n([3])\n([4])\n([5])\n",
+            engine.input(
+                "test([a+1]) :- test([a]) && a < 5 test([0]) test(_)?".into(),
+                false
+            )
+        );
+    }
 
-    // #[test] // 
-    // fn arrays_3() {
-    //     let mut engine = Engine::new();
-    //     assert_eq!(
-    //         "",
-    //         engine.input(
-    //             "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
-    //             false
-    //         )
-    //     );
-    // }
+    #[test]
+    fn arrays_3() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "([1,2],[2,1])",
+            engine.input(
+                "reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + a reverse([a],[a]) :- 1 = 1 reverse([1,2],_)?".into(),
+                false
+            )
+        );
+    }
 
     #[test]
     fn double_constraint_and() {
@@ -232,7 +233,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn double_constraint_or() {
         let mut engine = Engine::new();
         assert_eq!(

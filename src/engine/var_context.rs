@@ -60,7 +60,7 @@ impl VarContext {
             Some(Self::from(join))
         };
 
-        println!("extending {self} y {b_context} results in {ret:?}");
+        // println!("extending {self} y {b_context} results in {ret:?}");
 
         ret
     }

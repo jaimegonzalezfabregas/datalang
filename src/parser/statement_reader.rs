@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
+use crate::engine::recursion_tally::RecursionTally;
 use crate::engine::var_context::VarContext;
 use crate::engine::var_context_universe::VarContextUniverse;
-use crate::engine::{Engine, RelId};
+use crate::engine::Engine;
 use crate::lexer::LexogramType::*;
 
 use crate::parser::defered_relation_reader::read_defered_relation;
@@ -35,6 +35,7 @@ pub enum Comparison {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Statement {
     // resolvable to a bolean
+    True,
     And(Box<Statement>, Box<Statement>),
     Or(Box<Statement>, Box<Statement>),
     Not(Box<Statement>),
@@ -64,6 +65,7 @@ impl fmt::Display for Statement {
                 write!(f, "({sta}<={stb})")
             }
             Statement::Relation(rel) => write!(f, "{rel}"),
+            Statement::True => write!(f, "true"),
         }
     }
 }
@@ -83,14 +85,14 @@ pub fn read_statement(
 
     #[derive(Debug, Clone, Copy)]
     enum StatementParserStates {
-        SpectingStatementOrNegationOrOpenParenthesis,
+        SpectingStatementOrNegationOrOpenParenthesisOrTrue,
         SpectingStatementOrOpenParenthesis,
         SpectingOperatorOrEnd,
         SpectingClosingParenthesis,
     }
     use StatementParserStates::*;
     let mut cursor = start_cursor;
-    let mut state = SpectingStatementOrNegationOrOpenParenthesis;
+    let mut state = SpectingStatementOrNegationOrOpenParenthesisOrTrue;
 
     let mut op_ret = None;
 
@@ -114,14 +116,19 @@ pub fn read_statement(
                 state = SpectingStatementOrOpenParenthesis;
             }
 
-            (OpNot, SpectingStatementOrNegationOrOpenParenthesis, _) => {
+            (OpNot, SpectingStatementOrNegationOrOpenParenthesisOrTrue, _) => {
                 negate_next_statement = true;
                 state = SpectingStatementOrOpenParenthesis
             }
 
+            (True, SpectingStatementOrNegationOrOpenParenthesisOrTrue, _) => {
+                return Ok(Ok((Statement::True, i + 1)));
+            }
+
             (
                 LeftParenthesis,
-                SpectingStatementOrOpenParenthesis | SpectingStatementOrNegationOrOpenParenthesis,
+                SpectingStatementOrOpenParenthesis
+                | SpectingStatementOrNegationOrOpenParenthesisOrTrue,
                 _,
             ) => {
                 match read_statement(
@@ -158,7 +165,8 @@ pub fn read_statement(
 
             (
                 _,
-                SpectingStatementOrOpenParenthesis | SpectingStatementOrNegationOrOpenParenthesis,
+                SpectingStatementOrOpenParenthesis
+                | SpectingStatementOrNegationOrOpenParenthesisOrTrue,
                 _,
             ) => {
                 match read_statement_item(
@@ -405,12 +413,12 @@ impl Statement {
         filter: &DeferedRelation,
         engine: &Engine,
         base_context: &VarContext,
-        caller_depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> VarContextUniverse {
         if debug_print {
-            println!("{debug_margin}get context universe of {self} knowing that {base_context:?}")
+            println!("{debug_margin}get context universe of {self} knowing that {base_context}")
         }
         let ret = match self {
             Statement::Or(statement_a, statement_b) => {
@@ -418,7 +426,7 @@ impl Statement {
                     filter,
                     engine,
                     base_context,
-                    caller_depth_map,
+                    recursion_tally,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
@@ -426,12 +434,16 @@ impl Statement {
                     filter,
                     engine,
                     base_context,
-                    caller_depth_map,
+                    recursion_tally,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
 
-                deep_universe_a.and(deep_universe_b)
+                deep_universe_a.or(
+                    deep_universe_b,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                )
             }
 
             Statement::And(statement_a, statement_b) => {
@@ -439,7 +451,7 @@ impl Statement {
                     filter,
                     engine,
                     base_context,
-                    caller_depth_map,
+                    recursion_tally,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
@@ -447,19 +459,23 @@ impl Statement {
                     filter,
                     engine,
                     base_context,
-                    caller_depth_map,
+                    recursion_tally,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
 
-                deep_universe_a.or(deep_universe_b)
+                deep_universe_a.and(
+                    deep_universe_b,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                )
             }
             Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
                 Some(table) => {
                     let table_truths = table.get_content_iter(
                         filter,
-                        caller_depth_map,
-                        engine,
+                        recursion_tally.to_owned(),
+                        engine.to_owned(),
                         debug_margin.to_owned() + "|  ",
                         debug_print,
                     );
@@ -494,11 +510,34 @@ impl Statement {
                 }
                 None => VarContextUniverse::new_restricting(),
             },
+            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
+                // TODO ecuaciones con merme interesante: varias ocurrencias de la misma variable, soluciones multiples
+                let a = exp_a.literalize(base_context);
+                let b = exp_b.literalize(base_context);
+                match (exp_a, exp_b, a, b) {
+                    (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
+                        match exp.solve(&goal, &VarContext::new()) {
+                            Ok(new_context) => {
+                                let mut ret = VarContextUniverse::new_unrestricting();
+                                ret.insert(new_context);
+                                ret
+                            }
+                            Err(_) => VarContextUniverse::new_unrestricting(),
+                        }
+                    }
+                    _ => VarContextUniverse::new_unrestricting(),
+                }
+            }
+            Statement::True => {
+                let mut ret = VarContextUniverse::new_restricting();
+                ret.insert(base_context.to_owned());
+                ret
+            }
             _ => VarContextUniverse::new_unrestricting(),
         };
 
         if debug_print {
-            println!("{debug_margin}* posible universes for {self} are {ret:?}");
+            println!("{debug_margin}* universe for {self} is {ret}");
         }
         ret
     }
@@ -506,7 +545,7 @@ impl Statement {
     pub fn get_posible_contexts(
         &self,
         engine: &Engine,
-        caller_depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
@@ -517,10 +556,10 @@ impl Statement {
         let ret = match self {
             Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
                 engine,
-                caller_depth_map,
+                recursion_tally,
                 &statement_a.get_posible_contexts(
                     engine,
-                    caller_depth_map,
+                    recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
@@ -529,16 +568,16 @@ impl Statement {
                 debug_print,
             ),
             Statement::Or(statement_a, statement_b) => {
-                let mut contexts_a = statement_a.get_posible_contexts(
+                let contexts_a = statement_a.get_posible_contexts(
                     engine,
-                    caller_depth_map,
+                    recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
                 let contexts_b = statement_b.get_posible_contexts(
                     engine,
-                    caller_depth_map,
+                    recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
@@ -546,12 +585,12 @@ impl Statement {
 
                 // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
 
-                contexts_a.or(contexts_b)
+                contexts_a.or(contexts_b, debug_margin.to_owned() + "|  ", debug_print)
             }
             Statement::Not(statement) => {
                 let contexts = statement.get_posible_contexts(
                     engine,
-                    caller_depth_map,
+                    recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
@@ -612,10 +651,10 @@ impl Statement {
 
                 VarContextUniverse::from(fitting_contexts)
             }
-            Statement::Relation(rel) => universe.to_owned(),
+            Statement::Relation(_) | Statement::True => universe.to_owned(),
         };
         if debug_print {
-            println!("{debug_margin}* posible contexts for {self} on {universe:?} are {ret:?}");
+            println!("{debug_margin}* posible contexts for {self} on {universe} are {ret}");
         }
         ret
     }

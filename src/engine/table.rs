@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt, vec,
-};
+use std::{collections::HashSet, fmt, vec};
 mod conditional_truth;
 pub mod truth;
 
@@ -15,7 +12,7 @@ use crate::parser::{
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
 
-use super::{var_context::VarContext, Engine, RelId};
+use super::{recursion_tally::RecursionTally, var_context::VarContext, Engine, RelId};
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -28,7 +25,7 @@ pub struct ContentIterator {
     filter: DeferedRelation,
     condition_vec: Vec<ConditionalTruth>,
     curent_returning_queue: Vec<Truth>,
-    creator_depth_map: HashMap<RelId, usize>,
+    recursion_tally: RecursionTally,
     engine: Engine,
     debug_margin: String,
     debug_print: bool,
@@ -44,7 +41,7 @@ impl Iterator for ContentIterator {
             self.curent_returning_queue = cond.get_truths(
                 &self.filter,
                 &self.engine,
-                &self.creator_depth_map,
+                &self.recursion_tally,
                 self.debug_margin.to_owned() + "|  ",
                 self.debug_print,
             );
@@ -107,28 +104,19 @@ impl Table {
     pub fn get_content_iter(
         self: &Table,
         filter: &DeferedRelation,
-        caller_depth_map: &HashMap<RelId, usize>,
-        engine: &Engine,
+        mut recursion_tally: RecursionTally,
+        engine: Engine,
         debug_margin: String,
         debug_print: bool,
     ) -> ContentIterator {
         if debug_print {
             println!(
-                "{debug_margin}get all contents of {} with dm: {caller_depth_map:?}",
+                "{debug_margin}get all contents of {} ",
                 self.rel_id.identifier
             )
         }
-
-        let mut depth_map = caller_depth_map.to_owned();
-        const MAX_DEPTH: usize = 7;
-
-        let go_deeper = if let Some(depth_count) = depth_map.get_mut(&self.rel_id) {
-            *depth_count -= 1;
-            depth_count.to_owned() > 0
-        } else {
-            depth_map.insert(self.rel_id.to_owned(), MAX_DEPTH);
-            true
-        };
+        recursion_tally.count_up(&self.rel_id);
+        let go_deeper = recursion_tally.go_deeper(&self.rel_id);
 
         ContentIterator {
             filter: filter.to_owned(),
@@ -138,8 +126,8 @@ impl Table {
                 vec![]
             },
             curent_returning_queue: self.truths.to_owned().into_iter().collect(),
-            creator_depth_map: depth_map,
-            engine: engine.to_owned(),
+            recursion_tally,
+            engine,
             debug_margin,
             debug_print,
         }
@@ -149,7 +137,7 @@ impl Table {
         self: &Table,
         filter: &DeferedRelation,
         engine: &Engine,
-        caller_depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<Vec<Truth>, String> {
@@ -164,8 +152,8 @@ impl Table {
 
         let all_truths = self.get_content_iter(
             filter,
-            caller_depth_map,
-            engine,
+            recursion_tally.to_owned(),
+            engine.to_owned(),
             debug_margin.to_owned() + "|  ",
             debug_print,
         );
@@ -184,7 +172,7 @@ impl Table {
         self: &Table,
         filter: &DeferedRelation,
         engine: &Engine,
-        caller_depth_map: &HashMap<RelId, usize>,
+        recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<bool, String> {
@@ -199,8 +187,8 @@ impl Table {
 
         let all_truths = self.get_content_iter(
             &self.open_filter(),
-            caller_depth_map,
-            engine,
+            recursion_tally.to_owned(),
+            engine.to_owned(),
             debug_margin.to_owned() + "|  ",
             debug_print,
         );

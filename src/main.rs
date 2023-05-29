@@ -3,7 +3,7 @@ mod lexer;
 mod parser;
 mod tests;
 mod utils;
-use std::env::current_dir;
+
 use std::fs::write;
 use std::{fs::read_to_string, io};
 
@@ -41,12 +41,10 @@ impl From<std::io::Error> for DLErr {
         Self::IOError(e)
     }
 }
-
-const DEBUG_PRINT: bool = true;
 const AUTO_RUN: bool = true;
 
 fn main() -> Result<(), DLErr> {
-    println!("{:?}", current_dir());
+    let mut debug_print: bool = true;
     let mut engine = Engine::new();
 
     let stdin = io::stdin();
@@ -54,7 +52,7 @@ fn main() -> Result<(), DLErr> {
     if AUTO_RUN {
         println!(
             "{}",
-            engine.input(read_to_string("debug_input.dl")?, DEBUG_PRINT)
+            engine.input(read_to_string("debug_input.dl")?, debug_print)
         );
     }
 
@@ -79,7 +77,7 @@ fn main() -> Result<(), DLErr> {
                     .skip(1)
                     .collect();
                 match read_to_string(file_path.trim()) {
-                    Ok(commands) => println!("{}", engine.input(commands, DEBUG_PRINT)),
+                    Ok(commands) => println!("{}", engine.input(commands, debug_print)),
                     Err(err) => println!(
                         "the file couldnt be read ({}), reason: {err}",
                         file_path.trim()
@@ -98,8 +96,31 @@ fn main() -> Result<(), DLErr> {
                     Err(err) => println!("export failed due to: {err}"),
                 }
             }
+
+            if buffer.starts_with("/set_debug") {
+                let arg: String = buffer
+                    .chars()
+                    .into_iter()
+                    .skip_while(|c| c != &' ')
+                    .skip(1)
+                    .collect();
+                debug_print = arg == "true";
+            }
+
+            if buffer.starts_with("/set_recursion_limit") {
+                let arg: String = buffer
+                    .chars()
+                    .into_iter()
+                    .skip_while(|c| c != &' ')
+                    .skip(1)
+                    .collect();
+                match arg.parse::<usize>() {
+                    Ok(num) => engine.set_recursion_limit(num),
+                    Err(err) => println!("error parsing argument: {err:?}"),
+                }
+            }
         } else {
-            println!("{}", engine.input(buffer, DEBUG_PRINT));
+            println!("{}", engine.input(buffer, debug_print));
         }
     }
 
