@@ -150,4 +150,11 @@ impl VarContextUniverse {
             }
         }
     }
+
+    pub(crate) fn len(&self) -> usize {
+        match self.contents {
+            Some(set) => set.len(),
+            None => 0,
+        }
+    }
 }

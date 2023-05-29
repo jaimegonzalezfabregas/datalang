@@ -1,7 +1,10 @@
 use core::fmt;
 
 use crate::{
-    engine::{recursion_tally::RecursionTally, var_context::VarContext, Engine},
+    engine::{
+        recursion_tally::RecursionTally, var_context::VarContext,
+        var_context_universe::VarContextUniverse, Engine,
+    },
     parser::{
         conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
         statement_reader::Statement,
@@ -38,8 +41,12 @@ impl ConditionalTruth {
 
         for (filter, template) in filter.args.iter().zip(self.template.args.to_owned()) {
             match filter.literalize(&base_context) {
-                Ok(data) => match template.solve(&data, &base_context,debug_margin.to_owned() + "|  ",
-                                    debug_print) {
+                Ok(data) => match template.solve(
+                    &data,
+                    &base_context,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                ) {
                     Ok(new_context) => base_context = new_context,
                     Err(_) => (),
                 },
@@ -51,24 +58,25 @@ impl ConditionalTruth {
             println!("{debug_margin}base context is {base_context}");
         }
 
-        let univese_of_contexts = &self.condition.get_context_universe(
-            filter,
-            engine,
-            &base_context,
-            recursion_tally,
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        );
+        let mut results = VarContextUniverse::new_restricting();
+        results.insert(base_context);
+        let mut last_results_len = 0;
 
-        let ret = self
-            .condition
-            .get_posible_contexts(
+        let mut simplified_statement = self.condition.to_owned();
+
+        while (results.len() == last_results_len) {
+            last_results_len = results.len();
+
+            (results, simplified_statement) = simplified_statement.get_posible_contexts(
                 engine,
                 recursion_tally,
-                univese_of_contexts,
+                &results,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
-            )
+            );
+        }
+
+        let ret = results
             .iter()
             // .map(|e| {
             //     println!("contexts: {e:?}");

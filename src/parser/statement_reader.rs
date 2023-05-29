@@ -408,157 +408,6 @@ fn merge_statements(
 }
 
 impl Statement {
-    pub fn get_context_universe(
-        &self,
-        filter: &DeferedRelation,
-        engine: &Engine,
-        base_context: &VarContext,
-        recursion_tally: &RecursionTally,
-        debug_margin: String,
-        debug_print: bool,
-    ) -> VarContextUniverse {
-        if debug_print {
-            println!("{debug_margin}get context universe of {self} knowing that {base_context}")
-        }
-        let ret = match self {
-            Statement::Or(statement_a, statement_b) => {
-                let deep_universe_a = statement_a.get_context_universe(
-                    filter,
-                    engine,
-                    base_context,
-                    recursion_tally,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                );
-                let deep_universe_b = statement_b.get_context_universe(
-                    filter,
-                    engine,
-                    base_context,
-                    recursion_tally,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                );
-
-                deep_universe_a.or(
-                    deep_universe_b,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )
-            }
-
-            Statement::And(statement_a, statement_b) => {
-                let deep_universe_a = statement_a.get_context_universe(
-                    filter,
-                    engine,
-                    base_context,
-                    recursion_tally,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                );
-                let deep_universe_b = statement_b.get_context_universe(
-                    filter,
-                    engine,
-                    base_context,
-                    recursion_tally,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                );
-
-                deep_universe_a.and(
-                    deep_universe_b,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )
-            }
-            Statement::Relation(rel) => match engine.get_table(rel.get_rel_id()) {
-                Some(table) => {
-                    let table_truths = table.get_content_iter(
-                        rel.clone_n_apply(base_context),
-                        recursion_tally.to_owned(),
-                        engine.to_owned(),
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    );
-                    let mut ret = VarContextUniverse::new_restricting();
-                    for truth in table_truths {
-                        let mut unfiteable = false;
-                        let mut context = base_context.clone();
-
-                        for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
-                            if !unfiteable {
-                                match col_exp.solve(
-                                    col_data,
-                                    &context,
-                                    debug_margin.to_owned() + "|  ",
-                                    debug_print,
-                                ) {
-                                    Ok(new_context) => {
-                                        if debug_print {
-                                            println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
-                                        }
-                                        context = new_context
-                                    }
-                                    Err(err) => {
-                                        if debug_print {
-                                            println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
-                                        }
-                                        unfiteable = true;
-                                    }
-                                }
-                            }
-                        }
-                        if !unfiteable {
-                            ret.insert(context);
-                        }
-                    }
-                    ret
-                }
-                None => VarContextUniverse::new_restricting(),
-            },
-            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
-                // TODO ecuaciones con merme interesante: varias ocurrencias de la misma variable, soluciones multiples
-                let a = exp_a.literalize(base_context);
-                let b = exp_b.literalize(base_context);
-                match (exp_a, exp_b, a, b) {
-                    (_, _, Ok(a_data), Ok(b_data)) => {
-                        let mut ret = VarContextUniverse::new_restricting();
-                        if a_data == b_data {
-                            ret.insert(base_context.to_owned());
-                        }
-                        ret
-                    }
-                    (_, exp, Ok(goal), Err(_)) | (exp, _, Err(_), Ok(goal)) => {
-                        match exp.solve(
-                            &goal,
-                            &VarContext::new(),
-                            debug_margin.to_owned() + "|  ",
-                            debug_print,
-                        ) {
-                            Ok(new_context) => {
-                                let mut ret = VarContextUniverse::new_unrestricting();
-                                ret.insert(new_context);
-                                ret
-                            }
-                            Err(_) => VarContextUniverse::new_unrestricting(),
-                        }
-                    }
-                    _ => VarContextUniverse::new_unrestricting(),
-                }
-            }
-            Statement::True => {
-                let mut ret = VarContextUniverse::new_restricting();
-                ret.insert(base_context.to_owned());
-                ret
-            }
-            _ => VarContextUniverse::new_unrestricting(),
-        };
-
-        if debug_print {
-            println!("{debug_margin}* universe for {self} is {ret}");
-        }
-        ret
-    }
-
     pub fn get_posible_contexts(
         &self,
         engine: &Engine,
@@ -566,33 +415,20 @@ impl Statement {
         universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
-    ) -> VarContextUniverse {
+    ) -> (VarContextUniverse, Statement) {
         if debug_print {
             println!("{debug_margin}get posible contexts of {self}");
         }
         let ret = match self {
-            Statement::And(statement_a, statement_b) => statement_b.get_posible_contexts(
-                engine,
-                recursion_tally,
-                &statement_a.get_posible_contexts(
-                    engine,
-                    recursion_tally,
-                    universe,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                ),
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            ),
             Statement::Or(statement_a, statement_b) => {
-                let contexts_a = statement_a.get_posible_contexts(
+                let (deep_universe_a, simplified_statement_a) = statement_a.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 );
-                let contexts_b = statement_b.get_posible_contexts(
+                let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
@@ -600,12 +436,43 @@ impl Statement {
                     debug_print,
                 );
 
-                // println!("\nOR: \n{contexts_a:?}\n{contexts_b:?}");
+                (
+                    deep_universe_a.or(
+                        deep_universe_b,
+                        debug_margin.to_owned() + "|  ",
+                        debug_print,
+                    ),
+                    simplified_statement_a.or(&simplified_statement_b),
+                )
+            }
 
-                contexts_a.or(contexts_b, debug_margin.to_owned() + "|  ", debug_print)
+            Statement::And(statement_a, statement_b) => {
+                let (deep_universe_a, simplified_statement_a) = statement_a.get_posible_contexts(
+                    engine,
+                    recursion_tally,
+                    universe,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                );
+                let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
+                    engine,
+                    recursion_tally,
+                    universe,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                );
+
+                (
+                    deep_universe_a.and(
+                        deep_universe_b,
+                        debug_margin.to_owned() + "|  ",
+                        debug_print,
+                    ),
+                    simplified_statement_a.and(&simplified_statement_b),
+                )
             }
             Statement::Not(statement) => {
-                let contexts = statement.get_posible_contexts(
+                let (contexts, _) = statement.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
@@ -615,7 +482,7 @@ impl Statement {
 
                 // println!("\nNOT: \n{contexts:?}");
 
-                universe.difference(&contexts)
+                (universe.difference(&contexts), self.to_owned()) //TODO i dont think i can simplify a not, look into it
             }
             Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
                 if debug_print {
@@ -666,7 +533,7 @@ impl Statement {
                     })
                     .collect::<Vec<VarContext>>();
 
-                VarContextUniverse::from(fitting_contexts)
+                (VarContextUniverse::from(fitting_contexts), self.to_owned())
             }
 
             Statement::ExpresionComparison(exp_a, exp_b, comp) => {
@@ -688,13 +555,79 @@ impl Statement {
                     })
                     .collect::<Vec<VarContext>>();
 
-                VarContextUniverse::from(fitting_contexts)
+                (VarContextUniverse::from(fitting_contexts), self.to_owned())
             }
-            Statement::Relation(_) | Statement::True => universe.to_owned(),
+            Statement::Relation(rel) => {
+                let ret = match engine.get_table(rel.get_rel_id()) {
+                    Some(table) => {
+                        let mut ret = VarContextUniverse::new_restricting();
+
+                        for base_context in universe.iter() {
+                            let table_truths = table.get_content_iter(
+                                rel.clone_n_apply(&base_context),
+                                recursion_tally.to_owned(),
+                                engine.to_owned(),
+                                debug_margin.to_owned() + "|  ",
+                                debug_print,
+                            );
+                            for truth in table_truths {
+                                let mut unfiteable = false;
+                                let mut context = base_context.clone();
+
+                                for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
+                                    if !unfiteable {
+                                        match col_exp.solve(
+                                            col_data,
+                                            &context,
+                                            debug_margin.to_owned() + "|  ",
+                                            debug_print,
+                                        ) {
+                                            Ok(new_context) => {
+                                                if debug_print {
+                                                    println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
+                                                }
+                                                context = new_context
+                                            }
+                                            Err(err) => {
+                                                if debug_print {
+                                                    println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
+                                                }
+                                                unfiteable = true;
+                                            }
+                                        }
+                                    }
+                                }
+                                if !unfiteable {
+                                    ret.insert(context);
+                                }
+                            }
+                        }
+                        ret
+                    }
+                    None => VarContextUniverse::new_restricting(),
+                };
+
+                (ret, Statement::True)
+            }
+
+            Statement::True => (universe.to_owned(), Statement::True),
         };
         if debug_print {
-            println!("{debug_margin}* posible contexts for {self} on {universe} are {ret}");
+            println!("{debug_margin}* universe for {self} based on {universe} is {}, simplifing to {}",ret.0,ret.1);
         }
         ret
+    }
+
+    fn or(&self, other: &Statement) -> Statement {
+        match (&self, &other) {
+            (Statement::True, _) | (_, Statement::True) => Statement::True,
+            _ => Statement::Or(Box::new(self.to_owned()), Box::new(other.to_owned())),
+        }
+    }
+    fn and(&self, other: &Statement) -> Statement {
+        match (&self, &other) {
+            (Statement::True, res) | (res, Statement::True) => res.to_owned().to_owned(),
+            _ => Statement::And(Box::new(self.to_owned()), Box::new(other.to_owned())),
+        }
     }
 }
