@@ -54,6 +54,10 @@ impl ConditionalTruth {
             }
         }
 
+        if debug_print {
+            println!("{debug_margin}base context derived of {filter} is {base_context}");
+        }
+
         let mut results = VarContextUniverse::new_unrestricting();
         if base_context.len() != 0 {
             results.insert(base_context);
@@ -86,6 +90,9 @@ impl ConditionalTruth {
             }
         }
 
+        if debug_print {
+            println!("{debug_margin}* universe of {self} is {results}");
+        }
         let ret = results
             .iter()
             // .map(|e| {
@@ -95,10 +102,7 @@ impl ConditionalTruth {
             .map(|c| self.template.to_truth(&c))
             .filter(|e| match e {
                 Ok(_) => true,
-                Err(err) => {
-                    println!("{err:?}");
-                    false
-                }
+                Err(_) => false,
             })
             .map(|e| match e {
                 Ok(res) => res,

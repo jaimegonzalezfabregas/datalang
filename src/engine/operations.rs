@@ -114,7 +114,7 @@ pub fn multiply_direct(op1: Data, op2: Data) -> Result<Data, String> {
 
 pub fn multiply_reverse_op1(op2: Data, res: Data) -> Result<Data, String> {
     Ok(match (op2, res) {
-        (Data::Number(x), Data::Number(r)) => Data::Number(x / r),
+        (Data::Number(x), Data::Number(r)) => Data::Number(r / x),
         (Data::String(_), Data::String(_)) => return Err("cant multiply strings".into()),
         (Data::Array(_), Data::Array(_)) => return Err("cant multiply arrays".into()),
         _ => return Err("cant operate on diferently typed literals".into()),
@@ -123,7 +123,7 @@ pub fn multiply_reverse_op1(op2: Data, res: Data) -> Result<Data, String> {
 
 pub fn multiply_reverse_op2(op1: Data, res: Data) -> Result<Data, String> {
     Ok(match (op1, res) {
-        (Data::Number(x), Data::Number(r)) => Data::Number(x / r),
+        (Data::Number(x), Data::Number(r)) => Data::Number(r / x),
         (Data::String(_), Data::String(_)) => return Err("cant multiply strings".into()),
         (Data::Array(_), Data::Array(_)) => return Err("cant multiply arrays".into()),
         _ => return Err("cant operate on diferently typed literals".into()),

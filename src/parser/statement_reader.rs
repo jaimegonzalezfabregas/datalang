@@ -614,35 +614,26 @@ impl Statement {
                     }
                 };
 
-                let mut dealed_full_results = ret.is_restricting();
-                if dealed_full_results {
-                    for context in ret.iter() {
-                        println!("checking if {rel} is solved on {context}");
-                        for arg in &rel.args {
-                            if !arg.fully_defined(&context) {
-                                dealed_full_results = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-
                 let dealed_any_results = ret.len() > 0;
 
-                let mut empty_due_to_universe = !dealed_any_results;
-                if empty_due_to_universe {
-                    for context in universe.iter() {
-                        for arg in &rel.args {
-                            if !arg.fully_defined(&context) {
-                                empty_due_to_universe = false;
-                                break;
-                            }
+                let mut universe_constrainted = false;
+                for context in universe.iter() {
+                    for arg in &rel.args {
+                        if arg.fully_defined(&context) {
+                            universe_constrainted = true;
+                            break;
                         }
                     }
                 }
 
-                if dealed_full_results && dealed_any_results || empty_due_to_universe {
+                if debug_print {
+                    println!("{debug_margin}simplification status: dealed_full_results:{dealed_any_results} and universe_constrainted:{universe_constrainted} ");
+                }
+
+                if universe_constrainted {
                     (ret, Statement::True)
+                } else if dealed_any_results {
+                    (ret, self.to_owned())
                 } else {
                     (VarContextUniverse::new_unrestricting(), self.to_owned())
                 }

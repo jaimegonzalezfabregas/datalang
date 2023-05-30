@@ -75,7 +75,7 @@ impl Expresion {
             Expresion::Literal(e) => Ok(e),
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(value) => Ok(value.to_owned()),
-                None => Err(format!("literalize error: var {str} not defined on context")),
+                None => Err(format!("literalize error: var {str} not defined on context {context}")),
             },
             Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
                 let mut datas = vec![];
@@ -100,6 +100,7 @@ impl Expresion {
 
                 Ok(Data::Array(datas))
             }
+            Expresion::Var(VarName::Anonimus) => Ok(Data::Any),
             _ => Err(format!(
                 "no se ha podido literalizar: {self} en el contexto {context}"
             )),

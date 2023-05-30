@@ -1,6 +1,4 @@
-rel(1) rel(2) rel(3) rel(4) 
-inner(x) :- rel(x) && rel(x+1) && rel(x-1) 
+deduce(a,b,_) :- a = b*2 
+deduce(_,b,c) :- b = c*2 
 
-#inner(2)? 
-inner(4)? 
-#inner(_)?
+deduce(8,_,_)?

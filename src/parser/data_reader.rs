@@ -10,6 +10,7 @@ pub enum Data {
     Number(f64),
     String(String),
     Array(Vec<Data>),
+    Any,
 }
 
 impl fmt::Display for Data {
@@ -30,6 +31,7 @@ impl fmt::Display for Data {
 
                 write!(f, "{arr}")
             }
+            Data::Any => write!(f, "_"),
         }
     }
 }
@@ -56,6 +58,13 @@ impl Ord for Data {
             (Data::Array(_), Data::Number(_)) => std::cmp::Ordering::Greater,
             (Data::Array(_), Data::String(_)) => std::cmp::Ordering::Greater,
             (Data::Array(x), Data::Array(y)) => x.cmp(y),
+            (Data::Number(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::String(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::Array(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::Any, Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::String(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::Array(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::Any) => std::cmp::Ordering::Greater,
         }
     }
 }

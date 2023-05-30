@@ -316,4 +316,28 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn partial_information_from_relation_first_time_1() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(8,4,2)\n",
+            engine.input(
+                "deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(8,_,_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn partial_information_from_relation_first_time_2() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(8,4,2)\n",
+            engine.input(
+                "deduce(a,b,c) :- a = b*2 && b = c*2 deduce(8,_,_)?".into(),
+                false
+            )
+        );
+    }
 }
