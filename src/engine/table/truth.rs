@@ -61,7 +61,7 @@ impl Truth {
         debug_margin: String,
         debug_print: bool,
     ) -> Result<VarContext, String> {
-        if debug_print{
+        if debug_print {
             println!("{debug_margin}check if {self} fits {filter}");
         }
         let mut context = caller_context;

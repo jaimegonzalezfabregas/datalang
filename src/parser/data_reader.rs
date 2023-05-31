@@ -87,7 +87,6 @@ impl hash::Hash for Data {
             Data::String(str) => str.hash(state),
             Data::Array(array) => array.hash(state),
             Data::Any => "_".hash(state),
-            
         }
     }
 }
@@ -106,7 +105,7 @@ impl Data {
                         .join(",")
                     + &"]".to_string()
             }
-            Data::Any => "_".into()
+            Data::Any => "_".into(),
         }
     }
 }

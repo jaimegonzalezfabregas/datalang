@@ -114,7 +114,7 @@ pub fn read_update(
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len()-1,
+        lex_pos: lexograms.len() - 1,
         if_it_was: "update".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

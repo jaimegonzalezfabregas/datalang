@@ -199,8 +199,12 @@ impl Table {
         );
 
         for truth in all_truths {
-            if let Ok(_) = truth.fits_filter(filter, VarContext::new(),debug_margin.to_owned() + "|  ",
-                                    debug_print) {
+            if let Ok(_) = truth.fits_filter(
+                filter,
+                VarContext::new(),
+                debug_margin.to_owned() + "|  ",
+                debug_print,
+            ) {
                 return Ok(true);
             }
         }

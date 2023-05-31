@@ -500,7 +500,6 @@ impl Statement {
                         let a = exp_a.literalize(&context);
                         let b = exp_b.literalize(&context);
                         match (exp_a, exp_b, a, b) {
-                          
                             (literalized_exp, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, literalized_exp, Err(_) | Ok(Data::Any), Ok(goal)) => {
                                 if debug_print {
                                     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
@@ -517,7 +516,6 @@ impl Statement {
                                     Err(err) => {println!("error de solving: {err}"); vec![]},
                                 }
                             }
-                           
                               (_, _, Ok(data_a), Ok(data_b)) => {
                                   if debug_print {
                                     println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");

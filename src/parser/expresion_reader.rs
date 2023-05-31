@@ -75,7 +75,9 @@ impl Expresion {
             Expresion::Literal(e) => Ok(e),
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(value) => Ok(value.to_owned()),
-                None => Err(format!("literalize error: var {str} not defined on context {context}")),
+                None => Err(format!(
+                    "literalize error: var {str} not defined on context {context}"
+                )),
             },
             Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
                 let mut datas = vec![];
@@ -91,7 +93,6 @@ impl Expresion {
                             match var_value {
                                 Data::Array(arr) => datas.extend(arr),
                                 _ =>     return Err(format!("no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"))
-                                
                             }
                         }
                         _ => datas.push(e.literalize(context)?),
@@ -119,12 +120,10 @@ impl Expresion {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
         if debug_print {
-        println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
-}
+            println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
+        }
         let ret = match self.literalize(&caller_context) {
-            Ok(Data::Any) => {
-                caller_context.to_owned()
-        },
+            Ok(Data::Any) => caller_context.to_owned(),
             Err(_) => match self {
                 Expresion::Arithmetic(a, b, func) => {
                     let literalize_a = a.literalize(&caller_context);
@@ -152,20 +151,15 @@ impl Expresion {
                 Expresion::Literal(_) => unreachable!(),
                 Expresion::Var(VarName::Direct(name)) => {
                     let mut new_context = caller_context.to_owned();
-                    match new_context.get(name){
+                    match new_context.get(name) {
                         None | Some(Data::Any) => {
-new_context.set(name.to_owned(), goal.to_owned());
-                    new_context
-                        },
-                        Some(_) => {
-                            VarContext::new()
-                        },
+                            new_context.set(name.to_owned(), goal.to_owned());
+                            new_context
+                        }
+                        Some(_) => VarContext::new(),
                     }
-                    
                 }
-                Expresion::Var(VarName::Anonimus) => {
-                    caller_context.to_owned()
-                }
+                Expresion::Var(VarName::Anonimus) => caller_context.to_owned(),
                 Expresion::Var(VarName::DestructuredArray(template_arr)) => {
                     if let Data::Array(goal_arr) = goal {
                         if goal_arr.len() < template_arr.len() {
@@ -183,18 +177,25 @@ new_context.set(name.to_owned(), goal.to_owned());
                                 } else {
                                     Expresion::Var(VarName::Anonimus)
                                 }
-                                .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context,debug_margin.to_owned() + "|  ",
-                                    debug_print)
-                                {
+                                .solve(
+                                    &Data::Array(goal_arr[i..].to_vec()),
+                                    &new_context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
                                     }
                                 }
-                                last_i = goal_arr.len()-1;
+                                last_i = goal_arr.len() - 1;
                             } else {
-                                match array_position.solve(&goal_arr[i], &new_context,debug_margin.to_owned() + "|  ",
-                                    debug_print) {
+                                match array_position.solve(
+                                    &goal_arr[i],
+                                    &new_context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
@@ -202,10 +203,10 @@ new_context.set(name.to_owned(), goal.to_owned());
                                 }
                             }
                         }
-                        if last_i == goal_arr.len()-1{
+                        if last_i == goal_arr.len() - 1 {
                             new_context
-                        }else{
-                         return Err("cant destructure an array with unmatching size".into());
+                        } else {
+                            return Err("cant destructure an array with unmatching size".into());
                         }
                     } else {
                         return Err("cant destructure a non array goal to an array".into());
@@ -217,12 +218,12 @@ new_context.set(name.to_owned(), goal.to_owned());
                 if d == goal.to_owned() {
                     caller_context.to_owned()
                 } else {
-                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
+                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"));
                 }
             }
         };
 
-        if debug_print{
+        if debug_print {
             println!("{debug_margin}*solving de {self} con goal {goal} ha resultado en {ret}")
         }
 
@@ -231,36 +232,33 @@ new_context.set(name.to_owned(), goal.to_owned());
 
     pub(crate) fn fully_defined(&self, context: &VarContext) -> bool {
         match self.to_owned() {
-            Expresion::Arithmetic(a, b, _) => {
-                a.fully_defined(context) && b.fully_defined(context)
-            }
+            Expresion::Arithmetic(a, b, _) => a.fully_defined(context) && b.fully_defined(context),
             Expresion::Literal(_) => true,
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(_) => true,
                 None => false,
             },
             Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
-                let mut ret =true;
+                let mut ret = true;
                 for e in exp_vec.iter() {
                     match e {
                         Expresion::Var(VarName::ExplodeArray(var_name)) => {
-                            match context.get(var_name){
-                                Some(var_value) =>   match var_value {
+                            match context.get(var_name) {
+                                Some(var_value) => match var_value {
                                     Data::Array(_) => true,
-                                    _ =>     false
+                                    _ => false,
                                 },
                                 None => false,
                             };
-                          
                         }
                         _ => ret &= e.fully_defined(context),
                     }
                 }
 
                 ret
-            },
+            }
             Expresion::Var(VarName::Anonimus) => true,
-            _=>false
+            _ => false,
         }
     }
 }

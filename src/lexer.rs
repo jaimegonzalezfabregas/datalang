@@ -102,7 +102,7 @@ fn parse(w: String) -> Result<Option<LexogramType>, LexerErrorMsg> {
 
 fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerErrorMsg> {
     let reserved_lexograms = HashMap::from([
-        ("#",LexogramType::Comment),
+        ("#", LexogramType::Comment),
         ("true", LexogramType::True),
         (":", LexogramType::CharColon),
         (")", LexogramType::RightParenthesis),
