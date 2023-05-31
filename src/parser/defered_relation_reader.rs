@@ -57,7 +57,7 @@ impl DeferedRelation {
         Ok(Truth::from(&(literal_vec, self.get_rel_id())))
     }
 
-    pub fn clone_n_apply(&self, context: &VarContext) -> DeferedRelation {
+    pub fn clone_and_apply(&self, context: &VarContext) -> DeferedRelation {
         let mut literalized_vec = vec![];
         for exp in &self.args {
             literalized_vec.push(match exp.literalize(context) {
@@ -194,7 +194,9 @@ pub fn read_defered_relation(
             (Assuming, SpectingAssuming) => state = SpectingStatementIdentifierOrNegation,
             (
                 Identifier(str),
-                SpectingStatementIdentifier | SpectingStatementIdentifierOrassumptionOrNegation,
+                SpectingStatementIdentifier
+                | SpectingStatementIdentifierOrassumptionOrNegation
+                | SpectingStatementIdentifierOrNegation,
             ) => {
                 op_rel_name = Some(str);
                 state = SpectingStatementList;

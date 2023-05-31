@@ -144,7 +144,7 @@ impl Engine {
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
             Ok(table.get_filtered_truths(
-                &query.clone_n_apply(context),
+                &query.clone_and_apply(context),
                 &hypothetical_engine,
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",
@@ -174,7 +174,7 @@ impl Engine {
 
         if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
             Ok(table.contains(
-                &query.clone_n_apply(context),
+                &query.clone_and_apply(context),
                 &hypothetical_engine,
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",

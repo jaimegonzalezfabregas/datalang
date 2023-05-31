@@ -500,6 +500,12 @@ impl Statement {
                         let a = exp_a.literalize(&context);
                         let b = exp_b.literalize(&context);
                         match (exp_a, exp_b, a, b) {
+                            (_, _, Ok(Data::Any), Ok(Data::Any)) => {
+                                if debug_print {
+                                    println!("{debug_margin}{exp_a} and {exp_b} are not equal (value wise)");
+                                }
+                                vec![]
+                            }
                             (literalized_exp, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, literalized_exp, Err(_) | Ok(Data::Any), Ok(goal)) => {
                                 if debug_print {
                                     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
@@ -516,8 +522,8 @@ impl Statement {
                                     Err(err) => {println!("error de solving: {err}"); vec![]},
                                 }
                             }
-                              (_, _, Ok(data_a), Ok(data_b)) => {
-                                  if debug_print {
+                            (_, _, Ok(data_a), Ok(data_b)) => {
+                                if debug_print {
                                     println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");
                                 }
                                 if data_a == data_b {
@@ -557,17 +563,21 @@ impl Statement {
             }
             Statement::Relation(rel) => {
                 if debug_print {
-                    println!("{debug_margin}recursive relation querry");
+                    println!("{debug_margin}recursive relation querry for {rel}");
                 }
                 let ret = match engine.get_table(rel.get_rel_id()) {
                     Some(table) => {
-                        let mut ret = VarContextUniverse::new_restricting();
-                        if debug_print {
-                            println!("{debug_margin}tabla encontrada");
-                        }
+                        let mut ret = VarContextUniverse::new_unrestricting();
+
                         for base_context in universe.iter() {
+                            let aplied_filter = rel.clone_and_apply(&base_context);
+
+                            if debug_print {
+                                println!("{debug_margin}filter {rel} becomes {aplied_filter} after base context: {base_context}");
+                            }
+
                             let table_truths = table.get_content_iter(
-                                rel.clone_n_apply(&base_context),
+                                aplied_filter,
                                 recursion_tally.to_owned(),
                                 engine.to_owned(),
                                 debug_margin.to_owned() + "|  ",
@@ -586,15 +596,15 @@ impl Statement {
                                             debug_print,
                                         ) {
                                             Ok(new_context) => {
-                                                if debug_print {
-                                                    println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
-                                                }
+                                                // if debug_print {
+                                                //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
+                                                // }
                                                 context = new_context
                                             }
                                             Err(err) => {
-                                                if debug_print {
-                                                    println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
-                                                }
+                                                // if debug_print {
+                                                //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
+                                                // }
                                                 unfiteable = true;
                                             }
                                         }
@@ -621,6 +631,9 @@ impl Statement {
                 for context in universe.iter() {
                     for arg in &rel.args {
                         if arg.fully_defined(&context) {
+                            if debug_print {
+                                println!("{debug_margin}fully defined because of {arg}");
+                            }
                             universe_constrainted = true;
                             break;
                         }

@@ -60,30 +60,40 @@ impl Truth {
         caller_context: VarContext,
         debug_margin: String,
         debug_print: bool,
-    ) -> Result<VarContext, String> {
+    ) -> Result<Truth, String> {
         if debug_print {
             println!("{debug_margin}check if {self} fits {filter}");
         }
+        let mut ret = self.clone();
+
         let mut context = caller_context;
         let mut pinned = vec![false; self.get_width()];
-        while !pinned.iter().all(|e| *e) {
+
+        while !pinned.iter().all(|&e| e) {
             let starting_pinned_count = pinned.iter().filter(|e| **e).count();
             for (i, (goal, filter_expresion)) in
                 self.data.iter().zip(filter.to_owned().args).enumerate()
             {
-                let solution = filter_expresion.solve(
-                    &goal,
-                    &context,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                );
-                match solution {
-                    Ok(new_context) => {
-                        context = new_context;
-                        pinned[i] = true;
-                    }
+                if !pinned[i] {
+                    let solution = filter_expresion.solve(
+                        &goal,
+                        &context,
+                        debug_margin.to_owned() + "|  ",
+                        debug_print,
+                    );
+                    match solution {
+                        Ok(new_context) => {
+                            context = new_context;
+                            pinned[i] = true;
+                            match filter_expresion.literalize(&context) {
+                                Ok(Data::Any) => (),
+                                Ok(data) => ret.data[i] = data,
+                                Err(_) => unimplemented!(),
+                            }
+                        }
 
-                    Err(_) => (),
+                        Err(_) => (),
+                    }
                 }
             }
             let ending_pinned_count = pinned.iter().filter(|e| **e).count();
@@ -91,7 +101,10 @@ impl Truth {
                 return Err("unsolveable".into());
             }
         }
-        Ok(context)
+        if debug_print {
+            println!("{debug_margin}managed to fit {self} to {filter} as {ret}");
+        }
+        Ok(ret)
     }
 }
 

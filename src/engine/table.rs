@@ -3,11 +3,8 @@ mod conditional_truth;
 pub mod truth;
 
 use crate::parser::{
-    conditional_reader::Conditional,
-    defered_relation_reader::DeferedRelation,
-    expresion_reader::{Expresion, VarName},
-    inmediate_relation_reader::InmediateRelation,
-    Relation,
+    conditional_reader::Conditional, data_reader::Data, defered_relation_reader::DeferedRelation,
+    expresion_reader::Expresion, inmediate_relation_reader::InmediateRelation, Relation,
 };
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
@@ -59,7 +56,7 @@ impl Table {
             negated: false,
             assumptions: vec![],
             rel_name: self.rel_id.identifier.to_owned(),
-            args: vec![Expresion::Var(VarName::Anonimus); self.rel_id.column_count],
+            args: vec![Expresion::Literal(Data::Any); self.rel_id.column_count],
         }
     }
 
@@ -160,13 +157,14 @@ impl Table {
 
         let mut matched_truths = vec![];
         for truth in all_truths {
-            if let Ok(_) = truth.fits_filter(
+            if let Ok(fitted) = truth.fits_filter(
                 filter,
                 VarContext::new(),
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             ) {
-                matched_truths.push(truth.to_owned());
+                matched_truths.push(fitted);
+                println!("matched truths so far: {matched_truths:?}")
             }
         }
 

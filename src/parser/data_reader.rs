@@ -5,12 +5,23 @@ use crate::engine::var_context::VarContext;
 use crate::lexer::{self, LexogramType::*};
 use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialOrd)]
 pub enum Data {
     Number(f64),
     String(String),
     Array(Vec<Data>),
     Any,
+}
+
+impl PartialEq for Data {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Number(l0), Self::Number(r0)) => l0 == r0,
+            (Self::String(l0), Self::String(r0)) => l0 == r0,
+            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for Data {
@@ -139,6 +150,7 @@ pub fn read_data(
                 })),
             }
         }
+        Any => Ok(Ok((Data::Any, start_cursor + 1))),
 
         _ => Ok(Err(FailureExplanation {
             lex_pos: start_cursor,

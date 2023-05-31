@@ -318,10 +318,10 @@ mod tests {
     }
 
     #[test]
-    fn partial_information_from_relation_first_time_1() {
+    fn wildcard_on_template_1() {
         let mut engine = Engine::new();
         assert_eq!(
-            "\n(8,4,2)\n",
+            "\n(8, 4, _)\n",
             engine.input(
                 "deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(8,_,_)?".into(),
                 false
@@ -330,12 +330,54 @@ mod tests {
     }
 
     #[test]
+    fn wildcard_on_template_2() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(8, 4, _)\n(_, 4, 2)\n",
+            engine.input(
+                "deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(_,4,_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn wildcard_on_template_3() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(8, 4, 22)\n",
+            engine.input("deduce(a,b,_) :- a = b*2 deduce(_,4,22)?".into(), false)
+        );
+    }
+
+    #[test]
     fn partial_information_from_relation_first_time_2() {
         let mut engine = Engine::new();
         assert_eq!(
-            "\n(8,4,2)\n",
+            "\n(8, 4, 2)\n",
             engine.input(
                 "deduce(a,b,c) :- a = b*2 && b = c*2 deduce(8,_,_)?".into(),
+                false
+            )
+        );
+    }
+
+    #[test]
+    fn hypothesis_1() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(1, 2)\n",
+            engine.input("{ret(1,2)}=>ret(_,_)?".into(), false)
+        );
+    }
+
+    #[test]
+    fn hypothesis_2() {
+        let mut engine = Engine::new();
+        assert_eq!(
+            "\n(1, 2)\n(1, 3)\n(2, 3)\n",
+            engine.input(
+                "edge(1,2) edge(3,4) conected(a,b) :- conected(a,mid) && edge(mid,b) conected(a,a):- true conected(_,_)? {edge(2,3)}=>conected(_,_)? conected(_,_)?".into(),
                 false
             )
         );

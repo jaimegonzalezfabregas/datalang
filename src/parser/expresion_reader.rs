@@ -14,7 +14,6 @@ pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
     ExplodeArray(String),
-    Anonimus,
 }
 
 impl fmt::Display for VarName {
@@ -35,7 +34,6 @@ impl fmt::Display for VarName {
             }
             VarName::Direct(name) => write!(f, "{name}"),
             VarName::ExplodeArray(name) => write!(f, "...{name}"),
-            VarName::Anonimus => write!(f, "_"),
         }
     }
 }
@@ -101,7 +99,6 @@ impl Expresion {
 
                 Ok(Data::Array(datas))
             }
-            Expresion::Var(VarName::Anonimus) => Ok(Data::Any),
             _ => Err(format!(
                 "no se ha podido literalizar: {self} en el contexto {context}"
             )),
@@ -119,11 +116,19 @@ impl Expresion {
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        if debug_print {
-            println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
-        }
+        // if debug_print {
+        //     println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
+        // }
         let ret = match self.literalize(&caller_context) {
-            Ok(Data::Any) => caller_context.to_owned(),
+            Ok(Data::Any) => match &self {
+                Expresion::Var(VarName::Direct(name)) => {
+                    let mut new_context = caller_context.to_owned();
+                    new_context.set(name.to_owned(), goal.to_owned());
+                    new_context
+                }
+                _ => caller_context.to_owned(),
+            },
+
             Err(_) => match self {
                 Expresion::Arithmetic(a, b, func) => {
                     let literalize_a = a.literalize(&caller_context);
@@ -151,15 +156,9 @@ impl Expresion {
                 Expresion::Literal(_) => unreachable!(),
                 Expresion::Var(VarName::Direct(name)) => {
                     let mut new_context = caller_context.to_owned();
-                    match new_context.get(name) {
-                        None | Some(Data::Any) => {
-                            new_context.set(name.to_owned(), goal.to_owned());
-                            new_context
-                        }
-                        Some(_) => VarContext::new(),
-                    }
+                    new_context.set(name.to_owned(), goal.to_owned());
+                    new_context
                 }
-                Expresion::Var(VarName::Anonimus) => caller_context.to_owned(),
                 Expresion::Var(VarName::DestructuredArray(template_arr)) => {
                     if let Data::Array(goal_arr) = goal {
                         if goal_arr.len() < template_arr.len() {
@@ -172,12 +171,7 @@ impl Expresion {
                         for (i, array_position) in template_arr.iter().enumerate() {
                             last_i = i;
                             if let Expresion::Var(VarName::ExplodeArray(x)) = array_position {
-                                match if x != "_" {
-                                    Expresion::Var(VarName::Direct(x.to_owned()))
-                                } else {
-                                    Expresion::Var(VarName::Anonimus)
-                                }
-                                .solve(
+                                match Expresion::Var(VarName::Direct(x.to_owned())).solve(
                                     &Data::Array(goal_arr[i..].to_vec()),
                                     &new_context,
                                     debug_margin.to_owned() + "|  ",
@@ -217,6 +211,8 @@ impl Expresion {
             Ok(d) => {
                 if d == goal.to_owned() {
                     caller_context.to_owned()
+                } else if let Data::Any = goal {
+                    caller_context.to_owned()
                 } else {
                     return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"));
                 }
@@ -224,7 +220,7 @@ impl Expresion {
         };
 
         if debug_print {
-            println!("{debug_margin}*solving de {self} con goal {goal} ha resultado en {ret}")
+            println!("{debug_margin}*solving de \"{self}\" con goal {goal} ha resultado en {ret}")
         }
 
         Ok(ret)
@@ -235,6 +231,7 @@ impl Expresion {
             Expresion::Arithmetic(a, b, _) => a.fully_defined(context) && b.fully_defined(context),
             Expresion::Literal(_) => true,
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
+                Some(Data::Any) => false,
                 Some(_) => true,
                 None => false,
             },
@@ -257,7 +254,6 @@ impl Expresion {
 
                 ret
             }
-            Expresion::Var(VarName::Anonimus) => true,
             _ => false,
         }
     }
@@ -456,7 +452,6 @@ pub fn read_expresion_item(
                 },
             }
         }
-        (Any, false) => Ok(Ok((Expresion::Var(VarName::Anonimus), start_cursor + 1))),
 
         (_, _) => match read_data(lexograms, start_cursor, debug_margin, debug_print)? {
             Ok((value, jump_to)) => Ok(Ok((Expresion::Literal(value), jump_to))),

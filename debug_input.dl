@@ -1,4 +1,9 @@
-deduce(a,b,_) :- a = b*2 
-deduce(_,b,c) :- b = c*2 
+edge(1,2) 
+edge(2,3)
+edge(3,4) 
 
-deduce(8,_,_)?
+conected(a,b) :- conected(a,mid) && edge(mid,b) && edge(a,_) 
+
+conected(a,a):- true 
+
+conected(_,_)?

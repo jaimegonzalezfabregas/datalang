@@ -4,9 +4,36 @@ use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct VarContext {
     map: HashMap<String, Data>,
+}
+
+impl PartialEq for VarContext {
+    fn eq(&self, other: &Self) -> bool {
+        for (var_a, val_a) in &self.map {
+            let mut found = false;
+            for (var_b, val_b) in &other.map {
+                if var_b == var_a {
+                    match (val_a, val_b) {
+                        (Data::Any, Data::Any) => found = true,
+                        (a, b) => {
+                            if a == b {
+                                found = true
+                            } else {
+                                return false;
+                            }
+                        }
+                        _ => return false,
+                    }
+                }
+            }
+            if !found {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 impl Hash for VarContext {
@@ -50,9 +77,11 @@ impl VarContext {
         let b = &b_context.map;
 
         let ret = if a.keys().any(|a_key| {
-            b.contains_key(a_key)
+            let ret = b.contains_key(a_key)
                 && b.get(a_key) != a.get(a_key)
-                && !(a.get(a_key) == Some(&Data::Any) || a.get(a_key) == Some(&Data::Any))
+                && a.get(a_key).cloned() != Some(Data::Any)
+                && b.get(a_key).cloned() != Some(Data::Any);
+            ret
         }) {
             None
         } else {

@@ -107,11 +107,15 @@ pub fn read_conditional(
                 }
             }
 
-            _ => {
+            (lex, _) => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "conditional".into(),
-                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
+                    failed_because: format!(
+                        "pattern missmatch on {:#?} state reading {lex:?}",
+                        state
+                    )
+                    .into(),
                     parent_failure: vec![],
                 }))
             }

@@ -7,7 +7,7 @@ use crate::{
     },
     parser::{
         conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
-        statement_reader::Statement,
+        statement_reader::Statement, data_reader::Data,
     },
 };
 
@@ -41,6 +41,7 @@ impl ConditionalTruth {
 
         for (filter, template) in filter.args.iter().zip(self.template.args.to_owned()) {
             match filter.literalize(&base_context) {
+                Ok(Data::Any) => (),
                 Ok(data) => match template.solve(
                     &data,
                     &base_context,
@@ -58,7 +59,7 @@ impl ConditionalTruth {
             println!("{debug_margin}base context derived of {filter} is {base_context}");
         }
 
-        let mut results = VarContextUniverse::new_unrestricting();
+        let mut results: VarContextUniverse = VarContextUniverse::new_unrestricting();
         if base_context.len() != 0 {
             results.insert(base_context);
         }
@@ -86,7 +87,10 @@ impl ConditionalTruth {
             );
             if debug_print {
                 println!("{debug_margin}simplifing to {results}, {simplified_statement}");
-                println!("{debug_margin}repeating if {} != {}", results, last_results);
+                println!(
+                    "{debug_margin}repeating if {} != {}",
+                    results, last_results
+                );
             }
         }
 
