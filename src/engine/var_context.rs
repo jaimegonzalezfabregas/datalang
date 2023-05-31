@@ -49,14 +49,19 @@ impl VarContext {
         let a = &self.map;
         let b = &b_context.map;
 
-        let ret = if a
-            .keys()
-            .any(|a_key| b.contains_key(a_key) && b.get(a_key) != a.get(a_key))
-        {
+        let ret = if a.keys().any(|a_key| {
+            b.contains_key(a_key)
+                && b.get(a_key) != a.get(a_key)
+                && !(a.get(a_key) == Some(&Data::Any) || a.get(a_key) == Some(&Data::Any))
+        }) {
             None
         } else {
             let mut join = a.clone();
-            join.extend(b.clone());
+            for (var, val) in b.iter() {
+                if val != &Data::Any {
+                    join.insert(var.to_owned(), val.to_owned());
+                }
+            }
             Some(Self::from(join))
         };
 

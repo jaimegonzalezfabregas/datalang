@@ -118,45 +118,50 @@ impl Expresion {
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        // println!("\n------ call to solve with goal:[{goal}] at [{self}] at {caller_context:?}");
-
+        if debug_print {
+        println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
+}
         let ret = match self.literalize(&caller_context) {
-            Ok(d) => {
-                if d == goal.to_owned() {
-                    caller_context.to_owned()
-                } else {
-                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
-                }
-            }
+            Ok(Data::Any) => {
+                caller_context.to_owned()
+        },
             Err(_) => match self {
                 Expresion::Arithmetic(a, b, func) => {
                     let literalize_a = a.literalize(&caller_context);
                     let literalize_b = b.literalize(&caller_context);
 
                     match (literalize_a, literalize_b) {
-                        (Ok(_), Ok(_)) => {
-                            return Err("parece que se intentan operar dos datos incompatibles".into())
+                        (Err(_)|Ok(Data::Any),Err(_)|Ok(Data::Any) ) => {
+                            return Err("parece que esta expresión contiene varias incognitas".into())
                         }
-                        (Ok(op_1), Err(_)) => {
+                        (Ok(op_1), Err(_)|Ok(Data::Any)) => {
                             let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
                             b.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
                                     debug_print)?
                         }
-                        (Err(_), Ok(op_2)) => {
+                        (Err(_)|Ok(Data::Any), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
                             a.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
                                     debug_print)?
                         }
-                        (Err(_), Err(_)) => {
-                            return Err("parece que esta expresión contiene varias incognitas".into())
+                        (Ok(_), Ok(_)) => {
+                            return Err("parece que ambas ramas del arbol son literalizables, por lo que no hay nada que deducir".into())
                         }
                     }
                 }
                 Expresion::Literal(_) => unreachable!(),
                 Expresion::Var(VarName::Direct(name)) => {
                     let mut new_context = caller_context.to_owned();
-                    new_context.set(name.to_owned(), goal.to_owned());
+                    match new_context.get(name){
+                        None | Some(Data::Any) => {
+new_context.set(name.to_owned(), goal.to_owned());
                     new_context
+                        },
+                        Some(_) => {
+                            VarContext::new()
+                        },
+                    }
+                    
                 }
                 Expresion::Var(VarName::Anonimus) => {
                     caller_context.to_owned()
@@ -208,10 +213,17 @@ impl Expresion {
                 }
                 Expresion::Var(VarName::ExplodeArray(_)) => unreachable!(),
             },
+            Ok(d) => {
+                if d == goal.to_owned() {
+                    caller_context.to_owned()
+                } else {
+                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
+                }
+            }
         };
 
         if debug_print{
-            println!("{debug_margin} solving de {self} con goal {goal} ha resultado en {ret}")
+            println!("{debug_margin}*solving de {self} con goal {goal} ha resultado en {ret}")
         }
 
         Ok(ret)
