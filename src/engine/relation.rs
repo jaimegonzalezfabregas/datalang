@@ -121,6 +121,33 @@ impl Relation {
         }
     }
 
+    fn get_all_truths(
+        self: &Relation,
+        filter: &DeferedRelation
+        engine: &Engine,
+        recursion_tally: &RecursionTally,
+        debug_margin: String,
+        debug_print: bool,
+    ) -> Result<TruthList,String> {
+        let ret = TruthList::new();
+        ret.set_completeness(super::truth_list::Completeness::FullKnoliedge);
+
+        for literal_truth in self.truths{
+            ret.add(literal_truth);
+        }
+
+        for conditional in self.conditions {
+            let sub_truth_list = conditional.get_deductions(filter, engine, recursion_tally, debug_margin, debug_print)?;
+            if ret.get_completeness() == super::truth_list::Completeness::FullKnoliedge {
+                ret.set_completeness(sub_truth_list.get_completeness())
+            }
+
+        }
+
+        ret
+
+    }
+
     pub fn get_filtered_truths(
         self: &Relation,
         filter: &DeferedRelation,
@@ -136,65 +163,28 @@ impl Relation {
             );
         }
 
-        let all_truths = self.get_content_iter(
-            filter.to_owned(),
-            recursion_tally.to_owned(),
-            engine.to_owned(),
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        );
+        let all_truths = self.get_all_truths(engine, recursion_tally, debug_margin, debug_print);
 
         let mut matched_truths = TruthList::new();
-        for truth in all_truths {
-            if let Ok(fitted) = truth.fits_filter(
-                filter,
-                VarContext::new(),
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            ) {
-                matched_truths.add(fitted);
-                println!("matched truths so far: {matched_truths:?}")
+
+        for res_truth in all_truths {
+            match res_truth {
+                Ok(truth) => {
+                    if let Ok(fitted) = truth.fits_filter(
+                        filter,
+                        VarContext::new(),
+                        debug_margin.to_owned() + "|  ",
+                        debug_print,
+                    ) {
+                        matched_truths.add(fitted);
+                        println!("matched truths so far: {matched_truths:?}")
+                    }
+                }
+                Err(_) => (),
             }
         }
 
         Ok(matched_truths)
-    }
-
-    pub fn contains(
-        self: &Relation,
-        filter: &DeferedRelation,
-        engine: &Engine,
-        recursion_tally: &RecursionTally,
-        debug_margin: String,
-        debug_print: bool,
-    ) -> Result<bool, String> {
-        if debug_print {
-            println!(
-                "{debug_margin}check contains in {} filter {filter}",
-                self.rel_id.identifier
-            );
-        }
-
-        let all_truths = self.get_content_iter(
-            self.open_filter(),
-            recursion_tally.to_owned(),
-            engine.to_owned(),
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        );
-
-        for truth in all_truths {
-            if let Ok(_) = truth.fits_filter(
-                filter,
-                VarContext::new(),
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            ) {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
     }
 }
 

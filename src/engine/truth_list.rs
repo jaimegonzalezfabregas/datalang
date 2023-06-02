@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use super::relation::truth::Truth;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Completeness {
     FullKnoliedge,
     PartialKnoliedge,
@@ -32,5 +32,13 @@ impl TruthList {
 
     pub fn add(&self, truth: Truth) {
         self.truths.insert(truth);
+    }
+
+    pub(crate) fn set_completeness(&self, c: Completeness)  {
+        self.completeness = c
+    }
+
+    pub fn get_completeness(&self) -> Completeness{
+        self.completeness
     }
 }
