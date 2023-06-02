@@ -15,7 +15,7 @@ use super::data_reader::Data;
 use super::defered_relation_reader::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
 use super::expresion_reader::Expresion;
-use super::Relation;
+use super::HasRelId;
 
 #[derive(Clone, Copy)]
 enum AppendModes {

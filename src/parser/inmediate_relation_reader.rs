@@ -9,7 +9,7 @@ use crate::{
 use super::{
     data_reader::Data,
     error::{FailureExplanation, ParserError},
-    Relation,
+    HasRelId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,7 @@ impl fmt::Display for InmediateRelation {
     }
 }
 
-impl Relation for InmediateRelation {
+impl HasRelId for InmediateRelation {
     fn get_rel_id(&self) -> RelId {
         return RelId {
             identifier: self.rel_name.clone(),

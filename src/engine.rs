@@ -1,6 +1,7 @@
 pub mod operations;
 pub mod recursion_tally;
-pub mod table;
+pub mod relation;
+pub mod truth_list;
 pub mod var_context;
 pub mod var_context_universe;
 
@@ -8,14 +9,15 @@ use crate::{
     lexer,
     parser::{
         self, assumption_reader::Assumption, defered_relation_reader::DeferedRelation,
-        inmediate_relation_reader::InmediateRelation, line_reader::Line, Relation,
+        inmediate_relation_reader::InmediateRelation, line_reader::Line, HasRelId,
     },
 };
 use std::{collections::HashMap, fmt, vec};
 
 use self::{
     recursion_tally::RecursionTally,
-    table::{truth::Truth, Table},
+    relation::{truth::Truth, Relation},
+    truth_list::TruthList,
     var_context::VarContext,
 };
 
@@ -27,7 +29,6 @@ pub struct RelId {
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
-    RelationNotFound(RelId),
     UnmatchingLine(Line),
     Explanation(String),
     NoContextWhenNeeded,
@@ -42,7 +43,7 @@ impl From<String> for RuntimeError {
 #[derive(Debug, Clone)]
 pub struct Engine {
     recursion_limit: usize,
-    tables: HashMap<RelId, Table>,
+    tables: HashMap<RelId, Relation>,
 }
 
 fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<Line>, String> {
@@ -103,7 +104,7 @@ impl Engine {
                     }
                     match self.ingest_line(line, String::new(), debug_print) {
                         Ok(Some(output)) => {
-                            let mut sorted_output = output.clone();
+                            let mut sorted_output = output.to_vector();
                             sorted_output.sort();
 
                             if debug_print {
@@ -124,6 +125,15 @@ impl Engine {
         ret
     }
 
+    pub fn get_relation(&self, rel_id: RelId) -> &Relation {
+        if let Some(relation) = self.tables.get(&rel_id) {
+            relation
+        } else {
+            self.tables.insert(rel_id, Relation::new(&rel_id));
+            self.tables.get(&rel_id).unwrap_or_else(|| unreachable!())
+        }
+    }
+
     pub fn query(
         &self,
         query: &DeferedRelation,
@@ -131,9 +141,9 @@ impl Engine {
         recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
-    ) -> Result<Vec<Truth>, RuntimeError> {
+    ) -> Result<TruthList, String> {
         if debug_print {
-            println!("{debug_margin}query {query}, with context: {context}")
+            println!("{debug_margin}query {query}")
         }
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
@@ -142,65 +152,33 @@ impl Engine {
             hypothetical_engine.ingest_assumption(assumption, context)?;
         }
 
-        if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
-            Ok(table.get_filtered_truths(
-                &query.clone_and_apply(context),
+        Ok(hypothetical_engine
+            .get_relation(rel_id)
+            .get_filtered_truths(
+                &query,
                 &hypothetical_engine,
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
-            )?)
-        } else {
-            Err(RuntimeError::RelationNotFound(rel_id))
-        }
-    }
-    pub fn query_exists(
-        &self,
-        query: &DeferedRelation,
-        context: &VarContext,
-        recursion_tally: &RecursionTally,
-        debug_margin: String,
-        debug_print: bool,
-    ) -> Result<bool, RuntimeError> {
-        if debug_print {
-            println!("{debug_margin}query exists {query}, with context: {context:?}")
-        }
-        let rel_id = query.get_rel_id();
-        let mut hypothetical_engine = self.clone();
-
-        for assumption in &query.assumptions {
-            hypothetical_engine.ingest_assumption(assumption, context)?;
-        }
-
-        if let Some(table) = hypothetical_engine.tables.get(&rel_id) {
-            Ok(table.contains(
-                &query.clone_and_apply(context),
-                &hypothetical_engine,
-                recursion_tally,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )?)
-        } else {
-            Err(RuntimeError::RelationNotFound(rel_id))
-        }
+            ))
     }
 
     fn ingest_assumption(
         self: &mut Engine,
         assumption: &Assumption,
         context: &VarContext,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), String> {
         match assumption {
             Assumption::Conditional(cond) => {
                 let rel_id = cond.get_rel_id();
                 let insertion_key = rel_id.clone();
 
                 if let None = self.tables.get(&rel_id) {
-                    self.tables.insert(insertion_key, Table::new(&rel_id));
+                    self.tables.insert(insertion_key, Relation::new(&rel_id));
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_conditional(cond.to_owned())?;
+                    table.add_conditional(cond.to_owned());
                 }
                 Ok(())
             }
@@ -210,25 +188,32 @@ impl Engine {
                 let insertion_key = rel_id.clone();
 
                 if let None = self.tables.get(&rel_id) {
-                    self.tables.insert(insertion_key, Table::new(&rel_id));
+                    self.tables.insert(insertion_key, Relation::new(&rel_id));
                 }
 
-                if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_truth(rel.to_owned())?;
+                if let Some(relation) = self.tables.get_mut(&rel_id) {
+                    relation.add_truth(rel.to_owned());
                 }
                 Ok(())
             }
             Assumption::RelationDefered(d_rel) => {
-                let mut data = vec![];
+                let mut datas = vec![];
                 for exp in &d_rel.args {
-                    data.push(exp.literalize(context)?);
+                    match exp.literalize(context) {
+                        Ok(data) => datas.push(data),
+                        Err(msg) => {
+                            return Err("Cant assume a relation with unliteralizable items: "
+                                .to_string()
+                                + &msg)
+                        }
+                    }
                 }
 
                 self.ingest_assumption(
                     &Assumption::RelationInmediate(InmediateRelation {
                         negated: false,
                         rel_name: d_rel.rel_name.to_owned(),
-                        args: data,
+                        args: datas,
                     }),
                     context,
                 )
@@ -241,7 +226,7 @@ impl Engine {
         line: Line,
         debug_margin: String,
         debug_print: bool,
-    ) -> Result<Option<Vec<Truth>>, RuntimeError> {
+    ) -> Result<Option<TruthList>, RuntimeError> {
         match line {
             Line::Query(q) => Ok(Some(self.query(
                 &q,
@@ -258,7 +243,7 @@ impl Engine {
         }
     }
 
-    pub fn get_table(&self, rel_id: RelId) -> Option<&Table> {
+    pub fn get_table(&self, rel_id: RelId) -> Option<&Relation> {
         self.tables.get(&rel_id)
     }
 }

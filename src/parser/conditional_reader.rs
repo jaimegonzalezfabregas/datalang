@@ -11,7 +11,7 @@ use crate::{
 use super::defered_relation_reader::DeferedRelation;
 use super::error::ParserError;
 use super::statement_reader::Statement;
-use super::Relation;
+use super::HasRelId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conditional {
@@ -25,7 +25,7 @@ impl fmt::Display for Conditional {
     }
 }
 
-impl Relation for Conditional {
+impl HasRelId for Conditional {
     fn get_rel_id(&self) -> RelId {
         self.relation.get_rel_id()
     }

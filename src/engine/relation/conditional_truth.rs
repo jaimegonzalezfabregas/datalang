@@ -2,16 +2,16 @@ use core::fmt;
 
 use crate::{
     engine::{
-        recursion_tally::RecursionTally, var_context::VarContext,
+        recursion_tally::RecursionTally, truth_list::TruthList, var_context::VarContext,
         var_context_universe::VarContextUniverse, Engine,
     },
     parser::{
-        conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
-        statement_reader::Statement, data_reader::Data,
+        conditional_reader::Conditional, data_reader::Data,
+        defered_relation_reader::DeferedRelation, statement_reader::Statement,
     },
 };
 
-use super::truth::Truth;
+use super::truth::{self, Truth};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConditionalTruth {
     condition: Statement,
@@ -25,16 +25,16 @@ impl fmt::Display for ConditionalTruth {
 }
 
 impl ConditionalTruth {
-    pub fn get_truths(
+    pub fn get_deductions(
         &self,
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
-    ) -> Vec<Truth> {
+    ) -> Result<TruthList, String> {
         if debug_print {
-            println!("{debug_margin}getting truths of {self}");
+            println!("{debug_margin}getting deductions of {self}");
         }
 
         let mut base_context = VarContext::new();
@@ -56,7 +56,7 @@ impl ConditionalTruth {
         }
 
         if debug_print {
-            println!("{debug_margin}base context derived of {filter} is {base_context}");
+            println!("{debug_margin}base context to respect {filter} is {base_context}");
         }
 
         let mut results: VarContextUniverse = VarContextUniverse::new_unrestricting();
@@ -87,38 +87,26 @@ impl ConditionalTruth {
             );
             if debug_print {
                 println!("{debug_margin}simplifing to {results}, {simplified_statement}");
-                println!(
-                    "{debug_margin}repeating if {} != {}",
-                    results, last_results
-                );
+                println!("{debug_margin}repeating if {} != {}", results, last_results);
             }
         }
 
         if debug_print {
             println!("{debug_margin}* universe of {self} is {results}");
         }
-        let ret = results
-            .iter()
-            // .map(|e| {
-            //     println!("contexts: {e:?}");
-            //     e
-            // })
-            .map(|c| self.template.to_truth(&c))
-            .filter(|e| match e {
-                Ok(_) => true,
-                Err(_) => false,
-            })
-            .map(|e| match e {
-                Ok(res) => res,
-                Err(_) => unreachable!(),
-            })
-            .collect();
+        let ret = TruthList::new();
+        for context in results.iter() {
+            match self.template.to_truth(&context) {
+                Ok(truth) => ret.add(truth),
+                Err(_) => (),
+            };
+        }
 
         if debug_print {
             println!("{debug_margin}* truths of {self} are {ret:?}");
         }
 
-        ret
+        Ok(ret)
     }
     pub fn from(c: Conditional) -> Self {
         ConditionalTruth {

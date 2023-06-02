@@ -4,15 +4,17 @@ pub mod truth;
 
 use crate::parser::{
     conditional_reader::Conditional, data_reader::Data, defered_relation_reader::DeferedRelation,
-    expresion_reader::Expresion, inmediate_relation_reader::InmediateRelation, Relation,
+    expresion_reader::Expresion, inmediate_relation_reader::InmediateRelation, HasRelId,
 };
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
 
-use super::{recursion_tally::RecursionTally, var_context::VarContext, Engine, RelId};
+use super::{
+    recursion_tally::RecursionTally, truth_list::TruthList, var_context::VarContext, Engine, RelId,
+};
 
 #[derive(Debug, Clone)]
-pub struct Table {
+pub struct Relation {
     rel_id: RelId,
     truths: HashSet<Truth>,
     conditions: HashSet<ConditionalTruth>,
@@ -29,19 +31,19 @@ pub struct ContentIterator {
 }
 
 impl Iterator for ContentIterator {
-    type Item = Truth;
+    type Item = Result<Truth, String>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(ret) = self.curent_returning_queue.pop() {
-            Some(ret)
+            Some(Ok(ret))
         } else if let Some(cond) = self.condition_vec.pop() {
-            self.curent_returning_queue = cond.get_truths(
+            self.curent_returning_queue = cond.get_deductions(
                 &self.filter,
                 &self.engine,
                 &self.recursion_tally,
                 self.debug_margin.to_owned() + "|  ",
                 self.debug_print,
-            );
+            )?;
 
             self.next()
         } else {
@@ -50,21 +52,13 @@ impl Iterator for ContentIterator {
     }
 }
 
-impl Table {
+impl Relation {
     fn open_filter(&self) -> DeferedRelation {
         DeferedRelation {
             negated: false,
             assumptions: vec![],
             rel_name: self.rel_id.identifier.to_owned(),
             args: vec![Expresion::Literal(Data::Any); self.rel_id.column_count],
-        }
-    }
-
-    fn check_relation<T: Relation>(&self, rule: &&T) -> Result<(), String> {
-        if self.rel_id == rule.get_rel_id() {
-            Ok(())
-        } else {
-            Err("Cant process a row for a diferent table".into())
         }
     }
 
@@ -77,7 +71,6 @@ impl Table {
     }
 
     pub fn add_truth(&mut self, rule: InmediateRelation) -> Result<(), String> {
-        self.check_relation(&&rule)?;
         match rule.negated {
             false => {
                 self.truths.insert(Truth::from(&rule));
@@ -92,14 +85,12 @@ impl Table {
     }
 
     pub(crate) fn add_conditional(&mut self, cond: Conditional) -> Result<(), String> {
-        self.check_relation(&&cond)?;
-
         self.conditions.insert(ConditionalTruth::from(cond));
         Ok(())
     }
 
     pub fn get_content_iter(
-        self: &Table,
+        self: &Relation,
         filter: DeferedRelation,
         mut recursion_tally: RecursionTally,
         engine: Engine,
@@ -131,21 +122,19 @@ impl Table {
     }
 
     pub fn get_filtered_truths(
-        self: &Table,
+        self: &Relation,
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
-    ) -> Result<Vec<Truth>, String> {
+    ) -> TruthList {
         if debug_print {
             println!(
                 "{debug_margin}get filtered truths of {} with filter {filter}",
                 self.rel_id.identifier
             );
         }
-
-        self.check_relation(&filter)?;
 
         let all_truths = self.get_content_iter(
             filter.to_owned(),
@@ -155,7 +144,7 @@ impl Table {
             debug_print,
         );
 
-        let mut matched_truths = vec![];
+        let mut matched_truths = TruthList::new();
         for truth in all_truths {
             if let Ok(fitted) = truth.fits_filter(
                 filter,
@@ -163,7 +152,7 @@ impl Table {
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             ) {
-                matched_truths.push(fitted);
+                matched_truths.add(fitted);
                 println!("matched truths so far: {matched_truths:?}")
             }
         }
@@ -172,7 +161,7 @@ impl Table {
     }
 
     pub fn contains(
-        self: &Table,
+        self: &Relation,
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,
@@ -185,8 +174,6 @@ impl Table {
                 self.rel_id.identifier
             );
         }
-
-        self.check_relation(&filter)?;
 
         let all_truths = self.get_content_iter(
             self.open_filter(),
@@ -211,7 +198,7 @@ impl Table {
     }
 }
 
-impl fmt::Display for Table {
+impl fmt::Display for Relation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut ret = String::new();
         for truth in self.truths.iter() {
