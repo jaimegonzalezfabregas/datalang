@@ -11,7 +11,6 @@ use crate::{
     },
 };
 
-use super::truth::{self, Truth};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConditionalTruth {
     condition: Statement,
@@ -59,43 +58,48 @@ impl ConditionalTruth {
             println!("{debug_margin}base context to respect {filter} is {base_context}");
         }
 
-        let mut results: VarContextUniverse = VarContextUniverse::new_unrestricting();
+        let mut posible_contexts = VarContextUniverse::new_unrestricting();
         if base_context.len() != 0 {
-            results.insert(base_context);
+            posible_contexts.insert(base_context);
         }
-        let mut last_results = results.clone();
+        let mut last_results = posible_contexts.clone();
 
         if debug_print {
-            println!("{debug_margin}base universe is {results}");
+            println!("{debug_margin}base universe is {posible_contexts}");
         }
 
         let mut simplified_statement = self.condition.to_owned();
         let mut first = true;
-        while first || results != last_results {
+        while first || posible_contexts != last_results {
             first = false;
             if debug_print {
-                println!("{debug_margin}simplifing from {results}, {simplified_statement}");
+                println!(
+                    "{debug_margin}simplifing from {posible_contexts}, {simplified_statement}"
+                );
             }
-            last_results = results.to_owned();
+            last_results = posible_contexts.to_owned();
 
-            (results, simplified_statement) = simplified_statement.get_posible_contexts(
+            (posible_contexts, simplified_statement) = simplified_statement.get_posible_contexts(
                 engine,
                 recursion_tally,
-                &results,
+                &posible_contexts,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
             );
             if debug_print {
-                println!("{debug_margin}simplifing to {results}, {simplified_statement}");
-                println!("{debug_margin}repeating if {} != {}", results, last_results);
+                println!("{debug_margin}simplifing to {posible_contexts}, {simplified_statement}");
+                println!(
+                    "{debug_margin}repeating if {} != {}",
+                    posible_contexts, last_results
+                );
             }
         }
 
         if debug_print {
-            println!("{debug_margin}* universe of {self} is {results}");
+            println!("{debug_margin}* universe of {self} is {posible_contexts}");
         }
-        let ret = TruthList::new();
-        for context in results.iter() {
+        let mut ret = TruthList::new();
+        for context in posible_contexts.iter() {
             match self.template.to_truth(&context) {
                 Ok(truth) => ret.add(truth),
                 Err(_) => (),

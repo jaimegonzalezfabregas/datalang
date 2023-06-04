@@ -22,23 +22,23 @@ impl TruthList {
         }
     }
 
-    pub(crate) fn to_vector(&self) -> Vec<Truth> {
-        self.truths.into_iter().collect()
+    pub fn to_vector(&self) -> Vec<Truth> {
+        self.into_iter().collect()
     }
 
     pub fn into_iter(&self) -> impl Iterator<Item = Truth> {
         self.truths.clone().into_iter()
     }
 
-    pub fn add(&self, truth: Truth) {
+    pub fn add(&mut self, truth: Truth) {
         self.truths.insert(truth);
     }
 
-    pub(crate) fn set_completeness(&self, c: Completeness)  {
+    pub(crate) fn set_completeness(&mut self, c: Completeness)  {
         self.completeness = c
     }
 
     pub fn get_completeness(&self) -> Completeness{
-        self.completeness
+        self.completeness.to_owned()
     }
 }

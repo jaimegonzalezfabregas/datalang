@@ -576,43 +576,51 @@ impl Statement {
                                 println!("{debug_margin}filter {rel} becomes {aplied_filter} after base context: {base_context}");
                             }
 
-                            let table_truths = table.get_content_iter(
-                                aplied_filter,
-                                recursion_tally.to_owned(),
-                                engine.to_owned(),
-                                debug_margin.to_owned() + "|  ",
+                            let res_table_truths = table.get_filtered_truths(
+                                rel,
+                                engine,
+                                recursion_tally,
+                                debug_margin.to_owned() + "|   ",
                                 debug_print,
                             );
-                            for truth in table_truths {
-                                let mut unfiteable = false;
-                                let mut context = base_context.clone();
 
-                                for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
-                                    if !unfiteable {
-                                        match col_exp.solve(
-                                            col_data,
-                                            &context,
-                                            debug_margin.to_owned() + "|  ",
-                                            debug_print,
-                                        ) {
-                                            Ok(new_context) => {
-                                                // if debug_print {
-                                                //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
-                                                // }
-                                                context = new_context
+                            match res_table_truths {
+                                Ok(table_truths) => {
+                                    for truth in table_truths.into_iter() {
+                                        let mut unfiteable = false;
+                                        let mut context = base_context.clone();
+
+                                        for (col_data, col_exp) in
+                                            truth.get_data().iter().zip(&rel.args)
+                                        {
+                                            if !unfiteable {
+                                                match col_exp.solve(
+                                                    col_data,
+                                                    &context,
+                                                    debug_margin.to_owned() + "|  ",
+                                                    debug_print,
+                                                ) {
+                                                    Ok(new_context) => {
+                                                        // if debug_print {
+                                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
+                                                        // }
+                                                        context = new_context
+                                                    }
+                                                    Err(_) => {
+                                                        // if debug_print {
+                                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
+                                                        // }
+                                                        unfiteable = true;
+                                                    }
+                                                }
                                             }
-                                            Err(err) => {
-                                                // if debug_print {
-                                                //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
-                                                // }
-                                                unfiteable = true;
-                                            }
+                                        }
+                                        if !unfiteable {
+                                            ret.insert(context);
                                         }
                                     }
                                 }
-                                if !unfiteable {
-                                    ret.insert(context);
-                                }
+                                Err(_) => (),
                             }
                         }
                         ret

@@ -125,13 +125,8 @@ impl Engine {
         ret
     }
 
-    pub fn get_relation(&self, rel_id: RelId) -> &Relation {
-        if let Some(relation) = self.tables.get(&rel_id) {
-            relation
-        } else {
-            self.tables.insert(rel_id, Relation::new(&rel_id));
-            self.tables.get(&rel_id).unwrap_or_else(|| unreachable!())
-        }
+    pub fn get_relation(&mut self, rel_id: RelId) -> Relation {
+        self.tables[&rel_id].to_owned()
     }
 
     pub fn query(
@@ -160,7 +155,7 @@ impl Engine {
                 recursion_tally,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
-            ))
+            )?)
     }
 
     fn ingest_assumption(
@@ -178,7 +173,7 @@ impl Engine {
                 }
 
                 if let Some(table) = self.tables.get_mut(&rel_id) {
-                    table.add_conditional(cond.to_owned());
+                    table.add_conditional(cond.to_owned())?;
                 }
                 Ok(())
             }
@@ -192,7 +187,7 @@ impl Engine {
                 }
 
                 if let Some(relation) = self.tables.get_mut(&rel_id) {
-                    relation.add_truth(rel.to_owned());
+                    relation.add_truth(rel.to_owned())?;
                 }
                 Ok(())
             }

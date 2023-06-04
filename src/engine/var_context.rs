@@ -24,7 +24,6 @@ impl PartialEq for VarContext {
                                 return false;
                             }
                         }
-                        _ => return false,
                     }
                 }
             }

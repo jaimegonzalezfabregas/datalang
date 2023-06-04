@@ -4,7 +4,7 @@ use crate::{
     engine::{var_context::VarContext, RelId},
     parser::{
         data_reader::Data, defered_relation_reader::DeferedRelation,
-        inmediate_relation_reader::InmediateRelation, Relation,
+        inmediate_relation_reader::InmediateRelation, HasRelId,
     },
 };
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
