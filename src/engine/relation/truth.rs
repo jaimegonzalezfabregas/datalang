@@ -61,9 +61,6 @@ impl Truth {
         debug_margin: String,
         debug_print: bool,
     ) -> Result<Truth, String> {
-        if debug_print {
-            println!("{debug_margin}check if {self} fits {filter}");
-        }
         let mut ret = self.clone();
 
         let mut context = caller_context;
@@ -100,9 +97,6 @@ impl Truth {
             if starting_pinned_count == ending_pinned_count {
                 return Err("unsolveable".into());
             }
-        }
-        if debug_print {
-            println!("{debug_margin}managed to fit {self} to {filter} as {ret}");
         }
         Ok(ret)
     }

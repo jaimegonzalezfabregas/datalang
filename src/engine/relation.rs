@@ -3,14 +3,17 @@ mod conditional_truth;
 pub mod truth;
 
 use crate::parser::{
-    conditional_reader::Conditional,  defered_relation_reader::DeferedRelation,
-     inmediate_relation_reader::InmediateRelation,
+    conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
+    inmediate_relation_reader::InmediateRelation,
 };
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
 
 use super::{
-    recursion_tally::RecursionTally, truth_list::TruthList, var_context::VarContext, Engine, RelId,
+    recursion_tally::RecursionTally,
+    truth_list::{Completeness, TruthList},
+    var_context::VarContext,
+    Engine, RelId,
 };
 
 #[derive(Debug, Clone)]
@@ -21,7 +24,7 @@ pub struct Relation {
 }
 
 impl Relation {
-      pub fn new(rel_id: &RelId) -> Self {
+    pub fn new(rel_id: &RelId) -> Self {
         Self {
             rel_id: rel_id.to_owned(),
             truths: HashSet::new(),
@@ -52,33 +55,43 @@ impl Relation {
         self: &Relation,
         filter: &DeferedRelation,
         engine: &Engine,
-        recursion_tally: &RecursionTally,
+        caller_recursion_tally: &RecursionTally,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<TruthList, String> {
-        let mut ret = TruthList::new();
-        ret.set_completeness(super::truth_list::Completeness::FullKnoliedge);
+        let mut ret = TruthList::new(Completeness::exact());
+        let mut recursion_tally = caller_recursion_tally.to_owned();
 
         for literal_truth in self.truths.to_owned() {
             ret.add(literal_truth);
         }
+        recursion_tally.count_up(&self.rel_id);
 
-        for conditional in self.conditions.to_owned() {
-            let sub_truth_list = conditional.get_deductions(
-                filter,
-                engine,
-                recursion_tally,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )?;
-            if ret.get_completeness() == super::truth_list::Completeness::FullKnoliedge {
-                ret.set_completeness(sub_truth_list.get_completeness())
+        if recursion_tally.go_deeper(&self.rel_id) {
+            for conditional in self.conditions.to_owned() {
+                let sub_truth_list = conditional.get_deductions(
+                    filter,
+                    engine,
+                    &recursion_tally,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                )?;
+
+                ret.set_completeness(Completeness {
+                    some_extra_info: ret.get_completeness().some_extra_info
+                        || sub_truth_list.get_completeness().some_extra_info,
+                    some_missing_info: ret.get_completeness().some_missing_info
+                        || sub_truth_list.get_completeness().some_missing_info,
+                });
+                for truth in sub_truth_list.into_iter() {
+                    ret.add(truth);
+                }
             }
-            for truth in sub_truth_list.into_iter() {
-                ret.add(truth);
+        } else {
+            if debug_print {
+                println!("{debug_margin}** no more recursion **")
             }
         }
-
         Ok(ret)
     }
 
@@ -105,7 +118,7 @@ impl Relation {
             debug_print,
         )?;
 
-        let mut matched_truths = TruthList::new();
+        let mut matched_truths = TruthList::new(all_truths.get_completeness());
 
         for truth in all_truths.into_iter() {
             if let Ok(fitted) = truth.fits_filter(
@@ -115,7 +128,6 @@ impl Relation {
                 debug_print,
             ) {
                 matched_truths.add(fitted);
-                println!("matched truths so far: {matched_truths:?}")
             }
         }
 

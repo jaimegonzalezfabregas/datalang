@@ -1,9 +1,1 @@
-edge(1,2) 
-edge(2,3)
-edge(3,4) 
-
-conected(a,b) :- conected(a,mid) && edge(mid,b) && edge(a,_) 
-
-conected(a,a):- true 
-
-conected(_,_)?
+test(a+1) :- test(a) && a < 40 test(0) test(_)?

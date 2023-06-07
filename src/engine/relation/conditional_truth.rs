@@ -2,8 +2,11 @@ use core::fmt;
 
 use crate::{
     engine::{
-        recursion_tally::RecursionTally, truth_list::TruthList, var_context::VarContext,
-        var_context_universe::VarContextUniverse, Engine,
+        recursion_tally::RecursionTally,
+        truth_list::{Completeness, TruthList},
+        var_context::VarContext,
+        var_context_universe::VarContextUniverse,
+        Engine,
     },
     parser::{
         conditional_reader::Conditional, data_reader::Data,
@@ -58,10 +61,12 @@ impl ConditionalTruth {
             println!("{debug_margin}base context to respect {filter} is {base_context}");
         }
 
-        let mut posible_contexts = VarContextUniverse::new_unrestricting();
-        if base_context.len() != 0 {
-            posible_contexts.insert(base_context);
-        }
+        let mut posible_contexts = VarContextUniverse::new(Completeness {
+            some_extra_info: base_context.len() > 0,
+            some_missing_info: true,
+        });
+        posible_contexts.insert(base_context);
+
         let mut last_results = posible_contexts.clone();
 
         if debug_print {
@@ -85,7 +90,7 @@ impl ConditionalTruth {
                 &posible_contexts,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
-            );
+            )?;
             if debug_print {
                 println!("{debug_margin}simplifing to {posible_contexts}, {simplified_statement}");
                 println!(
@@ -93,12 +98,13 @@ impl ConditionalTruth {
                     posible_contexts, last_results
                 );
             }
+            
         }
 
         if debug_print {
             println!("{debug_margin}* universe of {self} is {posible_contexts}");
         }
-        let mut ret = TruthList::new();
+        let mut ret = TruthList::new(posible_contexts.get_completeness());
         for context in posible_contexts.iter() {
             match self.template.to_truth(&context) {
                 Ok(truth) => ret.add(truth),
@@ -107,7 +113,7 @@ impl ConditionalTruth {
         }
 
         if debug_print {
-            println!("{debug_margin}* truths of {self} are {ret:?}");
+            println!("{debug_margin}* truths of {self} filtered by {filter} are {ret}");
         }
 
         Ok(ret)

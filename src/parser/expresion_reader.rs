@@ -219,43 +219,11 @@ impl Expresion {
             }
         };
 
-        if debug_print {
-            println!("{debug_margin}*solving de \"{self}\" con goal {goal} ha resultado en {ret}")
-        }
+        // if debug_print {
+        //     println!("{debug_margin}*solving de \"{self}\" con goal {goal} ha resultado en {ret}")
+        // }
 
         Ok(ret)
-    }
-
-    pub(crate) fn fully_defined(&self, context: &VarContext) -> bool {
-        match self.to_owned() {
-            Expresion::Arithmetic(a, b, _) => a.fully_defined(context) && b.fully_defined(context),
-            Expresion::Literal(_) => true,
-            Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
-                Some(Data::Any) => false,
-                Some(_) => true,
-                None => false,
-            },
-            Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
-                let mut ret = true;
-                for e in exp_vec.iter() {
-                    match e {
-                        Expresion::Var(VarName::ExplodeArray(var_name)) => {
-                            match context.get(var_name) {
-                                Some(var_value) => match var_value {
-                                    Data::Array(_) => true,
-                                    _ => false,
-                                },
-                                None => false,
-                            };
-                        }
-                        _ => ret &= e.fully_defined(context),
-                    }
-                }
-
-                ret
-            }
-            _ => false,
-        }
     }
 }
 

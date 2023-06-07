@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::{fmt, vec};
 
 use crate::engine::recursion_tally::RecursionTally;
+use crate::engine::truth_list::Completeness;
 use crate::engine::var_context::VarContext;
 use crate::engine::var_context_universe::VarContextUniverse;
 use crate::engine::Engine;
@@ -15,7 +17,6 @@ use super::data_reader::Data;
 use super::defered_relation_reader::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
 use super::expresion_reader::Expresion;
-use super::HasRelId;
 
 #[derive(Clone, Copy)]
 enum AppendModes {
@@ -416,11 +417,11 @@ impl Statement {
         universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
-    ) -> (VarContextUniverse, Statement) {
+    ) -> Result<(VarContextUniverse, Statement), String> {
         if debug_print {
             println!("{debug_margin}get posible contexts of {self}");
         }
-        let ret = match self {
+        let analisis = match self {
             Statement::Or(statement_a, statement_b) => {
                 let (deep_universe_a, simplified_statement_a) = statement_a.get_posible_contexts(
                     engine,
@@ -428,14 +429,15 @@ impl Statement {
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
-                );
+                )?;
+
                 let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
-                );
+                )?;
 
                 (
                     deep_universe_a.or(
@@ -443,7 +445,7 @@ impl Statement {
                         debug_margin.to_owned() + "|  ",
                         debug_print,
                     ),
-                    simplified_statement_a.or(&simplified_statement_b),
+                    Some(simplified_statement_a.or(&simplified_statement_b)),
                 )
             }
 
@@ -454,14 +456,14 @@ impl Statement {
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
-                );
+                )?;
                 let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
-                );
+                )?;
 
                 (
                     deep_universe_a.and(
@@ -469,7 +471,7 @@ impl Statement {
                         debug_margin.to_owned() + "|  ",
                         debug_print,
                     ),
-                    simplified_statement_a.and(&simplified_statement_b),
+                    Some(simplified_statement_a.and(&simplified_statement_b)),
                 )
             }
             Statement::Not(statement) => {
@@ -479,11 +481,9 @@ impl Statement {
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
-                );
+                )?;
 
-                // println!("\nNOT: \n{contexts:?}");
-
-                (universe.difference(&contexts), self.to_owned()) //TODO i dont think i can simplify a not, look into it
+                (universe.difference(&contexts), None) //TODO i dont think i can simplify a not, look into it
             }
             Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
                 if debug_print {
@@ -494,9 +494,9 @@ impl Statement {
                 let fitting_contexts = universe
                     .iter()
                     .flat_map(|context| {
-                        if debug_print {
-                            println!("{debug_margin}for context {context}");
-                        }
+                        // if debug_print {
+                        //     println!("{debug_margin}for context {context}");
+                        // }
                         let a = exp_a.literalize(&context);
                         let b = exp_b.literalize(&context);
                         match (exp_a, exp_b, a, b) {
@@ -507,9 +507,9 @@ impl Statement {
                                 vec![]
                             }
                             (literalized_exp, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, literalized_exp, Err(_) | Ok(Data::Any), Ok(goal)) => {
-                                if debug_print {
-                                    println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
-                                }
+                                // if debug_print {
+                                //     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
+                                // }
                                 match exp.solve(
                                     &goal,
                                     &context,
@@ -535,9 +535,15 @@ impl Statement {
                             (_, _, Err(_), Err(_)) => vec![],
                         }
                     })
-                    .collect::<Vec<VarContext>>();
+                    .collect::<HashSet<VarContext>>();
 
-                (VarContextUniverse::from(fitting_contexts), self.to_owned())
+                (
+                    VarContextUniverse {
+                        contents: fitting_contexts,
+                        completeness: universe.completeness.to_owned(),
+                    },
+                    None,
+                )
             }
 
             Statement::ExpresionComparison(exp_a, exp_b, comp) => {
@@ -557,119 +563,91 @@ impl Statement {
                             _ => false,
                         }
                     })
-                    .collect::<Vec<VarContext>>();
+                    .collect::<HashSet<VarContext>>();
 
-                (VarContextUniverse::from(fitting_contexts), self.to_owned())
+                (
+                    VarContextUniverse {
+                        contents: fitting_contexts,
+                        completeness: universe.get_completeness(),
+                    },
+                    None,
+                )
             }
             Statement::Relation(rel) => {
                 if debug_print {
-                    println!("{debug_margin}recursive relation querry for {rel}");
+                    println!(
+                        "{debug_margin}recursive relation querry for {rel} in each of: {universe}"
+                    );
                 }
-                let ret = match engine.get_table(rel.get_rel_id()) {
-                    Some(table) => {
-                        let mut ret = VarContextUniverse::new_unrestricting();
 
-                        for base_context in universe.iter() {
-                            let aplied_filter = rel.clone_and_apply(&base_context);
+                let mut ret = VarContextUniverse::new(universe.get_completeness());
 
-                            if debug_print {
-                                println!("{debug_margin}filter {rel} becomes {aplied_filter} after base context: {base_context}");
-                            }
+                for base_context in universe.iter() {
+                    let table_truths = engine.query(
+                        &rel.clone_and_apply(&base_context),
+                        &base_context,
+                        recursion_tally,
+                        debug_margin.to_owned() + "|   ",
+                        debug_print,
+                    )?;
 
-                            let res_table_truths = table.get_filtered_truths(
-                                rel,
-                                engine,
-                                recursion_tally,
-                                debug_margin.to_owned() + "|   ",
-                                debug_print,
-                            );
+                    ret.set_completeness(table_truths.get_completeness());
 
-                            match res_table_truths {
-                                Ok(table_truths) => {
-                                    for truth in table_truths.into_iter() {
-                                        let mut unfiteable = false;
-                                        let mut context = base_context.clone();
+                    for truth in table_truths.into_iter() {
+                        let mut unfiteable = false;
+                        let mut context = base_context.clone();
 
-                                        for (col_data, col_exp) in
-                                            truth.get_data().iter().zip(&rel.args)
-                                        {
-                                            if !unfiteable {
-                                                match col_exp.solve(
-                                                    col_data,
-                                                    &context,
-                                                    debug_margin.to_owned() + "|  ",
-                                                    debug_print,
-                                                ) {
-                                                    Ok(new_context) => {
-                                                        // if debug_print {
-                                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
-                                                        // }
-                                                        context = new_context
-                                                    }
-                                                    Err(_) => {
-                                                        // if debug_print {
-                                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
-                                                        // }
-                                                        unfiteable = true;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if !unfiteable {
-                                            ret.insert(context);
-                                        }
+                        for (col_data, col_exp) in truth.get_data().iter().zip(&rel.args) {
+                            if !unfiteable {
+                                match col_exp.solve(
+                                    col_data,
+                                    &context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
+                                    Ok(new_context) => {
+                                        // if debug_print {
+                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
+                                        // }
+                                        context = new_context
+                                    }
+                                    Err(_) => {
+                                        // if debug_print {
+                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
+                                        // }
+                                        unfiteable = true;
                                     }
                                 }
-                                Err(_) => (),
                             }
                         }
-                        ret
-                    }
-                    None => {
-                        if debug_print {
-                            println!("{debug_margin}tabla no encontrada {self}");
-                        }
-                        VarContextUniverse::new_restricting()
-                    }
-                };
-
-                let dealed_any_results = ret.len() > 0;
-
-                let mut universe_constrainted = false;
-                for context in universe.iter() {
-                    for arg in &rel.args {
-                        if arg.fully_defined(&context) {
-                            if debug_print {
-                                println!("{debug_margin}fully defined because of {arg}");
-                            }
-                            universe_constrainted = true;
-                            break;
+                        if !unfiteable {
+                            ret.insert(context);
                         }
                     }
                 }
-
-                if debug_print {
-                    println!("{debug_margin}simplification status: dealed_full_results:{dealed_any_results} and universe_constrainted:{universe_constrainted} ");
-                }
-
-                if universe_constrainted {
-                    (ret, Statement::True)
-                } else if dealed_any_results {
-                    (ret, self.to_owned())
-                } else {
-                    (VarContextUniverse::new_unrestricting(), self.to_owned())
-                }
+                (ret, None)
             }
 
-            Statement::True => (universe.to_owned(), Statement::True),
+            Statement::True => (universe.to_owned(), None),
         };
+
+        let mut ret = (
+            analisis.0.to_owned(),
+            analisis.1.unwrap_or_else(|| self.to_owned()),
+        );
+
+        let res_completeness = analisis.0.get_completeness();
+        if !res_completeness.some_missing_info {
+            ret.1 = Statement::True;
+        }
+
         if debug_print {
             println!(
                 "{debug_margin}* universe for {self} based on {universe} is {}, simplifing to {}",
                 ret.0, ret.1
             );
         }
-        ret
+        Ok(ret)
     }
 
     fn or(&self, other: &Statement) -> Statement {

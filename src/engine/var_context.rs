@@ -98,7 +98,7 @@ impl VarContext {
         ret
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.map.len()
     }
 }
