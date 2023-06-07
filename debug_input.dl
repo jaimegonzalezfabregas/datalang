@@ -1,1 +1,1 @@
-test(a+1) :- test(a) && a < 40 test(0) test(_)?
+edge(1,2) edge(3,4) edge(2,3) conected(a,b) :- conected(a,mid) && edge(mid,b) conected(a,a):- true conected(b,a) :- conected(a,b) conected(_,_)?
