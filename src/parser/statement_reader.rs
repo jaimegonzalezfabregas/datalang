@@ -460,17 +460,13 @@ impl Statement {
                 let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
-                    universe,
+                    &deep_universe_a,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 )?;
 
                 (
-                    deep_universe_a.and(
-                        deep_universe_b,
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    ),
+                    deep_universe_b,
                     Some(simplified_statement_a.and(&simplified_statement_b)),
                 )
             }
@@ -532,7 +528,7 @@ impl Statement {
                                     vec![]
                                 }
                             }
-                            (_, _, Err(_), Err(_)) => vec![],
+                            (_, _, Err(_), Err(_)) => vec![context.to_owned()],
                         }
                     })
                     .collect::<HashSet<VarContext>>();

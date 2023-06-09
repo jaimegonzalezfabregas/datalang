@@ -226,7 +226,7 @@ mod tests {
         let mut engine = Engine::new();
         engine.set_recursion_limit(10);
         assert_eq!(
-            "\n(0 )\n(1 )\n(2 )\n(3 )\n(4 )\n(5 )\n",
+            "\n(0)\n(1)\n(2)\n(3)\n(4)\n(5)\n",
             engine.input(
                 "test(a+1) :- test(a) && a < 5 test(0) test(_)?".into(),
                 false

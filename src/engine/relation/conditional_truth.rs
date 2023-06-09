@@ -62,8 +62,8 @@ impl ConditionalTruth {
         }
 
         let mut posible_contexts = VarContextUniverse::new(Completeness {
-            some_extra_info: base_context.len() > 0,
-            some_missing_info: true,
+            some_extra_info: false,
+            some_missing_info: false,
         });
         posible_contexts.insert(base_context);
 
