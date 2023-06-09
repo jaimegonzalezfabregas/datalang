@@ -64,7 +64,7 @@ impl fmt::Display for TruthList {
             ret += &format!("{truth},");
         }
 
-        write!(f, "{{{:?}: {}}}", self.completeness, ret)
+        write!(f, "{{{}: {}}}", self.completeness, ret)
     }
 }
 

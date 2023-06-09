@@ -73,33 +73,27 @@ impl ConditionalTruth {
             println!("{debug_margin}base universe is {posible_contexts}");
         }
 
-        let mut simplified_statement = self.condition.to_owned();
-        let mut first = true;
-        while first || posible_contexts != last_results {
-            first = false;
-            if debug_print {
-                println!(
-                    "{debug_margin}simplifing from {posible_contexts}, {simplified_statement}"
-                );
-            }
-            last_results = posible_contexts.to_owned();
+        // let mut first = true;
+        // while first || posible_contexts != last_results {
+        //     first = false;
+        last_results = posible_contexts.to_owned();
 
-            (posible_contexts, simplified_statement) = simplified_statement.get_posible_contexts(
-                engine,
-                recursion_tally,
-                &posible_contexts,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )?;
-            if debug_print {
-                println!("{debug_margin}simplifing to {posible_contexts}, {simplified_statement}");
-                println!(
-                    "{debug_margin}repeating if {} != {}",
-                    posible_contexts, last_results
-                );
-            }
-            
-        }
+        posible_contexts = self.condition.get_posible_contexts(
+            engine,
+            recursion_tally,
+            &posible_contexts,
+            debug_margin.to_owned() + "|  ",
+            debug_print,
+        )?;
+        //     if debug_print {
+        //         println!("{debug_margin}-- universe step: {posible_contexts}");
+        //         println!(
+        //             "{debug_margin}repeating if {} != {}",
+        //             posible_contexts, last_results
+        //         );
+        //     }
+
+        // }
 
         if debug_print {
             println!("{debug_margin}* universe of {self} is {posible_contexts}");

@@ -58,65 +58,65 @@ impl VarContextUniverse {
         ret
     }
 
-    // pub fn and(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
-    //     if debug_print {
-    //         print!("{debug_margin}{self} and {other} =");
-    //     }
-    //     let ret = match (
-    //         self.completeness.some_missing_info,
-    //         other.completeness.some_missing_info,
-    //     ) {
-    //         (true, true) => {
-    //             let mut ret = self.or(other, "".into(), false);
-    //             ret.completeness = Completeness {
-    //                 some_extra_info: true,
-    //                 some_missing_info: true,
-    //             };
-    //             ret
-    //         }
-    //         (true, false) => {
-    //             let mut ret = other;
-    //             ret.completeness.some_extra_info = true;
-    //             ret.completeness.some_missing_info = true;
-    //             ret
-    //         }
-    //         (false, true) => {
-    //             let mut ret = self;
-    //             ret.completeness.some_extra_info = true;
-    //             ret.completeness.some_missing_info = true;
-    //             ret
-    //         }
-    //         (false, false) => {
-    //             let mut contents = HashSet::new();
+    pub fn and(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
+        if debug_print {
+            print!("{debug_margin}{self} and {other} =");
+        }
+        let ret = match (
+            self.completeness.some_missing_info,
+            other.completeness.some_missing_info,
+        ) {
+            (true, true) => {
+                let mut ret = self.or(other, "".into(), false);
+                ret.completeness = Completeness {
+                    some_extra_info: true,
+                    some_missing_info: true,
+                };
+                ret
+            }
+            (true, false) => {
+                let mut ret = other;
+                ret.completeness.some_extra_info = true;
+                ret.completeness.some_missing_info = true;
+                ret
+            }
+            (false, true) => {
+                let mut ret = self;
+                ret.completeness.some_extra_info = true;
+                ret.completeness.some_missing_info = true;
+                ret
+            }
+            (false, false) => {
+                let mut contents = HashSet::new();
 
-    //             for context_a in &self.contents {
-    //                 for content_b in &other.contents {
-    //                     let op_merge = context_a.extend(&content_b);
-    //                     match op_merge {
-    //                         Some(merged) => {
-    //                             contents.insert(merged);
-    //                         }
-    //                         None => (),
-    //                     }
-    //                 }
-    //             }
+                for context_a in &self.contents {
+                    for content_b in &other.contents {
+                        let op_merge = context_a.extend(&content_b);
+                        match op_merge {
+                            Some(merged) => {
+                                contents.insert(merged);
+                            }
+                            None => (),
+                        }
+                    }
+                }
 
-    //             VarContextUniverse {
-    //                 contents,
-    //                 completeness: Completeness {
-    //                     some_extra_info: self.completeness.some_extra_info
-    //                         && self.completeness.some_extra_info,
-    //                     some_missing_info: false,
-    //                 },
-    //             }
-    //         }
-    //     };
+                VarContextUniverse {
+                    contents,
+                    completeness: Completeness {
+                        some_extra_info: self.completeness.some_extra_info
+                            && self.completeness.some_extra_info,
+                        some_missing_info: false,
+                    },
+                }
+            }
+        };
 
-    //     if debug_print {
-    //         println!(" {ret}");
-    //     }
-    //     ret
-    // }
+        if debug_print {
+            println!(" {ret}");
+        }
+        ret
+    }
 
     pub fn iter(&self) -> impl Iterator<Item = VarContext> {
         self.contents.to_owned().into_iter()

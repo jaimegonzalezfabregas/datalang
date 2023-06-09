@@ -47,7 +47,7 @@ fn main() -> Result<(), DLErr> {
     let mut debug_print: bool = true;
     let mut engine = Engine::new();
 
-    engine.set_recursion_limit(20);
+    engine.set_recursion_limit(4);
 
     let stdin = io::stdin();
 

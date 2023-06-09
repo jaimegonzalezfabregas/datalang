@@ -1,5 +1,6 @@
-rel1(0) rel1(1) rel2(1) rel2(2) 
+reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] 
+reverse([a],[a]) :- true 
 
-test(a) :- b=c && a=b && rel1(b) && rel2(c) 
+rightSideUp(a,ret) :- reverse(a,rev) && reverse(rev,ret) 
 
-test(_)?
+rightSideUp([1,6,3,5],_)?

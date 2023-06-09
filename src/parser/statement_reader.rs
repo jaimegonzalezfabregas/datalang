@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::{fmt, vec};
 
 use crate::engine::recursion_tally::RecursionTally;
-use crate::engine::truth_list::Completeness;
 use crate::engine::var_context::VarContext;
 use crate::engine::var_context_universe::VarContextUniverse;
 use crate::engine::Engine;
@@ -417,13 +416,13 @@ impl Statement {
         universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
-    ) -> Result<(VarContextUniverse, Statement), String> {
+    ) -> Result<VarContextUniverse, String> {
         if debug_print {
             println!("{debug_margin}get posible contexts of {self}");
         }
-        let analisis = match self {
+        let ret = match self {
             Statement::Or(statement_a, statement_b) => {
-                let (deep_universe_a, simplified_statement_a) = statement_a.get_posible_contexts(
+                let deep_universe_a = statement_a.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
@@ -431,7 +430,7 @@ impl Statement {
                     debug_print,
                 )?;
 
-                let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
+                let deep_universe_b = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
@@ -439,39 +438,59 @@ impl Statement {
                     debug_print,
                 )?;
 
-                (
-                    deep_universe_a.or(
-                        deep_universe_b,
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    ),
-                    Some(simplified_statement_a.or(&simplified_statement_b)),
+                deep_universe_a.or(
+                    deep_universe_b,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
                 )
             }
 
             Statement::And(statement_a, statement_b) => {
-                let (deep_universe_a, simplified_statement_a) = statement_a.get_posible_contexts(
+                if debug_print {
+                    println!("{debug_margin}and L {statement_a}");
+                }
+                let first_universe_a = statement_a.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 )?;
-                let (deep_universe_b, simplified_statement_b) = statement_b.get_posible_contexts(
+                if debug_print {
+                    println!("{debug_margin}and R {statement_b}");
+                }
+                let first_universe_b = statement_b.get_posible_contexts(
                     engine,
                     recursion_tally,
-                    &deep_universe_a,
+                    universe,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                )?;
+                if debug_print {
+                    println!("{debug_margin}and L2 {statement_a}");
+                }
+                let universe_a = statement_a.get_posible_contexts(
+                    engine,
+                    recursion_tally,
+                    &first_universe_b,
+                    debug_margin.to_owned() + "|  ",
+                    debug_print,
+                )?;
+                if debug_print {
+                    println!("{debug_margin}and R2 {statement_b}");
+                }
+                let universe_b = statement_b.get_posible_contexts(
+                    engine,
+                    recursion_tally,
+                    &first_universe_a,
                     debug_margin.to_owned() + "|  ",
                     debug_print,
                 )?;
 
-                (
-                    deep_universe_b,
-                    Some(simplified_statement_a.and(&simplified_statement_b)),
-                )
+                universe_a.and(universe_b, debug_margin.to_owned() + "|  ", debug_print)
             }
             Statement::Not(statement) => {
-                let (contexts, _) = statement.get_posible_contexts(
+                let negated_contexts = statement.get_posible_contexts(
                     engine,
                     recursion_tally,
                     universe,
@@ -479,7 +498,7 @@ impl Statement {
                     debug_print,
                 )?;
 
-                (universe.difference(&contexts), None) //TODO i dont think i can simplify a not, look into it
+                universe.difference(&negated_contexts) //TODO i dont think i can simplify a not, look into it
             }
             Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
                 if debug_print {
@@ -502,7 +521,7 @@ impl Statement {
                                 }
                                 vec![]
                             }
-                            (literalized_exp, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, literalized_exp, Err(_) | Ok(Data::Any), Ok(goal)) => {
+                            (_, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, _, Err(_) | Ok(Data::Any), Ok(goal)) => {
                                 // if debug_print {
                                 //     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
                                 // }
@@ -533,13 +552,10 @@ impl Statement {
                     })
                     .collect::<HashSet<VarContext>>();
 
-                (
-                    VarContextUniverse {
-                        contents: fitting_contexts,
-                        completeness: universe.completeness.to_owned(),
-                    },
-                    None,
-                )
+                VarContextUniverse {
+                    contents: fitting_contexts,
+                    completeness: universe.get_completeness(),
+                }
             }
 
             Statement::ExpresionComparison(exp_a, exp_b, comp) => {
@@ -556,18 +572,16 @@ impl Statement {
                                 Comparison::Lte => data_a >= data_b,
                                 Comparison::Eq => unreachable!(),
                             },
-                            _ => false,
+                            
+                            _ => true,
                         }
                     })
                     .collect::<HashSet<VarContext>>();
 
-                (
-                    VarContextUniverse {
-                        contents: fitting_contexts,
-                        completeness: universe.get_completeness(),
-                    },
-                    None,
-                )
+                VarContextUniverse {
+                    contents: fitting_contexts,
+                    completeness: universe.get_completeness(),
+                }
             }
             Statement::Relation(rel) => {
                 if debug_print {
@@ -621,41 +635,18 @@ impl Statement {
                         }
                     }
                 }
-                (ret, None)
+                ret
             }
 
-            Statement::True => (universe.to_owned(), None),
+            Statement::True => universe.to_owned(),
         };
-
-        let mut ret = (
-            analisis.0.to_owned(),
-            analisis.1.unwrap_or_else(|| self.to_owned()),
-        );
-
-        let res_completeness = analisis.0.get_completeness();
-        if !res_completeness.some_missing_info {
-            ret.1 = Statement::True;
-        }
 
         if debug_print {
             println!(
-                "{debug_margin}* universe for {self} based on {universe} is {}, simplifing to {}",
-                ret.0, ret.1
+                "{debug_margin}* universe for {self} based on {universe} is {}",
+                ret
             );
         }
         Ok(ret)
-    }
-
-    fn or(&self, other: &Statement) -> Statement {
-        match (&self, &other) {
-            (Statement::True, _) | (_, Statement::True) => Statement::True,
-            _ => Statement::Or(Box::new(self.to_owned()), Box::new(other.to_owned())),
-        }
-    }
-    fn and(&self, other: &Statement) -> Statement {
-        match (&self, &other) {
-            (Statement::True, res) | (res, Statement::True) => res.to_owned().to_owned(),
-            _ => Statement::And(Box::new(self.to_owned()), Box::new(other.to_owned())),
-        }
     }
 }
