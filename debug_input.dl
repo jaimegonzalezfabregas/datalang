@@ -6,4 +6,6 @@ conected(a,b) :- conected(a,mid) && edge(mid,b)
 
 conected(a,a):- true 
 
+edge(b,a) :- edge(a,b)
+
 conected(_,_)?
