@@ -17,7 +17,7 @@ use super::{
 pub struct Relation {
     rel_id: RelId,
     truths: HashSet<Truth>,
-    conditions: HashSet<ConditionalTruth>,
+    conditions: Vec<ConditionalTruth>,
 }
 use std::hash::Hash;
 impl Hash for Relation {
@@ -41,7 +41,7 @@ impl Relation {
         Self {
             rel_id: rel_id.to_owned(),
             truths: HashSet::new(),
-            conditions: HashSet::new(),
+            conditions: vec![],
         }
     }
 
@@ -60,12 +60,20 @@ impl Relation {
     }
 
     pub(crate) fn add_conditional(&mut self, cond: Conditional) -> Result<(), String> {
-        self.conditions.insert(ConditionalTruth::from(cond));
-        Ok(())
+        if self.conditions.contains(&ConditionalTruth::from(cond.to_owned())) {
+            Err(format!(
+                "La condición {} ya existe dentro de la tabla {:?}",
+                ConditionalTruth::from(cond),
+                self.rel_id
+            ))
+        } else {
+            self.conditions.push(ConditionalTruth::from(cond));
+            Ok(())
+        }
     }
 
     fn get_all_truths(
-        self: &Relation,
+        self: &mut Relation,
         filter: &DeferedRelation,
         engine: &Engine,
         caller_recursion_tally: &RecursionTally,
@@ -81,7 +89,7 @@ impl Relation {
         recursion_tally.count_up(&self.rel_id);
 
         if recursion_tally.go_deeper(&self.rel_id) {
-            for conditional in self.conditions.to_owned() {
+            for conditional in self.conditions.iter_mut() {
                 let sub_truth_list = conditional.get_deductions(
                     filter,
                     engine,
@@ -103,7 +111,7 @@ impl Relation {
     }
 
     pub fn get_filtered_truths(
-        self: &Relation,
+        self: &mut Relation,
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,
@@ -137,6 +145,8 @@ impl Relation {
                 matched_truths.add(fitted);
             }
         }
+
+        
 
         Ok(matched_truths)
     }

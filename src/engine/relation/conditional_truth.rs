@@ -25,7 +25,7 @@ impl fmt::Display for ConditionalTruth {
 
 impl ConditionalTruth {
     pub fn get_deductions(
-        &self,
+        &mut self,
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,

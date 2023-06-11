@@ -1,1 +1,9 @@
-rel1(0) rel1(1) rel2(1) rel2(2) test(a) :- rel1(b) && rel2(c) && b=c && a=b test(_)?
+edge(1,2) 
+edge(3,4) 
+edge(2,3) 
+
+conected(a,b) :- conected(a,mid) && edge(mid,b) 
+
+conected(a,a):- true 
+
+conected(_,_)?

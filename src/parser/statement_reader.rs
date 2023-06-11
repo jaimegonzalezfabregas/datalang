@@ -430,7 +430,7 @@ fn merge_statements(
 
 impl Statement {
     pub fn memo_get_posible_contexts(
-        &self,
+        &mut self,
         engine: &Engine,
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
@@ -445,36 +445,41 @@ impl Statement {
         engine.hash(&mut memo_hash);
         universe.hash(&mut memo_hash);
 
-        let ret = if let Some(recall) = self.memoizer.get(&memo_hash.finish()) {
-            println!("{debug_margin}CHACHE HIT");
+        let hash = memo_hash.finish();
+
+        let ret = if let Some(recall) = self.memoizer.get(&hash) {
+            if debug_print {
+                println!("{debug_margin}CACHE HIT");
+            }
             recall.to_owned()?
         } else {
-            self.get_posible_contexts(
+            let ret = self.get_posible_contexts(
                 engine,
                 recursion_tally,
                 universe,
                 debug_margin.to_owned() + "|  ",
                 debug_print,
-            )?
+            );
+
+            self.memoizer.insert(hash, ret.to_owned());
+
+            ret?
         };
         if debug_print {
-            println!(
-                "{debug_margin}* universe for {self} based on {universe} is {}",
-                ret
-            );
+            println!("{debug_margin}* universe for {self} based on {universe} is {ret}");
         }
         Ok(ret)
     }
 
     fn get_posible_contexts(
-        &self,
+        &mut self,
         engine: &Engine,
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
         debug_margin: String,
         debug_print: bool,
     ) -> Result<VarContextUniverse, String> {
-        let ret = match &self.semantics {
+        let ret = match &mut self.semantics {
             StatementSemantics::Or(statement_a, statement_b) => {
                 let deep_universe_a = statement_a.memo_get_posible_contexts(
                     engine,
@@ -561,51 +566,53 @@ impl Statement {
                         "{debug_margin}equality of {exp_a} and {exp_b} on universe {universe}"
                     );
                 }
-                let fitting_contexts = universe
-                    .iter()
-                    .flat_map(|context| {
-                        // if debug_print {
-                        //     println!("{debug_margin}for context {context}");
-                        // }
-                        let a = exp_a.literalize(&context);
-                        let b = exp_b.literalize(&context);
-                        match (exp_a, exp_b, a, b) {
-                            (_, _, Ok(Data::Any), Ok(Data::Any)) => {
-                                if debug_print {
-                                    println!("{debug_margin}{exp_a} and {exp_b} are not equal (value wise)");
-                                }
-                                vec![]
+                let mut fitting_contexts = HashSet::new();
+
+                let owned_exp_a = exp_a.to_owned();
+                let owned_exp_b = exp_b.to_owned();
+
+                for context in universe.iter() {
+                    // if debug_print {
+                    //     println!("{debug_margin}for context {context}");
+                    // }
+                    let a = owned_exp_a.literalize(&context);
+                    let b = owned_exp_b.to_owned().literalize(&context);
+                    match (&owned_exp_a, &owned_exp_b, a, b) {
+                        (_, _, Ok(Data::Any), Ok(Data::Any)) => {
+                            if debug_print {
+                                println!(
+                                    "{debug_margin}{owned_exp_a} and {owned_exp_b} are not equal (value wise)"
+                                );
                             }
-                            (_, exp, Ok(goal), Err(_) | Ok(Data::Any)) | (exp, _, Err(_) | Ok(Data::Any), Ok(goal)) => {
-                                // if debug_print {
-                                //     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
-                                // }
-                                match exp.solve(
-                                    &goal,
-                                    &context,
-                                    debug_margin.to_owned() + "|  ",
-                                    debug_print,
-                                ) {
-                                    Ok(new_context) => {
-                                        vec![new_context]
-                                    }
-                                    Err(err) => {println!("error de solving: {err}"); vec![]},
-                                }
-                            }
-                            (_, _, Ok(data_a), Ok(data_b)) => {
-                                // if debug_print {
-                                //     println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");
-                                // }
-                                if data_a == data_b {
-                                    vec![context.to_owned()]
-                                } else {
-                                    vec![]
-                                }
-                            }
-                            (_, _, Err(_), Err(_)) => vec![],
                         }
-                    })
-                    .collect::<HashSet<VarContext>>();
+                        (_, exp, Ok(goal), Err(_) | Ok(Data::Any))
+                        | (exp, _, Err(_) | Ok(Data::Any), Ok(goal)) => {
+                            // if debug_print {
+                            //     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
+                            // }
+                            match exp.solve(
+                                &goal,
+                                &context,
+                                debug_margin.to_owned() + "|  ",
+                                debug_print,
+                            ) {
+                                Ok(new_context) => {
+                                    fitting_contexts.insert(new_context);
+                                }
+                                Err(_) => (),
+                            }
+                        }
+                        (_, _, Ok(data_a), Ok(data_b)) => {
+                            // if debug_print {
+                            //     println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");
+                            // }
+                            if data_a == data_b {
+                                fitting_contexts.insert(context.to_owned());
+                            }
+                        }
+                        (_, _, Err(_), Err(_)) => (),
+                    }
+                }
 
                 VarContextUniverse {
                     contents: fitting_contexts,
