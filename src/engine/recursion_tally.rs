@@ -1,17 +1,17 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap};
 
 use super::RelId;
 #[derive(Clone)]
 pub struct RecursionTally {
     max_recursion: usize,
-    tally: HashMap<RelId, usize>,
+    tally: BTreeMap<RelId, usize>,
 }
 
 impl RecursionTally {
     pub fn new(max_recursion: usize) -> Self {
         Self {
             max_recursion,
-            tally: HashMap::new(),
+            tally: BTreeMap::new(),
         }
     }
 

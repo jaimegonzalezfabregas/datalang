@@ -1,12 +1,12 @@
 use crate::parser::data_reader::Data;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
 #[derive(Clone, Debug, Eq)]
 pub struct VarContext {
-    map: HashMap<String, Data>,
+    map: BTreeMap<String, Data>,
 }
 
 impl PartialEq for VarContext {
@@ -67,7 +67,7 @@ impl VarContext {
 
     pub(crate) fn new() -> VarContext {
         VarContext {
-            map: HashMap::new(),
+            map: BTreeMap::new(),
         }
     }
 
@@ -103,8 +103,8 @@ impl VarContext {
     }
 }
 
-impl From<HashMap<String, Data>> for VarContext {
-    fn from(value: HashMap<String, Data>) -> Self {
+impl From<BTreeMap<String, Data>> for VarContext {
+    fn from(value: BTreeMap<String, Data>) -> Self {
         Self { map: value }
     }
 }

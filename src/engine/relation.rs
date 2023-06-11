@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt};
+use std::{collections::HashSet, fmt, hash};
 mod conditional_truth;
 pub mod truth;
 
@@ -10,10 +10,7 @@ use crate::parser::{
 use self::{conditional_truth::ConditionalTruth, truth::Truth};
 
 use super::{
-    recursion_tally::RecursionTally,
-    truth_list::{Completeness, TruthList},
-    var_context::VarContext,
-    Engine, RelId,
+    recursion_tally::RecursionTally, truth_list::TruthList, var_context::VarContext, Engine, RelId,
 };
 
 #[derive(Debug, Clone)]
@@ -21,6 +18,22 @@ pub struct Relation {
     rel_id: RelId,
     truths: HashSet<Truth>,
     conditions: HashSet<ConditionalTruth>,
+}
+use std::hash::Hash;
+impl Hash for Relation {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.rel_id.hash(state);
+        self.truths
+            .iter()
+            .cloned()
+            .collect::<Vec<Truth>>()
+            .hash(state);
+        self.conditions
+            .iter()
+            .cloned()
+            .collect::<Vec<ConditionalTruth>>()
+            .hash(state);
+    }
 }
 
 impl Relation {
@@ -59,7 +72,7 @@ impl Relation {
         debug_margin: String,
         debug_print: bool,
     ) -> Result<TruthList, String> {
-        let mut ret = TruthList::new(Completeness::exact());
+        let mut ret = TruthList::new();
         let mut recursion_tally = caller_recursion_tally.to_owned();
 
         for literal_truth in self.truths.to_owned() {
@@ -77,12 +90,6 @@ impl Relation {
                     debug_print,
                 )?;
 
-                ret.set_completeness(Completeness {
-                    some_extra_info: ret.get_completeness().some_extra_info
-                        || sub_truth_list.get_completeness().some_extra_info,
-                    some_missing_info: ret.get_completeness().some_missing_info
-                        || sub_truth_list.get_completeness().some_missing_info,
-                });
                 for truth in sub_truth_list.into_iter() {
                     ret.add(truth);
                 }
@@ -118,7 +125,7 @@ impl Relation {
             debug_print,
         )?;
 
-        let mut matched_truths = TruthList::new(all_truths.get_completeness());
+        let mut matched_truths = TruthList::new();
 
         for truth in all_truths.into_iter() {
             if let Ok(fitted) = truth.fits_filter(

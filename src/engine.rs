@@ -12,7 +12,7 @@ use crate::{
         inmediate_relation_reader::InmediateRelation, line_reader::Line, HasRelId,
     },
 };
-use std::{collections::HashMap, fmt, vec};
+use std::{collections::BTreeMap, fmt, vec};
 
 use self::{
     recursion_tally::RecursionTally,
@@ -21,7 +21,7 @@ use self::{
     var_context::VarContext,
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct RelId {
     pub identifier: String,
     pub column_count: usize,
@@ -43,7 +43,15 @@ impl From<String> for RuntimeError {
 #[derive(Debug, Clone)]
 pub struct Engine {
     recursion_limit: usize,
-    tables: HashMap<RelId, Relation>,
+    tables: BTreeMap<RelId, Relation>,
+}
+
+use std::hash::Hash;
+impl Hash for Engine{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.recursion_limit.hash(state);
+        self.tables.hash(state);
+    }
 }
 
 fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<Line>, String> {
@@ -86,7 +94,7 @@ impl Engine {
     pub fn new() -> Self {
         Self {
             recursion_limit: 5,
-            tables: HashMap::new(),
+            tables: BTreeMap::new(),
         }
     }
 

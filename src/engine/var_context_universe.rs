@@ -1,11 +1,20 @@
 use std::{collections::HashSet, fmt};
 
-use super::{truth_list::Completeness, var_context::VarContext};
+use super::var_context::VarContext;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VarContextUniverse {
-    pub completeness: Completeness,
     pub contents: HashSet<VarContext>,
+}
+use std::hash::Hash;
+impl Hash for VarContextUniverse {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.contents
+            .iter()
+            .cloned()
+            .collect::<Vec<VarContext>>()
+            .hash(state);
+    }
 }
 
 impl fmt::Display for VarContextUniverse {
@@ -16,34 +25,19 @@ impl fmt::Display for VarContextUniverse {
             ret += &format!("{context},");
         }
 
-        write!(f, "[{}:{}]", self.completeness, ret)
+        write!(f, "[{}]", ret)
     }
 }
 
 impl VarContextUniverse {
-    pub fn new(c: Completeness) -> Self {
+    pub fn new() -> Self {
         Self {
             contents: HashSet::new(),
-            completeness: c,
         }
     }
 
-    pub fn set_completeness(&mut self, c: Completeness) {
-        self.completeness = c;
-    }
-
-    pub fn get_completeness(&self) -> Completeness {
-        self.completeness.to_owned()
-    }
-
     pub fn or(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
-        let res_completeness = Completeness {
-            some_extra_info: self.completeness.some_extra_info
-                || other.completeness.some_extra_info,
-            some_missing_info: self.completeness.some_missing_info
-                || other.completeness.some_missing_info,
-        };
-        let mut ret = Self::new(res_completeness);
+        let mut ret = Self::new();
 
         for context in &self.contents {
             ret.insert(context.to_owned());
@@ -62,55 +56,22 @@ impl VarContextUniverse {
         if debug_print {
             print!("{debug_margin}{self} and {other} =");
         }
-        let ret = match (
-            self.completeness.some_missing_info,
-            other.completeness.some_missing_info,
-        ) {
-            (true, true) => {
-                let mut ret = self.or(other, "".into(), false);
-                ret.completeness = Completeness {
-                    some_extra_info: true,
-                    some_missing_info: true,
-                };
-                ret
-            }
-            (true, false) => {
-                let mut ret = other;
-                ret.completeness.some_extra_info = true;
-                ret.completeness.some_missing_info = true;
-                ret
-            }
-            (false, true) => {
-                let mut ret = self;
-                ret.completeness.some_extra_info = true;
-                ret.completeness.some_missing_info = true;
-                ret
-            }
-            (false, false) => {
-                let mut contents = HashSet::new();
 
-                for context_a in &self.contents {
-                    for content_b in &other.contents {
-                        let op_merge = context_a.extend(&content_b);
-                        match op_merge {
-                            Some(merged) => {
-                                contents.insert(merged);
-                            }
-                            None => (),
-                        }
+        let mut contents = HashSet::new();
+
+        for context_a in &self.contents {
+            for content_b in &other.contents {
+                let op_merge = context_a.extend(&content_b);
+                match op_merge {
+                    Some(merged) => {
+                        contents.insert(merged);
                     }
-                }
-
-                VarContextUniverse {
-                    contents,
-                    completeness: Completeness {
-                        some_extra_info: self.completeness.some_extra_info
-                            && self.completeness.some_extra_info,
-                        some_missing_info: false,
-                    },
+                    None => (),
                 }
             }
-        };
+        }
+
+        let ret = VarContextUniverse { contents };
 
         if debug_print {
             println!(" {ret}");
@@ -140,10 +101,7 @@ impl VarContextUniverse {
             }
         }
 
-        Self {
-            contents: ret,
-            completeness: self.to_owned().completeness,
-        }
+        Self { contents: ret }
     }
 
     pub fn len(&self) -> usize {

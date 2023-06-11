@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn recursion() {
         let mut engine = Engine::new();
-        engine.set_recursion_limit(10);
+        engine.set_recursion_limit(7);
         assert_eq!(
             "\n(0)\n(1)\n(2)\n(3)\n(4)\n(5)\n",
             engine.input(
