@@ -1,4 +1,4 @@
-use crate::parser::data_reader::Data;
+use crate::parser::data_token::Data;
 
 pub fn add_direct(op1: Data, op2: Data) -> Result<Data, String> {
     Ok(match (op1, op2) {

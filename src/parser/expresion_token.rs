@@ -4,10 +4,10 @@ use crate::engine::var_context::VarContext;
 use crate::lexer;
 use crate::lexer::LexogramType::*;
 
-use super::data_reader::{read_data, Data};
+use super::data_token::{read_data, Data};
 use super::error::{FailureExplanation, ParserError};
 use crate::engine::operations::*;
-use crate::parser::destructuring_array_reader::read_destructuring_array;
+use crate::parser::destructuring_array_token::read_destructuring_array;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum VarName {

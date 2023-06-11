@@ -1,4 +1,4 @@
-use crate::parser::data_reader::Data;
+use crate::parser::data_token::Data;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::Hash;

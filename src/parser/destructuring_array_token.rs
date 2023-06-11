@@ -1,7 +1,7 @@
 use super::error::{FailureExplanation, ParserError};
 use crate::lexer::LexogramType::*;
-use crate::parser::expresion_reader::{Expresion, VarName};
-use crate::{lexer, parser::expresion_reader::read_expresion};
+use crate::parser::expresion_token::{Expresion, VarName};
+use crate::{lexer, parser::expresion_token::read_expresion};
 
 pub fn read_destructuring_array(
     lexograms: &Vec<lexer::Lexogram>,

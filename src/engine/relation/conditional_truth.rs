@@ -6,8 +6,8 @@ use crate::{
         var_context_universe::VarContextUniverse, Engine,
     },
     parser::{
-        conditional_reader::Conditional, data_reader::Data,
-        defered_relation_reader::DeferedRelation, statement_reader::Statement,
+        conditional_token::Conditional, data_token::Data,
+        defered_relation_token::DeferedRelation, statement_token::Statement,
     },
 };
 

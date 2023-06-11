@@ -9,15 +9,15 @@ use crate::engine::var_context_universe::VarContextUniverse;
 use crate::engine::Engine;
 use crate::lexer::LexogramType::*;
 
-use crate::parser::defered_relation_reader::read_defered_relation;
-use crate::parser::expresion_reader::read_expresion;
+use crate::parser::defered_relation_token::read_defered_relation;
+use crate::parser::expresion_token::read_expresion;
 
 use crate::lexer::{self};
 
-use super::data_reader::Data;
-use super::defered_relation_reader::DeferedRelation;
+use super::data_token::Data;
+use super::defered_relation_token::DeferedRelation;
 use super::error::{FailureExplanation, ParserError};
-use super::expresion_reader::Expresion;
+use super::expresion_token::Expresion;
 
 #[derive(Clone, Copy)]
 enum AppendModes {

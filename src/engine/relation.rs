@@ -3,8 +3,8 @@ mod conditional_truth;
 pub mod truth;
 
 use crate::parser::{
-    conditional_reader::Conditional, defered_relation_reader::DeferedRelation,
-    inmediate_relation_reader::InmediateRelation,
+    conditional_token::Conditional, defered_relation_token::DeferedRelation,
+    inmediate_relation_token::InmediateRelation,
 };
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};

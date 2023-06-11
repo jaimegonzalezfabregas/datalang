@@ -1,8 +1,8 @@
 use core::fmt;
 
 use super::{
-    assumption_reader::{read_assumption, Assumption},
-    defered_relation_reader::{read_defered_relation, DeferedRelation},
+    assumption_token::{read_assumption, Assumption},
+    defered_relation_token::{read_defered_relation, DeferedRelation},
     error::*,
 };
 use crate::lexer::{self, LexogramType};

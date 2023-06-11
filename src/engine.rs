@@ -8,8 +8,8 @@ pub mod var_context_universe;
 use crate::{
     lexer,
     parser::{
-        self, assumption_reader::Assumption, defered_relation_reader::DeferedRelation,
-        inmediate_relation_reader::InmediateRelation, line_reader::Line, HasRelId,
+        self, assumption_token::Assumption, defered_relation_token::DeferedRelation,
+        inmediate_relation_token::InmediateRelation, line_token::Line, HasRelId,
     },
 };
 use std::{collections::BTreeMap, fmt, vec};
@@ -47,7 +47,7 @@ pub struct Engine {
 }
 
 use std::hash::Hash;
-impl Hash for Engine{
+impl Hash for Engine {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.recursion_limit.hash(state);
         self.tables.hash(state);

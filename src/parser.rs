@@ -1,14 +1,14 @@
-pub mod assumption_reader;
-pub mod conditional_reader;
-pub mod data_reader;
-pub mod defered_relation_reader;
-pub mod destructuring_array_reader;
-pub mod expresion_reader;
-pub mod inmediate_relation_reader;
-pub mod line_reader;
-pub mod list_reader;
-pub mod statement_reader;
-pub mod update_reader;
+pub mod assumption_token;
+pub mod destructuring_array_token;
+pub mod list_token;
+pub mod statement_token;
+pub mod update_token;
+pub mod conditional_token;
+pub mod data_token;
+pub mod defered_relation_token;
+pub mod expresion_token;
+pub mod inmediate_relation_token;
+pub mod line_token;
 
 pub mod error;
 
@@ -17,7 +17,7 @@ use crate::lexer;
 use crate::parser::error::FailureExplanation;
 
 use self::error::ParserError;
-use self::line_reader::*;
+use self::line_token::*;
 
 pub trait HasRelId {
     fn get_rel_id(&self) -> RelId;

@@ -1,37 +1,47 @@
-use core::fmt;
+use std::fmt;
 
+use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
+use crate::parser::statement_token::read_statement;
 use crate::{
     lexer,
-    parser::{defered_relation_reader::read_defered_relation, error::FailureExplanation},
+    parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
 };
 
-use super::defered_relation_reader::DeferedRelation;
+use super::defered_relation_token::DeferedRelation;
 use super::error::ParserError;
+use super::statement_token::Statement;
+use super::HasRelId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Update {
-    pub filter: DeferedRelation,
-    pub goal: DeferedRelation,
+pub struct Conditional {
+    pub conditional: Statement,
+    pub relation: DeferedRelation,
 }
 
-impl fmt::Display for Update {
+impl fmt::Display for Conditional {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} -> {}", self.filter, self.goal)
+        write!(f, "{} :- {}", self.relation, self.conditional)
     }
 }
 
-pub fn read_update(
+impl HasRelId for Conditional {
+    fn get_rel_id(&self) -> RelId {
+        self.relation.get_rel_id()
+    }
+}
+
+pub fn read_conditional(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
     debug_print: bool,
-) -> Result<Result<(Update, usize), FailureExplanation>, ParserError> {
+) -> Result<Result<(Conditional, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
-        SpectingDeferedRelationFilter,
-        SpectingUpdate,
-        SpectingDeferedRelationGoal,
+        SpectingDeferedRelation,
+        SpectingTrueWhen,
+        SpectingCondition,
     }
     use IntensionalParserStates::*;
 
@@ -39,15 +49,15 @@ pub fn read_update(
         println!("{debug_margin}read_intensional at {start_cursor}");
     }
     let mut cursor = start_cursor;
-    let mut op_filter_rel = None;
-    let mut state = SpectingDeferedRelationFilter;
+    let mut base_relation = None;
+    let mut state = SpectingDeferedRelation;
 
     for (i, lex) in lexograms.iter().enumerate() {
         if cursor > i {
             continue;
         }
         match (lex.l_type.to_owned(), state) {
-            (_, SpectingDeferedRelationFilter) => {
+            (_, SpectingDeferedRelation) => {
                 match read_defered_relation(
                     lexograms,
                     i,
@@ -58,43 +68,37 @@ pub fn read_update(
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
-                            if_it_was: "update".into(),
+                            if_it_was: "conditional".into(),
                             failed_because: "specting relation".into(),
                             parent_failure: (vec![e]),
                         }))
                     }
                     Ok((r, jump_to)) => {
                         cursor = jump_to;
-                        op_filter_rel = Some(r);
-                        state = SpectingUpdate;
+                        base_relation = Some(r);
+                        state = SpectingTrueWhen;
                     }
                 }
             }
-            (Update, SpectingUpdate) => state = SpectingDeferedRelationGoal,
-            (_, SpectingDeferedRelationGoal) => {
+            (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
+            (_, SpectingCondition) => {
                 match (
-                    read_defered_relation(
-                        lexograms,
-                        i,
-                        false,
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    )?,
-                    op_filter_rel,
+                    read_statement(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)?,
+                    base_relation,
                 ) {
                     (Err(e), _) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
-                            if_it_was: "update".into(),
-                            failed_because: "specting relation".into(),
+                            if_it_was: "conditional".into(),
+                            failed_because: "specting statement".into(),
                             parent_failure: (vec![e]),
                         }))
                     }
-                    (Ok((r, jump_to)), Some(filter_rel)) => {
+                    (Ok((cond, jump_to)), Some(def_rel)) => {
                         return Ok(Ok((
-                            Update {
-                                filter: filter_rel,
-                                goal: r,
+                            Conditional {
+                                relation: def_rel,
+                                conditional: cond,
                             },
                             jump_to,
                         )))
@@ -103,11 +107,15 @@ pub fn read_update(
                 }
             }
 
-            _ => {
+            (lex, _) => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
-                    if_it_was: "update".into(),
-                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
+                    if_it_was: "conditional".into(),
+                    failed_because: format!(
+                        "pattern missmatch on {:#?} state reading {lex:?}",
+                        state
+                    )
+                    .into(),
                     parent_failure: vec![],
                 }))
             }
@@ -115,7 +123,7 @@ pub fn read_update(
     }
     Ok(Err(FailureExplanation {
         lex_pos: lexograms.len() - 1,
-        if_it_was: "update".into(),
+        if_it_was: "conditional".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],
     }))

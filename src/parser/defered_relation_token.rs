@@ -5,13 +5,13 @@ use crate::engine::relation::truth::Truth;
 use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
-use crate::parser::assumption_reader::read_assumption;
-use crate::{lexer, parser::list_reader::read_list};
+use crate::parser::assumption_token::read_assumption;
+use crate::{lexer, parser::list_token::read_list};
 
-use super::assumption_reader::Assumption;
+use super::assumption_token::Assumption;
 use super::error::ParserError;
 use super::{FailureExplanation, HasRelId};
-use crate::parser::expresion_reader::Expresion;
+use crate::parser::expresion_token::Expresion;
 
 #[derive(Debug, Clone, Eq)]
 pub struct DeferedRelation {
