@@ -11,7 +11,7 @@ use crate::{
 use super::defered_relation_reader::DeferedRelation;
 use super::error::ParserError;
 use super::statement_reader::Statement;
-use super::Relation;
+use super::HasRelId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Conditional {
@@ -25,7 +25,7 @@ impl fmt::Display for Conditional {
     }
 }
 
-impl Relation for Conditional {
+impl HasRelId for Conditional {
     fn get_rel_id(&self) -> RelId {
         self.relation.get_rel_id()
     }
@@ -107,18 +107,22 @@ pub fn read_conditional(
                 }
             }
 
-            _ => {
+            (lex, _) => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: i,
                     if_it_was: "conditional".into(),
-                    failed_because: format!("pattern missmatch on {:#?} state", state).into(),
+                    failed_because: format!(
+                        "pattern missmatch on {:#?} state reading {lex:?}",
+                        state
+                    )
+                    .into(),
                     parent_failure: vec![],
                 }))
             }
         }
     }
     Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len()-1,
+        lex_pos: lexograms.len() - 1,
         if_it_was: "conditional".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

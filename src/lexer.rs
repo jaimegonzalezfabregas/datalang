@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::io;
 
 use crate::utils::*;
@@ -101,8 +101,8 @@ fn parse(w: String) -> Result<Option<LexogramType>, LexerErrorMsg> {
 }
 
 fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerErrorMsg> {
-    let reserved_lexograms = HashMap::from([
-        ("#",LexogramType::Comment),
+    let reserved_lexograms = BTreeMap::from([
+        ("#", LexogramType::Comment),
         ("true", LexogramType::True),
         (":", LexogramType::CharColon),
         (")", LexogramType::RightParenthesis),

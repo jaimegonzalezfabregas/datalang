@@ -1,8 +1,10 @@
-use crate::{parser::{FailureExplanation, expresion_reader::read_expresion}, lexer};
 use crate::lexer::LexogramType::*;
+use crate::{
+    lexer,
+    parser::{expresion_reader::read_expresion, FailureExplanation},
+};
 
 use super::{error::ParserError, expresion_reader::Expresion};
-
 
 pub fn read_list(
     lexograms: &Vec<lexer::Lexogram>,
@@ -76,7 +78,7 @@ pub fn read_list(
         }
     }
     return Ok(Err(FailureExplanation {
-        lex_pos: lexograms.len()-1,
+        lex_pos: lexograms.len() - 1,
         if_it_was: "list".into(),
         failed_because: "file ended".into(),
         parent_failure: vec![],

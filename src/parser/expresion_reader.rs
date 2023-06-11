@@ -14,7 +14,6 @@ pub enum VarName {
     DestructuredArray(Vec<Expresion>),
     Direct(String),
     ExplodeArray(String),
-    Anonimus,
 }
 
 impl fmt::Display for VarName {
@@ -35,7 +34,6 @@ impl fmt::Display for VarName {
             }
             VarName::Direct(name) => write!(f, "{name}"),
             VarName::ExplodeArray(name) => write!(f, "...{name}"),
-            VarName::Anonimus => write!(f, "_"),
         }
     }
 }
@@ -75,7 +73,9 @@ impl Expresion {
             Expresion::Literal(e) => Ok(e),
             Expresion::Var(VarName::Direct(str)) => match context.get(&str) {
                 Some(value) => Ok(value.to_owned()),
-                None => Err(format!("literalize error: var {str} not defined on context")),
+                None => Err(format!(
+                    "literalize error: var {str} not defined on context {context}"
+                )),
             },
             Expresion::Var(VarName::DestructuredArray(exp_vec)) => {
                 let mut datas = vec![];
@@ -91,7 +91,6 @@ impl Expresion {
                             match var_value {
                                 Data::Array(arr) => datas.extend(arr),
                                 _ =>     return Err(format!("no se ha podido literalizar: {self} en el contexto {context} por ...{var_name}"))
-                                
                             }
                         }
                         _ => datas.push(e.literalize(context)?),
@@ -117,37 +116,40 @@ impl Expresion {
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        // println!("\n------ call to solve with goal:[{goal}] at [{self}] at {caller_context:?}");
-
+        // if debug_print {
+        //     println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
+        // }
         let ret = match self.literalize(&caller_context) {
-            Ok(d) => {
-                if d == goal.to_owned() {
-                    caller_context.to_owned()
-                } else {
-                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"))
+            Ok(Data::Any) => match &self {
+                Expresion::Var(VarName::Direct(name)) => {
+                    let mut new_context = caller_context.to_owned();
+                    new_context.set(name.to_owned(), goal.to_owned());
+                    new_context
                 }
-            }
+                _ => caller_context.to_owned(),
+            },
+
             Err(_) => match self {
                 Expresion::Arithmetic(a, b, func) => {
                     let literalize_a = a.literalize(&caller_context);
                     let literalize_b = b.literalize(&caller_context);
 
                     match (literalize_a, literalize_b) {
-                        (Ok(_), Ok(_)) => {
-                            return Err("parece que se intentan operar dos datos incompatibles".into())
+                        (Err(_)|Ok(Data::Any),Err(_)|Ok(Data::Any) ) => {
+                            return Err("parece que esta expresión contiene varias incognitas".into())
                         }
-                        (Ok(op_1), Err(_)) => {
+                        (Ok(op_1), Err(_)|Ok(Data::Any)) => {
                             let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
                             b.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
                                     debug_print)?
                         }
-                        (Err(_), Ok(op_2)) => {
+                        (Err(_)|Ok(Data::Any), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
                             a.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
                                     debug_print)?
                         }
-                        (Err(_), Err(_)) => {
-                            return Err("parece que esta expresión contiene varias incognitas".into())
+                        (Ok(_), Ok(_)) => {
+                            return Err("parece que ambas ramas del arbol son literalizables, por lo que no hay nada que deducir".into())
                         }
                     }
                 }
@@ -156,9 +158,6 @@ impl Expresion {
                     let mut new_context = caller_context.to_owned();
                     new_context.set(name.to_owned(), goal.to_owned());
                     new_context
-                }
-                Expresion::Var(VarName::Anonimus) => {
-                    caller_context.to_owned()
                 }
                 Expresion::Var(VarName::DestructuredArray(template_arr)) => {
                     if let Data::Array(goal_arr) = goal {
@@ -172,23 +171,25 @@ impl Expresion {
                         for (i, array_position) in template_arr.iter().enumerate() {
                             last_i = i;
                             if let Expresion::Var(VarName::ExplodeArray(x)) = array_position {
-                                match if x != "_" {
-                                    Expresion::Var(VarName::Direct(x.to_owned()))
-                                } else {
-                                    Expresion::Var(VarName::Anonimus)
-                                }
-                                .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context,debug_margin.to_owned() + "|  ",
-                                    debug_print)
-                                {
+                                match Expresion::Var(VarName::Direct(x.to_owned())).solve(
+                                    &Data::Array(goal_arr[i..].to_vec()),
+                                    &new_context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
                                     }
                                 }
-                                last_i = goal_arr.len()-1;
+                                last_i = goal_arr.len() - 1;
                             } else {
-                                match array_position.solve(&goal_arr[i], &new_context,debug_margin.to_owned() + "|  ",
-                                    debug_print) {
+                                match array_position.solve(
+                                    &goal_arr[i],
+                                    &new_context,
+                                    debug_margin.to_owned() + "|  ",
+                                    debug_print,
+                                ) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
@@ -196,10 +197,10 @@ impl Expresion {
                                 }
                             }
                         }
-                        if last_i == goal_arr.len()-1{
+                        if last_i == goal_arr.len() - 1 {
                             new_context
-                        }else{
-                         return Err("cant destructure an array with unmatching size".into());
+                        } else {
+                            return Err("cant destructure an array with unmatching size".into());
                         }
                     } else {
                         return Err("cant destructure a non array goal to an array".into());
@@ -207,11 +208,20 @@ impl Expresion {
                 }
                 Expresion::Var(VarName::ExplodeArray(_)) => unreachable!(),
             },
+            Ok(d) => {
+                if d == goal.to_owned() {
+                    caller_context.to_owned()
+                } else if let Data::Any = goal {
+                    caller_context.to_owned()
+                } else {
+                    return Err(format!("La literalizacion ({d}) y el goal ({goal}) no coinciden en el contexto: {caller_context}"));
+                }
+            }
         };
 
-        if debug_print{
-            println!("{debug_margin} solving de {self} con goal {goal} ha resultado en {ret}")
-        }
+        // if debug_print {
+        //     println!("{debug_margin}*solving de \"{self}\" con goal {goal} ha resultado en {ret}")
+        // }
 
         Ok(ret)
     }
@@ -410,7 +420,6 @@ pub fn read_expresion_item(
                 },
             }
         }
-        (Any, false) => Ok(Ok((Expresion::Var(VarName::Anonimus), start_cursor + 1))),
 
         (_, _) => match read_data(lexograms, start_cursor, debug_margin, debug_print)? {
             Ok((value, jump_to)) => Ok(Ok((Expresion::Literal(value), jump_to))),

@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{hash, vec};
 
-use crate::engine::table::truth::Truth;
+use crate::engine::relation::truth::Truth;
 use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
@@ -10,7 +10,7 @@ use crate::{lexer, parser::list_reader::read_list};
 
 use super::assumption_reader::Assumption;
 use super::error::ParserError;
-use super::{FailureExplanation, Relation};
+use super::{FailureExplanation, HasRelId};
 use crate::parser::expresion_reader::Expresion;
 
 #[derive(Debug, Clone, Eq)]
@@ -39,7 +39,7 @@ impl hash::Hash for DeferedRelation {
     }
 }
 
-impl Relation for DeferedRelation {
+impl HasRelId for DeferedRelation {
     fn get_rel_id(&self) -> RelId {
         return RelId {
             identifier: self.rel_name.clone(),
@@ -57,7 +57,7 @@ impl DeferedRelation {
         Ok(Truth::from(&(literal_vec, self.get_rel_id())))
     }
 
-    pub fn clone_n_apply(&self, context: &VarContext) -> DeferedRelation {
+    pub fn clone_and_apply(&self, context: &VarContext) -> DeferedRelation {
         let mut literalized_vec = vec![];
         for exp in &self.args {
             literalized_vec.push(match exp.literalize(context) {
@@ -194,7 +194,9 @@ pub fn read_defered_relation(
             (Assuming, SpectingAssuming) => state = SpectingStatementIdentifierOrNegation,
             (
                 Identifier(str),
-                SpectingStatementIdentifier | SpectingStatementIdentifierOrassumptionOrNegation,
+                SpectingStatementIdentifier
+                | SpectingStatementIdentifierOrassumptionOrNegation
+                | SpectingStatementIdentifierOrNegation,
             ) => {
                 op_rel_name = Some(str);
                 state = SpectingStatementList;

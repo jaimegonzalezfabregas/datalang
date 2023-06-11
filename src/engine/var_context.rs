@@ -1,12 +1,38 @@
 use crate::parser::data_reader::Data;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub struct VarContext {
-    map: HashMap<String, Data>,
+    map: BTreeMap<String, Data>,
+}
+
+impl PartialEq for VarContext {
+    fn eq(&self, other: &Self) -> bool {
+        for (var_a, val_a) in &self.map {
+            let mut found = false;
+            for (var_b, val_b) in &other.map {
+                if var_b == var_a {
+                    match (val_a, val_b) {
+                        (Data::Any, Data::Any) => found = true,
+                        (a, b) => {
+                            if a == b {
+                                found = true
+                            } else {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            if !found {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 impl Hash for VarContext {
@@ -41,7 +67,7 @@ impl VarContext {
 
     pub(crate) fn new() -> VarContext {
         VarContext {
-            map: HashMap::new(),
+            map: BTreeMap::new(),
         }
     }
 
@@ -49,14 +75,21 @@ impl VarContext {
         let a = &self.map;
         let b = &b_context.map;
 
-        let ret = if a
-            .keys()
-            .any(|a_key| b.contains_key(a_key) && b.get(a_key) != a.get(a_key))
-        {
+        let ret = if a.keys().any(|a_key| {
+            let ret = b.contains_key(a_key)
+                && b.get(a_key) != a.get(a_key)
+                && a.get(a_key).cloned() != Some(Data::Any)
+                && b.get(a_key).cloned() != Some(Data::Any);
+            ret
+        }) {
             None
         } else {
             let mut join = a.clone();
-            join.extend(b.clone());
+            for (var, val) in b.iter() {
+                if val != &Data::Any {
+                    join.insert(var.to_owned(), val.to_owned());
+                }
+            }
             Some(Self::from(join))
         };
 
@@ -64,10 +97,14 @@ impl VarContext {
 
         ret
     }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 
-impl From<HashMap<String, Data>> for VarContext {
-    fn from(value: HashMap<String, Data>) -> Self {
+impl From<BTreeMap<String, Data>> for VarContext {
+    fn from(value: BTreeMap<String, Data>) -> Self {
         Self { map: value }
     }
 }

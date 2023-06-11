@@ -5,11 +5,23 @@ use crate::engine::var_context::VarContext;
 use crate::lexer::{self, LexogramType::*};
 use crate::parser::{error::FailureExplanation, expresion_reader::read_expresion};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialOrd)]
 pub enum Data {
     Number(f64),
     String(String),
     Array(Vec<Data>),
+    Any,
+}
+
+impl PartialEq for Data {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Number(l0), Self::Number(r0)) => l0 == r0,
+            (Self::String(l0), Self::String(r0)) => l0 == r0,
+            (Self::Array(l0), Self::Array(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for Data {
@@ -30,6 +42,7 @@ impl fmt::Display for Data {
 
                 write!(f, "{arr}")
             }
+            Data::Any => write!(f, "_"),
         }
     }
 }
@@ -56,6 +69,13 @@ impl Ord for Data {
             (Data::Array(_), Data::Number(_)) => std::cmp::Ordering::Greater,
             (Data::Array(_), Data::String(_)) => std::cmp::Ordering::Greater,
             (Data::Array(x), Data::Array(y)) => x.cmp(y),
+            (Data::Number(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::String(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::Array(_), Data::Any) => std::cmp::Ordering::Less,
+            (Data::Any, Data::Number(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::String(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::Array(_)) => std::cmp::Ordering::Greater,
+            (Data::Any, Data::Any) => std::cmp::Ordering::Greater,
         }
     }
 }
@@ -77,6 +97,7 @@ impl hash::Hash for Data {
             }
             Data::String(str) => str.hash(state),
             Data::Array(array) => array.hash(state),
+            Data::Any => "_".hash(state),
         }
     }
 }
@@ -95,6 +116,7 @@ impl Data {
                         .join(",")
                     + &"]".to_string()
             }
+            Data::Any => "_".into(),
         }
     }
 }
@@ -128,6 +150,7 @@ pub fn read_data(
                 })),
             }
         }
+        Any => Ok(Ok((Data::Any, start_cursor + 1))),
 
         _ => Ok(Err(FailureExplanation {
             lex_pos: start_cursor,

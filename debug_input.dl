@@ -1,1 +1,11 @@
-reverse([a,...b],ret) :- reverse(b, rb) && ret = rb + [a] reverse([a],[a]) :- true rightSideUp(a,ret) :- reverse(a,rev) && reverse(rev,ret) rightSideUp([1,2,3,4],_)?
+edge(1,2) 
+edge(3,4) 
+edge(2,3) 
+
+conected(a,b) :- conected(a,mid) && edge(mid,b) 
+
+conected(a,a):- true 
+
+edge(b,a) :- edge(a,b)
+
+conected(_,_)?

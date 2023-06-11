@@ -19,7 +19,7 @@ use crate::parser::error::FailureExplanation;
 use self::error::ParserError;
 use self::line_reader::*;
 
-pub trait Relation {
+pub trait HasRelId {
     fn get_rel_id(&self) -> RelId;
 }
 

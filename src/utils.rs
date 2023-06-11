@@ -4,9 +4,6 @@ pub fn print_hilighted(
     end: usize,
     indentation: String,
 ) -> String {
-
-
-
     let context_margin = 30;
 
     let precontext =
