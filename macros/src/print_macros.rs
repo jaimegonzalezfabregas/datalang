@@ -2,19 +2,11 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 #[proc_macro]
-pub fn if_dev(ret: TokenStream) -> TokenStream {
-    if cfg!(debug_assertions) {
-        ret
-    } else {
-        "".parse().unwrap()
-    }
-}
-
-#[proc_macro]
 pub fn printdev(input: TokenStream) -> TokenStream {
-    format!(
-        "
-        if_dev!({{
+    if cfg!(debug_assertions) {
+        format!(
+            "
+        {{
             use backtrace::Backtrace;
 
             let mut depth = 0;
@@ -29,11 +21,14 @@ pub fn printdev(input: TokenStream) -> TokenStream {
             print!(\"{{}}\",margin);
 
             println!({})
-        }})",
-        input.to_string()
-    )
-    .parse()
-    .unwrap()
+        }}",
+            input.to_string()
+        )
+        .parse()
+        .unwrap()
+    } else {
+        "".parse().unwrap()
+    }
 }
 
 #[proc_macro]
