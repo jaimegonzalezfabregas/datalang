@@ -44,6 +44,7 @@ impl From<std::io::Error> for DLErr {
 const AUTO_RUN: bool = true;
 
 fn main() -> Result<(), DLErr> {
+
     let mut engine = Engine::new();
 
     engine.set_recursion_limit(4);

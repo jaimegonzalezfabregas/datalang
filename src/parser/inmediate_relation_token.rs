@@ -1,9 +1,11 @@
 use std::fmt;
 
+use print_macros::*;
+
 use crate::{
     engine::{var_context::VarContext, RelId},
     lexer::{self, LexogramType::*},
-    parser::list_token::read_list, printdev,
+    parser::list_token::read_list,
 };
 
 use super::{
@@ -53,8 +55,6 @@ impl HasRelId for InmediateRelation {
 pub fn read_inmediate_relation(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    
 ) -> Result<Result<(InmediateRelation, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
@@ -64,8 +64,8 @@ pub fn read_inmediate_relation(
     }
     use RelationParserStates::*;
 
-    printdev!("{debug_margin}read_inmediate_relation at {start_cursor}");
-    
+    printdev!("read_inmediate_relation at {}", start_cursor);
+
     let cursor = start_cursor;
     let mut op_rel_name = None;
     let mut state = SpectingStatementIdentifierOrNegation;
@@ -89,16 +89,7 @@ pub fn read_inmediate_relation(
                 state = SpectingStatementList;
             }
             (_, SpectingStatementList) => {
-                return match (
-                    read_list(
-                        lexograms,
-                        i,
-                        true,
-                        debug_margin.to_owned() + "|  ",
-                        
-                    )?,
-                    op_rel_name,
-                ) {
+                return match (read_list(lexograms, i, true)?, op_rel_name) {
                     (Err(e), _) => Ok(Err(FailureExplanation {
                         lex_pos: i,
                         if_it_was: "inmediate relation".into(),

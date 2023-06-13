@@ -1,14 +1,14 @@
 pub mod assumption_token;
-pub mod destructuring_array_token;
-pub mod list_token;
-pub mod statement_token;
-pub mod update_token;
 pub mod conditional_token;
 pub mod data_token;
 pub mod defered_relation_token;
+pub mod destructuring_array_token;
 pub mod expresion_token;
 pub mod inmediate_relation_token;
 pub mod line_token;
+pub mod list_token;
+pub mod statement_token;
+pub mod update_token;
 
 pub mod error;
 
@@ -23,9 +23,7 @@ pub trait HasRelId {
     fn get_rel_id(&self) -> RelId;
 }
 
-pub fn parse(
-    lexograms: &Vec<lexer::Lexogram>,
-) -> Result<Vec<Line>, ParserError> {
+pub fn parse(lexograms: &Vec<lexer::Lexogram>) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];
     let mut cursor = 0;
 
@@ -33,7 +31,7 @@ pub fn parse(
         if cursor > i {
             continue;
         }
-        match read_line(&lexograms, i, "".into())? {
+        match read_line(&lexograms, i)? {
             Ok((statement, jump_to)) => {
                 ret.push(statement);
                 cursor = jump_to;

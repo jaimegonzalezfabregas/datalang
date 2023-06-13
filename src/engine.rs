@@ -5,7 +5,7 @@ pub mod truth_list;
 pub mod var_context;
 pub mod var_context_universe;
 
-use print_macros::printdev;
+use print_macros::*;
 
 use crate::{
     lexer,
@@ -108,7 +108,7 @@ impl Engine {
                 for line in lines {
                     printdev!("\nexecuting: {}", line);
 
-                    match self.ingest_line(line, String::new()) {
+                    match self.ingest_line(line) {
                         Ok(Some(output)) => {
                             let mut sorted_output = output.to_vector();
                             sorted_output.sort();
@@ -136,9 +136,8 @@ impl Engine {
         query: &DeferedRelation,
         context: &VarContext,
         recursion_tally: &RecursionTally,
-        debug_margin: String,
     ) -> Result<TruthList, String> {
-        printdev!("{}query {}", debug_margin, query);
+        printdev!("query {}", query);
 
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
@@ -149,12 +148,7 @@ impl Engine {
 
         Ok(hypothetical_engine
             .get_relation(rel_id)
-            .get_filtered_truths(
-                &query,
-                &hypothetical_engine,
-                recursion_tally,
-                debug_margin.to_owned() + "|  ",
-            )?)
+            .get_filtered_truths(&query, &hypothetical_engine, recursion_tally)?)
     }
 
     fn ingest_assumption(
@@ -215,17 +209,12 @@ impl Engine {
         }
     }
 
-    pub fn ingest_line(
-        self: &mut Engine,
-        line: Line,
-        debug_margin: String,
-    ) -> Result<Option<TruthList>, RuntimeError> {
+    pub fn ingest_line(self: &mut Engine, line: Line) -> Result<Option<TruthList>, RuntimeError> {
         match line {
             Line::Query(q) => Ok(Some(self.query(
                 &q,
                 &VarContext::new(),
                 &RecursionTally::new(self.recursion_limit),
-                debug_margin.to_owned() + "|  ",
             )?)),
             Line::Assumption(assumption) => {
                 self.ingest_assumption(&assumption, &VarContext::new())?;

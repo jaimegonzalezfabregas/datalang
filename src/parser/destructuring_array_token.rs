@@ -1,13 +1,14 @@
+use print_macros::*;
+
 use super::error::{FailureExplanation, ParserError};
 use crate::lexer::LexogramType::*;
-use crate::parser::expresion_token::{Expresion, VarName};
-use crate::printdev;
-use crate::{lexer, parser::expresion_token::read_expresion};
+use crate::parser::expresion_token::{read_expresion, Expresion, VarName};
+
+use crate::lexer;
 
 pub fn read_destructuring_array(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
 ) -> Result<Result<(VarName, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ArrayParserStates {
@@ -18,11 +19,7 @@ pub fn read_destructuring_array(
         SpectingStart,
     }
     use ArrayParserStates::*;
-    printdev!(
-        "{}read_destructuring_array at {}",
-        debug_margin,
-        start_cursor
-    );
+    printdev!("read_destructuring_array at {}", start_cursor);
 
     let mut cursor = start_cursor;
 
@@ -50,13 +47,7 @@ pub fn read_destructuring_array(
                 return Ok(Ok((VarName::DestructuredArray(ret), i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItemOrDotDotDot) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    false,
-                    debug_margin.to_owned() + "|  ",
-                    
-                )? {
+                match read_expresion(lexograms, i, false)? {
                     Err(err) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,

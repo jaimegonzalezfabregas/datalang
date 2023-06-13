@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fmt};
 
-use crate::printdev;
+use print_macros::*;
 
 use super::var_context::VarContext;
 
@@ -38,7 +38,7 @@ impl VarContextUniverse {
         }
     }
 
-    pub fn or(self, other: Self, debug_margin: String) -> Self {
+    pub fn or(self, other: Self) -> Self {
         let mut ret = Self::new();
 
         for context in &self.contents {
@@ -48,13 +48,14 @@ impl VarContextUniverse {
         for context in &other.contents {
             ret.insert(context.to_owned());
         }
-        printdev!("{debug_margin}{self} or {other} = {ret}");
+        printdev!("{} or {} = {}", self, other, ret); // TODO Do I need this print??
 
         ret
     }
 
-    pub fn and(self, other: Self, debug_margin: String) -> Self {
-        printdev!("{debug_margin}{self} and {other} =");
+    pub fn and(self, other: Self) -> Self {
+        // TODO check i use this
+        printdev!("{} and {} =", self, other);
 
         let mut contents = HashSet::new();
 
@@ -72,7 +73,7 @@ impl VarContextUniverse {
 
         let ret = VarContextUniverse { contents };
 
-        printdev!(" {ret}");
+        printdev!("{}", ret);
 
         ret
     }

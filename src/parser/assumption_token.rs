@@ -34,42 +34,24 @@ impl fmt::Display for Assumption {
 pub fn read_assumption(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
 ) -> Result<Result<(Assumption, usize), FailureExplanation>, ParserError> {
     let a;
     let b;
     let c;
     let d;
-    match read_inmediate_relation(
-        lexograms,
-        start_cursor,
-        debug_margin.to_owned() + "|  ",
-    )? {
+    match read_inmediate_relation(lexograms, start_cursor)? {
         Ok((i_rel, jump_to)) => return Ok(Ok((Assumption::RelationInmediate(i_rel), jump_to))),
         Err(e) => a = e,
     }
-    match read_conditional(
-        lexograms,
-        start_cursor,
-        debug_margin.to_owned() + "|  ",
-    )? {
+    match read_conditional(lexograms, start_cursor)? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Conditional(ret), jump_to))),
         Err(e) => b = e,
     }
-    match read_update(
-        lexograms,
-        start_cursor,
-        debug_margin.to_owned() + "|  ",
-    )? {
+    match read_update(lexograms, start_cursor)? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Update(ret), jump_to))),
         Err(e) => c = e,
     }
-    match read_defered_relation(
-        lexograms,
-        start_cursor,
-        false,
-        debug_margin.to_owned() + "|  ",
-    )? {
+    match read_defered_relation(lexograms, start_cursor, false)? {
         Ok((d_rel, jump_to)) => return Ok(Ok((Assumption::RelationDefered(d_rel), jump_to))),
         Err(e) => d = e,
     }

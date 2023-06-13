@@ -1,6 +1,6 @@
 use core::fmt;
 
-use print_macros::printdev;
+use print_macros::*;
 
 use crate::{
     engine::{
@@ -31,21 +31,18 @@ impl ConditionalTruth {
         filter: &DeferedRelation,
         engine: &Engine,
         recursion_tally: &RecursionTally,
-        debug_margin: String,
     ) -> Result<TruthList, String> {
-        printdev!("{}getting deductions of {}", debug_margin, self);
+        printdev!("getting deductions of {}", self);
 
         let mut base_context = VarContext::new();
 
         for (filter, template) in filter.args.iter().zip(self.template.args.to_owned()) {
             match filter.literalize(&base_context) {
                 Ok(Data::Any) => (),
-                Ok(data) => {
-                    match template.solve(&data, &base_context, debug_margin.to_owned() + "|  ") {
-                        Ok(new_context) => base_context = new_context,
-                        Err(_) => (),
-                    }
-                }
+                Ok(data) => match template.solve(&data, &base_context) {
+                    Ok(new_context) => base_context = new_context,
+                    Err(_) => (),
+                },
                 Err(_) => (),
             }
         }
@@ -53,18 +50,11 @@ impl ConditionalTruth {
         let mut posible_contexts = VarContextUniverse::new();
         posible_contexts.insert(base_context);
 
-        posible_contexts = self.condition.memo_get_posible_contexts(
-            engine,
-            recursion_tally,
-            &posible_contexts,
-            debug_margin.to_owned() + "|  ",
-        )?;
+        posible_contexts =
+            self.condition
+                .memo_get_posible_contexts(engine, recursion_tally, &posible_contexts)?;
 
-        printdev!(
-            "{}* universe of {self} is {}",
-            debug_margin,
-            posible_contexts
-        );
+        printdev!("* universe of {} is {}", self, posible_contexts);
 
         let mut ret = TruthList::new();
         for context in posible_contexts.iter() {
@@ -74,7 +64,7 @@ impl ConditionalTruth {
             };
         }
 
-        printdev!("{debug_margin}* truths of {self} filtered by {filter} are {ret}");
+        printdev!("* truths of {} filtered by {} are {}", self, filter, ret);
 
         Ok(ret)
     }

@@ -6,10 +6,7 @@ mod tests {
     #[test]
     fn query_full_table_1() {
         let mut engine = Engine::new();
-        assert_eq!(
-            "\n(0, 1)\n",
-            engine.input("rel(0,1) rel(_,_)?".into())
-        );
+        assert_eq!("\n(0, 1)\n", engine.input("rel(0,1) rel(_,_)?".into()));
     }
 
     #[test]
@@ -26,32 +23,25 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(\"filtro\", 1)\n",
-            engine.input(
-                "rel(\"clave\",1) rel(\"filtro\",1) rel(\"filtro\",_)?".into(),
-            )
+            engine.input("rel(\"clave\",1) rel(\"filtro\",1) rel(\"filtro\",_)?".into(),)
         );
     }
 
-     #[test]
+    #[test]
     fn query_where_table() {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(0)\n(1)\n",
-            engine.input(
-                "a(1) a(2) a(0) a(3) test(x) :- a(x) && x < 2 test(_)?".into(),
-            )
+            engine.input("a(1) a(2) a(0) a(3) test(x) :- a(x) && x < 2 test(_)?".into(),)
         );
     }
-
 
     #[test]
     fn view_1() {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(0)\n(1)\n(2)\n(3)\n",
-            engine.input(
-                "rel(0,1) rel(2,3) test(a) :- rel(a,_) || rel(_,a) test(_)?".into(),
-            )
+            engine.input("rel(0,1) rel(2,3) test(a) :- rel(a,_) || rel(_,a) test(_)?".into(),)
         );
     }
     #[test]
@@ -59,9 +49,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(0)\n(1)\n(2)\n",
-            engine.input(
-                "rel(0,1) rel(1,2) test(a) :- rel(a,_) || rel(_,a) test(_)?".into(),
-            )
+            engine.input("rel(0,1) rel(1,2) test(a) :- rel(a,_) || rel(_,a) test(_)?".into(),)
         );
     }
 
@@ -79,9 +67,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(1)\n",
-            engine.input(
-                "rel(0) relSuc(suc) :- rel(a) && a = suc-1 relSuc(_)?".into(),
-            )
+            engine.input("rel(0) relSuc(suc) :- rel(a) && a = suc-1 relSuc(_)?".into(),)
         );
     }
 
@@ -90,9 +76,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(1)\n",
-            engine.input(
-                "rel(0) relSuc(suc) :- rel(a) && a+1 = suc relSuc(_)?".into(),
-            )
+            engine.input("rel(0) relSuc(suc) :- rel(a) && a+1 = suc relSuc(_)?".into(),)
         );
     }
 
@@ -101,9 +85,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(1)\n",
-            engine.input(
-                "rel(0) relSuc(suc) :- a = suc-1 && rel(a) relSuc(_)?".into(),
-            )
+            engine.input("rel(0) relSuc(suc) :- a = suc-1 && rel(a) relSuc(_)?".into(),)
         );
     }
 
@@ -112,9 +94,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(1)\n",
-            engine.input(
-                "rel(0) relSuc(suc) :- a+1 = suc && rel(a) relSuc(_)?".into(),
-            )
+            engine.input("rel(0) relSuc(suc) :- a+1 = suc && rel(a) relSuc(_)?".into(),)
         );
     }
 
@@ -215,9 +195,7 @@ mod tests {
         engine.set_recursion_limit(7);
         assert_eq!(
             "\n(0)\n(1)\n(2)\n(3)\n(4)\n(5)\n",
-            engine.input(
-                "test(a+1) :- test(a) && a < 5 test(0) test(_)?".into(),
-            )
+            engine.input("test(a+1) :- test(a) && a < 5 test(0) test(_)?".into(),)
         );
     }
 
@@ -226,9 +204,7 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n([0])\n([1])\n([2])\n([3])\n([4])\n([5])\n",
-            engine.input(
-                "test([a+1]) :- test([a]) && a < 5 test([0]) test(_)?".into(),
-            )
+            engine.input("test([a+1]) :- test([a]) && a < 5 test([0]) test(_)?".into(),)
         );
     }
 
@@ -314,9 +290,8 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(8, 4, _)\n",
-            engine.input(
-                "deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(8,_,_)?".into(),
-            )
+            engine
+                .input("deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(8,_,_)?".into(),)
         );
     }
 
@@ -325,9 +300,8 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(8, 4, _)\n(_, 4, 2)\n",
-            engine.input(
-                "deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(_,4,_)?".into(),
-            )
+            engine
+                .input("deduce(a,b,_) :- a = b*2 deduce(_,b,c) :- b = c*2 deduce(_,4,_)?".into(),)
         );
     }
 
@@ -345,19 +319,14 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(
             "\n(8, 4, 2)\n",
-            engine.input(
-                "deduce(a,b,c) :- a = b*2 && b = c*2 deduce(8,_,_)?".into(),
-            )
+            engine.input("deduce(a,b,c) :- a = b*2 && b = c*2 deduce(8,_,_)?".into(),)
         );
     }
 
     #[test]
     fn hypothesis_1() {
         let mut engine = Engine::new();
-        assert_eq!(
-            "\n(1, 2)\n",
-            engine.input("{ret(1,2)}=>ret(_,_)?".into())
-        );
+        assert_eq!("\n(1, 2)\n", engine.input("{ret(1,2)}=>ret(_,_)?".into()));
     }
 
     #[test]
@@ -373,13 +342,12 @@ mod tests {
 
     #[test]
     fn conectivity_problem() {
-         let mut engine = Engine::new();
+        let mut engine = Engine::new();
         assert_eq!(
             "\n(1, 1)\n(1, 2)\n(1, 3)\n(1, 4)\n(2, 1)\n(2, 2)\n(2, 3)\n(2, 4)\n(3, 1)\n(3, 2)\n(3, 3)\n(3, 4)\n(4, 1)\n(4, 2)\n(4, 3)\n(4, 4)\n",
             engine.input(
                 "edge(1,2) edge(3,4) edge(2,3) conected(a,b) :- conected(a,mid) && edge(mid,b) conected(a,a):- true edge(b,a) :- edge(a,b) conected(_,_)?".into(),
             )
         );
-        
     }
 }
