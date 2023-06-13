@@ -19,7 +19,7 @@ pub fn read_destructuring_array(
         SpectingStart,
     }
     use ArrayParserStates::*;
-    printdev!("read_destructuring_array at {}", start_cursor);
+    printparse!("read_destructuring_array at {}", start_cursor);
 
     let mut cursor = start_cursor;
 

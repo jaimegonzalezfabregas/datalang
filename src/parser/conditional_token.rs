@@ -45,7 +45,7 @@ pub fn read_conditional(
     }
     use IntensionalParserStates::*;
 
-    printdev!("read_intensional at {}", start_cursor);
+    printparse!("read_intensional at {}", start_cursor);
 
     let mut cursor = start_cursor;
     let mut base_relation = None;

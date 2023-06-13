@@ -215,7 +215,7 @@ pub fn read_expresion(
     start_cursor: usize,
     only_literals: bool,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    printdev!("read_expresion at {}", start_cursor);
+    printparse!("read_expresion at {}", start_cursor);
 
     #[derive(Debug, Clone, Copy)]
     enum ExpressionParserStates {
@@ -352,7 +352,7 @@ pub fn read_expresion_item(
     start_cursor: usize,
     only_literals: bool,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    printdev!("read_item at {}", start_cursor);
+    printparse!("read_item at {}", start_cursor);
 
     match (lexograms[start_cursor].l_type.clone(), only_literals) {
         (Identifier(str), false) => {

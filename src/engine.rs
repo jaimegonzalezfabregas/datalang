@@ -61,14 +61,14 @@ fn get_lines_from_chars(raw_commands: String) -> Result<Vec<Line>, String> {
 
     let lex_res = lexer::lex(&commands);
 
-    printdev!("{:?}", lex_res);
+    printparse!("{:?}", lex_res);
 
     match lex_res {
         Ok(lexic) => {
             let ast_res = parser::parse(&lexic);
             match ast_res {
                 Ok(ast_vec) => {
-                    printdev!("{:?}", ast_vec);
+                    printparse!("{:?}", ast_vec);
                     Ok(ast_vec)
                 }
                 Err(err) => Err(err.print(&lexic, &commands)),
@@ -137,7 +137,7 @@ impl Engine {
         context: &VarContext,
         recursion_tally: &RecursionTally,
     ) -> Result<TruthList, String> {
-        printdev!("query {}", query);
+        printprocess!("query {}", query);
 
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();

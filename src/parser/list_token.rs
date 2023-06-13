@@ -21,7 +21,7 @@ pub fn read_list(
         SpectingOpenParenthesis,
     }
 
-    printdev!("read_list at {}", start_cursor);
+    printparse!("read_list at {}", start_cursor);
 
     use ListParserStates::*;
     let mut cursor = start_cursor;

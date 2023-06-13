@@ -128,7 +128,7 @@ pub fn read_data(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
 ) -> Result<Result<(Data, usize), FailureExplanation>, ParserError> {
-    printdev!("read_data at {}", start_cursor);
+    printparse!("read_data at {}", start_cursor);
 
     match lexograms[start_cursor].l_type.clone() {
         Number(n) => Ok(Ok((Data::Number(n), start_cursor + 1))),
@@ -166,7 +166,7 @@ pub fn read_data_array(
     }
     use ArrayParserStates::*;
 
-    printdev!("read_data_array at {}", start_cursor);
+    printparse!("read_data_array at {}", start_cursor);
 
     let mut cursor = start_cursor;
 

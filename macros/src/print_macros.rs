@@ -16,11 +16,16 @@ pub fn printdev(input: TokenStream) -> TokenStream {
         "
         if_dev!({{
             use backtrace::Backtrace;
-            let depth = Backtrace::new_unresolved().frames().len();
+
+            let mut depth = 0;
+            
             let mut margin = String::new();
-            for _ in 0..depth{{
+
+            backtrace::trace(|_| {{
                 margin += &\" \";
-            }}
+                true
+            }});
+            
             print!(\"{{}}\",margin);
 
             println!({})
@@ -29,4 +34,16 @@ pub fn printdev(input: TokenStream) -> TokenStream {
     )
     .parse()
     .unwrap()
+}
+
+#[proc_macro]
+pub fn printparse(input: TokenStream) -> TokenStream {
+    //printdev(input)
+    "".parse().unwrap()
+}
+
+#[proc_macro]
+pub fn printprocess(input: TokenStream) -> TokenStream {
+    //printdev(input)
+    "".parse().unwrap()
 }

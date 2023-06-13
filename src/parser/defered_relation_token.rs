@@ -142,7 +142,7 @@ pub fn read_defered_relation(
     }
     use RelationParserStates::*;
 
-    printdev!("read_defered_relation at {}", start_cursor);
+    printparse!("read_defered_relation at {}", start_cursor);
 
     let mut cursor = start_cursor;
     let mut negated = false;

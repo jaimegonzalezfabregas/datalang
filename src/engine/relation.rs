@@ -101,7 +101,7 @@ impl Relation {
                 }
             }
         } else {
-            printdev!("** no more recursion **")
+            printprocess!("** no more recursion **")
         }
         Ok(ret)
     }
@@ -112,7 +112,7 @@ impl Relation {
         engine: &Engine,
         recursion_tally: &RecursionTally,
     ) -> Result<TruthList, String> {
-        printdev!(
+        printprocess!(
             "get filtered truths of {} with filter {}",
             self.rel_id.identifier,
             filter

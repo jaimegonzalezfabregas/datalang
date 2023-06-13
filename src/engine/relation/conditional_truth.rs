@@ -32,7 +32,7 @@ impl ConditionalTruth {
         engine: &Engine,
         recursion_tally: &RecursionTally,
     ) -> Result<TruthList, String> {
-        printdev!("getting deductions of {}", self);
+        printprocess!("getting deductions of {}", self);
 
         let mut base_context = VarContext::new();
 
@@ -54,7 +54,7 @@ impl ConditionalTruth {
             self.condition
                 .memo_get_posible_contexts(engine, recursion_tally, &posible_contexts)?;
 
-        printdev!("* universe of {} is {}", self, posible_contexts);
+        printprocess!("* universe of {} is {}", self, posible_contexts);
 
         let mut ret = TruthList::new();
         for context in posible_contexts.iter() {
@@ -64,7 +64,7 @@ impl ConditionalTruth {
             };
         }
 
-        printdev!("* truths of {} filtered by {} are {}", self, filter, ret);
+        printprocess!("* truths of {} filtered by {} are {}", self, filter, ret);
 
         Ok(ret)
     }

@@ -48,14 +48,14 @@ impl VarContextUniverse {
         for context in &other.contents {
             ret.insert(context.to_owned());
         }
-        printdev!("{} or {} = {}", self, other, ret); // TODO Do I need this print??
+        printprocess!("{} or {} = {}", self, other, ret); // TODO Do I need this print??
 
         ret
     }
 
     pub fn and(self, other: Self) -> Self {
         // TODO check i use this
-        printdev!("{} and {} =", self, other);
+        printprocess!("{} and {} =", self, other);
 
         let mut contents = HashSet::new();
 
@@ -73,7 +73,7 @@ impl VarContextUniverse {
 
         let ret = VarContextUniverse { contents };
 
-        printdev!("{}", ret);
+        printprocess!("{}", ret);
 
         ret
     }

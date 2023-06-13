@@ -36,7 +36,7 @@ pub fn read_update(
     }
     use IntensionalParserStates::*;
 
-    printdev!("read_intensional at {}", start_cursor);
+    printparse!("read_intensional at {}", start_cursor);
 
     let mut cursor = start_cursor;
     let mut op_filter_rel = None;

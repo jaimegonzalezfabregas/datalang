@@ -64,7 +64,7 @@ pub fn read_inmediate_relation(
     }
     use RelationParserStates::*;
 
-    printdev!("read_inmediate_relation at {}", start_cursor);
+    printparse!("read_inmediate_relation at {}", start_cursor);
 
     let cursor = start_cursor;
     let mut op_rel_name = None;

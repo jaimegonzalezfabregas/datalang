@@ -94,7 +94,7 @@ pub fn read_statement(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
 ) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
-    printdev!("read_logical_statement_concatenation at {}", start_cursor);
+    printparse!("read_logical_statement_concatenation at {}", start_cursor);
 
     #[derive(Debug, Clone, Copy)]
     enum StatementParserStates {
@@ -236,7 +236,7 @@ pub fn read_statement_item(
     }
     use StatementParserStates::*;
 
-    printdev!("read_statement at {}", start_cursor);
+    printparse!("read_statement at {}", start_cursor);
 
     let mut cursor = start_cursor;
     let mut state = SpectingFirstExpresionOrRelation;
@@ -398,7 +398,7 @@ impl Statement {
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
     ) -> Result<VarContextUniverse, String> {
-        printdev!(
+        printprocess!(
             "get posible contexts of {} over universe:{}",
             self,
             universe
@@ -411,7 +411,7 @@ impl Statement {
         let hash = memo_hash.finish();
 
         let ret = if let Some(recall) = self.memoizer.get(&hash) {
-            printdev!("CACHE HIT");
+            printprocess!("CACHE HIT");
 
             recall.to_owned()?
         } else {
@@ -421,7 +421,7 @@ impl Statement {
 
             ret?
         };
-        printdev!("* universe for {} based on {} is {}", self, universe, ret);
+        printprocess!("* universe for {} based on {} is {}", self, universe, ret);
 
         Ok(ret)
     }
@@ -480,7 +480,7 @@ impl Statement {
                 universe.difference(&negated_contexts) //TODO i dont think i can simplify a not, look into it
             }
             StatementSemantics::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
-                printdev!(
+                printprocess!(
                     "equality of {} and {} on universe {}",
                     exp_a,
                     exp_b,
@@ -545,7 +545,7 @@ impl Statement {
                 }
             }
             StatementSemantics::Relation(rel) => {
-                printdev!(
+                printprocess!(
                     "recursive relation querry for {} in each of: {}",
                     rel,
                     universe
