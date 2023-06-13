@@ -1,5 +1,7 @@
 use std::fmt::{self};
 
+use print_macros::*;
+
 use crate::engine::var_context::VarContext;
 use crate::lexer;
 use crate::lexer::LexogramType::*;
@@ -111,14 +113,9 @@ impl Expresion {
         self: &Expresion,
         goal: &Data,
         caller_context: &VarContext,
-        debug_margin: String,
-        debug_print: bool,
     ) -> Result<VarContext, String> {
         // return Ok significa que goal y self han podido ser evaluadas a lo mismo
 
-        // if debug_print {
-        //     println!("{debug_margin}call to solve with goal:[{goal}], expresion [{self}] and context {caller_context}");
-        // }
         let ret = match self.literalize(&caller_context) {
             Ok(Data::Any) => match &self {
                 Expresion::Var(VarName::Direct(name)) => {
@@ -140,13 +137,11 @@ impl Expresion {
                         }
                         (Ok(op_1), Err(_)|Ok(Data::Any)) => {
                             let new_goal = (func.reverse_op2)(op_1, goal.to_owned())?;
-                            b.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
-                                    debug_print)?
+                            b.solve(&new_goal, caller_context,)?
                         }
                         (Err(_)|Ok(Data::Any), Ok(op_2)) => {
                             let new_goal = (func.reverse_op1)(op_2, goal.to_owned())?;
-                            a.solve(&new_goal, caller_context,debug_margin.to_owned() + "|  ",
-                                    debug_print)?
+                            a.solve(&new_goal, caller_context,)?
                         }
                         (Ok(_), Ok(_)) => {
                             return Err("parece que ambas ramas del arbol son literalizables, por lo que no hay nada que deducir".into())
@@ -171,12 +166,9 @@ impl Expresion {
                         for (i, array_position) in template_arr.iter().enumerate() {
                             last_i = i;
                             if let Expresion::Var(VarName::ExplodeArray(x)) = array_position {
-                                match Expresion::Var(VarName::Direct(x.to_owned())).solve(
-                                    &Data::Array(goal_arr[i..].to_vec()),
-                                    &new_context,
-                                    debug_margin.to_owned() + "|  ",
-                                    debug_print,
-                                ) {
+                                match Expresion::Var(VarName::Direct(x.to_owned()))
+                                    .solve(&Data::Array(goal_arr[i..].to_vec()), &new_context)
+                                {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
@@ -184,12 +176,7 @@ impl Expresion {
                                 }
                                 last_i = goal_arr.len() - 1;
                             } else {
-                                match array_position.solve(
-                                    &goal_arr[i],
-                                    &new_context,
-                                    debug_margin.to_owned() + "|  ",
-                                    debug_print,
-                                ) {
+                                match array_position.solve(&goal_arr[i], &new_context) {
                                     Ok(newer_context) => new_context = newer_context,
                                     Err(msg) => {
                                         return Err(format!("at array position {i} error: {msg}"))
@@ -219,10 +206,6 @@ impl Expresion {
             }
         };
 
-        // if debug_print {
-        //     println!("{debug_margin}*solving de \"{self}\" con goal {goal} ha resultado en {ret}")
-        // }
-
         Ok(ret)
     }
 }
@@ -231,12 +214,8 @@ pub fn read_expresion(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     only_literals: bool,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    if debug_print {
-        println!("{}read_expresion at {}", debug_margin, start_cursor);
-    }
+    printparse!("read_expresion at {}", start_cursor);
 
     #[derive(Debug, Clone, Copy)]
     enum ExpressionParserStates {
@@ -294,13 +273,7 @@ pub fn read_expresion(
                 state = SpectingItemOrOpenParenthesis;
             }
             (LeftParenthesis, SpectingItemOrOpenParenthesis, _) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    only_literals,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
+                match read_expresion(lexograms, i, only_literals)? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
                         op_ret = Some(match (&append_mode, op_ret) {
@@ -327,13 +300,7 @@ pub fn read_expresion(
             (RightParenthesis, SpectingClosingParenthesis, _) => state = SpectingOperatorOrEnd,
 
             (_, SpectingItemOrOpenParenthesis, _) => {
-                match read_expresion_item(
-                    lexograms,
-                    i,
-                    only_literals,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
+                match read_expresion_item(lexograms, i, only_literals)? {
                     Ok((e, jump_to)) => {
                         cursor = jump_to;
                         op_ret = Some(match (&append_mode, op_ret) {
@@ -384,44 +351,28 @@ pub fn read_expresion_item(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     only_literals: bool,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Expresion, usize), FailureExplanation>, ParserError> {
-    if debug_print {
-        println!("{}read_item at {}", debug_margin, start_cursor);
-    }
+    printparse!("read_item at {}", start_cursor);
 
     match (lexograms[start_cursor].l_type.clone(), only_literals) {
         (Identifier(str), false) => {
             Ok(Ok((Expresion::Var(VarName::Direct(str)), start_cursor + 1)))
         }
-        (LeftBracket, false) => {
-            match read_data(
-                lexograms,
-                start_cursor,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )? {
-                Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
-                Err(a) => match read_destructuring_array(
-                    lexograms,
-                    start_cursor,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
-                    Ok((ret, jump_to)) => Ok(Ok((Expresion::Var(ret), jump_to))),
+        (LeftBracket, false) => match read_data(lexograms, start_cursor)? {
+            Ok((ret, jump_to)) => Ok(Ok((Expresion::Literal(ret), jump_to))),
+            Err(a) => match read_destructuring_array(lexograms, start_cursor)? {
+                Ok((ret, jump_to)) => Ok(Ok((Expresion::Var(ret), jump_to))),
 
-                    Err(b) => Ok(Err(FailureExplanation {
-                        lex_pos: start_cursor,
-                        if_it_was: "expresion_item".into(),
-                        failed_because: "specting some array".into(),
-                        parent_failure: vec![a, b],
-                    })),
-                },
-            }
-        }
+                Err(b) => Ok(Err(FailureExplanation {
+                    lex_pos: start_cursor,
+                    if_it_was: "expresion_item".into(),
+                    failed_because: "specting some array".into(),
+                    parent_failure: vec![a, b],
+                })),
+            },
+        },
 
-        (_, _) => match read_data(lexograms, start_cursor, debug_margin, debug_print)? {
+        (_, _) => match read_data(lexograms, start_cursor)? {
             Ok((value, jump_to)) => Ok(Ok((Expresion::Literal(value), jump_to))),
             Err(err) => Ok(Err(FailureExplanation {
                 lex_pos: start_cursor,

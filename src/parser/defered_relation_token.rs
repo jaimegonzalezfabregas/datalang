@@ -1,11 +1,14 @@
 use core::fmt;
 use std::{hash, vec};
 
+use print_macros::*;
+
 use crate::engine::relation::truth::Truth;
 use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::assumption_token::read_assumption;
+
 use crate::{lexer, parser::list_token::read_list};
 
 use super::assumption_token::Assumption;
@@ -125,8 +128,6 @@ pub fn read_defered_relation(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     check_querry: bool,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(DeferedRelation, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
@@ -141,9 +142,7 @@ pub fn read_defered_relation(
     }
     use RelationParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_defered_relation at {start_cursor}");
-    }
+    printparse!("read_defered_relation at {}", start_cursor);
 
     let mut cursor = start_cursor;
     let mut negated = false;
@@ -166,7 +165,7 @@ pub fn read_defered_relation(
                 state = SpectingStatementIdentifier;
             }
             (_, Spectingassumption) => {
-                match read_assumption(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)? {
+                match read_assumption(lexograms, i)? {
                     Ok((assumption, jump_to)) => {
                         cursor = jump_to;
                         assumptions.push(assumption);
@@ -201,45 +200,37 @@ pub fn read_defered_relation(
                 op_rel_name = Some(str);
                 state = SpectingStatementList;
             }
-            (_, SpectingStatementList) => {
-                match read_list(
-                    lexograms,
-                    i,
-                    false,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
-                    Err(e) => {
-                        return Ok(Err(FailureExplanation {
-                            lex_pos: i,
-                            if_it_was: "defered relation".into(),
-                            failed_because: "specting list".into(),
-                            parent_failure: (vec![e]),
-                        }))
-                    }
-                    Ok((v, jump_to)) => {
-                        cursor = jump_to;
-                        args = v;
-                        if check_querry {
-                            state = SpectingQuery;
+            (_, SpectingStatementList) => match read_list(lexograms, i, false)? {
+                Err(e) => {
+                    return Ok(Err(FailureExplanation {
+                        lex_pos: i,
+                        if_it_was: "defered relation".into(),
+                        failed_because: "specting list".into(),
+                        parent_failure: (vec![e]),
+                    }))
+                }
+                Ok((v, jump_to)) => {
+                    cursor = jump_to;
+                    args = v;
+                    if check_querry {
+                        state = SpectingQuery;
+                    } else {
+                        if let Some(rel_name) = op_rel_name {
+                            return Ok(Ok((
+                                DeferedRelation {
+                                    negated,
+                                    assumptions,
+                                    rel_name,
+                                    args,
+                                },
+                                jump_to,
+                            )));
                         } else {
-                            if let Some(rel_name) = op_rel_name {
-                                return Ok(Ok((
-                                    DeferedRelation {
-                                        negated,
-                                        assumptions,
-                                        rel_name,
-                                        args,
-                                    },
-                                    jump_to,
-                                )));
-                            } else {
-                                unreachable!()
-                            }
+                            unreachable!()
                         }
                     }
                 }
-            }
+            },
             (Query, SpectingQuery) => {
                 if let Some(rel_name) = op_rel_name {
                     return Ok(Ok((

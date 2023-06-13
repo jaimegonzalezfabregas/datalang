@@ -1,9 +1,12 @@
 use std::{fmt, hash};
 
+use print_macros::*;
+
 use super::error::ParserError;
 use crate::engine::var_context::VarContext;
 use crate::lexer::{self, LexogramType::*};
-use crate::parser::{error::FailureExplanation, expresion_token::read_expresion};
+use crate::parser::error::FailureExplanation;
+use crate::parser::expresion_token::read_expresion;
 
 #[derive(Clone, Debug, PartialOrd)]
 pub enum Data {
@@ -124,32 +127,21 @@ impl Data {
 pub fn read_data(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Data, usize), FailureExplanation>, ParserError> {
-    if debug_print {
-        println!("{}read_data at {}", debug_margin, start_cursor);
-    }
+    printparse!("read_data at {}", start_cursor);
 
     match lexograms[start_cursor].l_type.clone() {
         Number(n) => Ok(Ok((Data::Number(n), start_cursor + 1))),
         Word(n) => Ok(Ok((Data::String(n), start_cursor + 1))),
-        LeftBracket => {
-            match read_data_array(
-                lexograms,
-                start_cursor,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )? {
-                Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
-                Err(explanation) => Ok(Err(FailureExplanation {
-                    lex_pos: start_cursor,
-                    if_it_was: "data".into(),
-                    failed_because: "was not an array".into(),
-                    parent_failure: (vec![explanation]),
-                })),
-            }
-        }
+        LeftBracket => match read_data_array(lexograms, start_cursor)? {
+            Ok((ret, jump_to)) => Ok(Ok((Data::Array(ret), jump_to))),
+            Err(explanation) => Ok(Err(FailureExplanation {
+                lex_pos: start_cursor,
+                if_it_was: "data".into(),
+                failed_because: "was not an array".into(),
+                parent_failure: (vec![explanation]),
+            })),
+        },
         Any => Ok(Ok((Data::Any, start_cursor + 1))),
 
         _ => Ok(Err(FailureExplanation {
@@ -164,8 +156,6 @@ pub fn read_data(
 pub fn read_data_array(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Vec<Data>, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ArrayParserStates {
@@ -176,9 +166,7 @@ pub fn read_data_array(
     }
     use ArrayParserStates::*;
 
-    if debug_print {
-        println!("{}read_data_array at {}", debug_margin, start_cursor);
-    }
+    printparse!("read_data_array at {}", start_cursor);
 
     let mut cursor = start_cursor;
 
@@ -200,13 +188,7 @@ pub fn read_data_array(
                 return Ok(Ok((ret, i + 1)));
             }
             (_, SpectingItemOrEnd | SpectingItem) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    true,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
+                match read_expresion(lexograms, i, true)? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,

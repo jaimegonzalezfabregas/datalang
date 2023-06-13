@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::collections::BTreeMap;
 use std::io;
 
@@ -87,15 +86,14 @@ impl From<std::num::ParseFloatError> for LexerErrorMsg {
     }
 }
 
-fn parse(w: String) -> Result<Option<LexogramType>, LexerErrorMsg> {
-    let re = Regex::new(r"^[+-]?([0-9]*[.])?[0-9]+$").unwrap();
+fn parse(w: String) -> Option<LexogramType> {
     if w.len() == 0 {
-        Ok(None)
+        None
     } else {
-        if re.is_match(&w) {
-            Ok(Some(LexogramType::Number(w.parse::<f64>()?)))
+        if let Ok(ret) = w.parse::<f64>() {
+            Some(LexogramType::Number(ret))
         } else {
-            Ok(Some(LexogramType::Identifier(w)))
+            Some(LexogramType::Identifier(w))
         }
     }
 }
@@ -139,13 +137,12 @@ fn check_tail(pos_s: usize, tail: &str) -> Result<Option<Vec<Lexogram>>, LexerEr
             let finished_word = String::from(&tail[..unparsed_size]);
 
             match parse(finished_word) {
-                Ok(Some(t)) => ret.push(Lexogram {
+                Some(t) => ret.push(Lexogram {
                     pos_s: pos_s,
                     pos_f: pos_s + unparsed_size,
                     l_type: t,
                 }),
-                Ok(None) => (),
-                Err(e) => return Err(e),
+                None => (),
             }
 
             ret.push(Lexogram {
@@ -398,7 +395,7 @@ fn simple_lexogram_analisis(str: &String) -> Result<Vec<Lexogram>, LexerError> {
     }
 
     match parse(tail.clone()) {
-        Ok(Some(token_t)) => {
+        Some(token_t) => {
             ret.push(Lexogram {
                 pos_s: last_tail_reset,
                 pos_f: char_i,
@@ -407,14 +404,7 @@ fn simple_lexogram_analisis(str: &String) -> Result<Vec<Lexogram>, LexerError> {
             tail = String::new();
             last_tail_reset = char_i;
         }
-        Ok(None) => (),
-        Err(e) => {
-            return Err(LexerError {
-                pos_s: last_tail_reset,
-                pos_f: char_i,
-                msg: e,
-            })
-        }
+        None => (),
     }
 
     if tail.len() == 0 {

@@ -1,5 +1,7 @@
 use std::fmt;
 
+use print_macros::*;
+
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::statement_token::read_statement;
@@ -34,8 +36,6 @@ impl HasRelId for Conditional {
 pub fn read_conditional(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Conditional, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
@@ -45,9 +45,8 @@ pub fn read_conditional(
     }
     use IntensionalParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_intensional at {start_cursor}");
-    }
+    printparse!("read_intensional at {}", start_cursor);
+
     let mut cursor = start_cursor;
     let mut base_relation = None;
     let mut state = SpectingDeferedRelation;
@@ -57,55 +56,42 @@ pub fn read_conditional(
             continue;
         }
         match (lex.l_type.to_owned(), state) {
-            (_, SpectingDeferedRelation) => {
-                match read_defered_relation(
-                    lexograms,
-                    i,
-                    false,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
-                    Err(e) => {
-                        return Ok(Err(FailureExplanation {
-                            lex_pos: i,
-                            if_it_was: "conditional".into(),
-                            failed_because: "specting relation".into(),
-                            parent_failure: (vec![e]),
-                        }))
-                    }
-                    Ok((r, jump_to)) => {
-                        cursor = jump_to;
-                        base_relation = Some(r);
-                        state = SpectingTrueWhen;
-                    }
+            (_, SpectingDeferedRelation) => match read_defered_relation(lexograms, i, false)? {
+                Err(e) => {
+                    return Ok(Err(FailureExplanation {
+                        lex_pos: i,
+                        if_it_was: "conditional".into(),
+                        failed_because: "specting relation".into(),
+                        parent_failure: (vec![e]),
+                    }))
                 }
-            }
+                Ok((r, jump_to)) => {
+                    cursor = jump_to;
+                    base_relation = Some(r);
+                    state = SpectingTrueWhen;
+                }
+            },
             (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
-            (_, SpectingCondition) => {
-                match (
-                    read_statement(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)?,
-                    base_relation,
-                ) {
-                    (Err(e), _) => {
-                        return Ok(Err(FailureExplanation {
-                            lex_pos: i,
-                            if_it_was: "conditional".into(),
-                            failed_because: "specting statement".into(),
-                            parent_failure: (vec![e]),
-                        }))
-                    }
-                    (Ok((cond, jump_to)), Some(def_rel)) => {
-                        return Ok(Ok((
-                            Conditional {
-                                relation: def_rel,
-                                conditional: cond,
-                            },
-                            jump_to,
-                        )))
-                    }
-                    _ => unreachable!(),
+            (_, SpectingCondition) => match (read_statement(lexograms, i)?, base_relation) {
+                (Err(e), _) => {
+                    return Ok(Err(FailureExplanation {
+                        lex_pos: i,
+                        if_it_was: "conditional".into(),
+                        failed_because: "specting statement".into(),
+                        parent_failure: (vec![e]),
+                    }))
                 }
-            }
+                (Ok((cond, jump_to)), Some(def_rel)) => {
+                    return Ok(Ok((
+                        Conditional {
+                            relation: def_rel,
+                            conditional: cond,
+                        },
+                        jump_to,
+                    )))
+                }
+                _ => unreachable!(),
+            },
 
             (lex, _) => {
                 return Ok(Err(FailureExplanation {

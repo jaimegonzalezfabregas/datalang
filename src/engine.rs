@@ -5,6 +5,8 @@ pub mod truth_list;
 pub mod var_context;
 pub mod var_context_universe;
 
+use print_macros::*;
+
 use crate::{
     lexer,
     parser::{
@@ -54,22 +56,19 @@ impl Hash for Engine {
     }
 }
 
-fn get_lines_from_chars(raw_commands: String, debug_print: bool) -> Result<Vec<Line>, String> {
+fn get_lines_from_chars(raw_commands: String) -> Result<Vec<Line>, String> {
     let commands = String::from("\n") + &raw_commands;
 
     let lex_res = lexer::lex(&commands);
 
-    if debug_print {
-        println!("{lex_res:?}");
-    }
+    printparse!("{:?}", lex_res);
+
     match lex_res {
         Ok(lexic) => {
-            let ast_res = parser::parse(&lexic, debug_print);
+            let ast_res = parser::parse(&lexic);
             match ast_res {
                 Ok(ast_vec) => {
-                    if debug_print {
-                        println!("{ast_vec:?}");
-                    }
+                    printparse!("{:?}", ast_vec);
                     Ok(ast_vec)
                 }
                 Err(err) => Err(err.print(&lexic, &commands)),
@@ -102,22 +101,17 @@ impl Engine {
         self.recursion_limit = rl;
     }
 
-    pub fn input(self: &mut Engine, commands: String, debug_print: bool) -> String {
+    pub fn input(self: &mut Engine, commands: String) -> String {
         let mut ret = String::new();
-        match get_lines_from_chars(commands, debug_print) {
+        match get_lines_from_chars(commands) {
             Ok(lines) => {
                 for line in lines {
-                    if debug_print {
-                        println!("\nexecuting: {line}");
-                    }
-                    match self.ingest_line(line, String::new(), debug_print) {
+                    printdev!("\nexecuting: {}", line);
+
+                    match self.ingest_line(line) {
                         Ok(Some(output)) => {
                             let mut sorted_output = output.to_vector();
                             sorted_output.sort();
-
-                            if debug_print {
-                                ret += &format!("{sorted_output:?}");
-                            }
                             ret += &draw_table(sorted_output)
                         }
                         Ok(None) => (),
@@ -142,12 +136,9 @@ impl Engine {
         query: &DeferedRelation,
         context: &VarContext,
         recursion_tally: &RecursionTally,
-        debug_margin: String,
-        debug_print: bool,
     ) -> Result<TruthList, String> {
-        if debug_print {
-            println!("{debug_margin}query {query}")
-        }
+        printprocess!("query {}", query);
+
         let rel_id = query.get_rel_id();
         let mut hypothetical_engine = self.clone();
 
@@ -157,13 +148,7 @@ impl Engine {
 
         Ok(hypothetical_engine
             .get_relation(rel_id)
-            .get_filtered_truths(
-                &query,
-                &hypothetical_engine,
-                recursion_tally,
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            )?)
+            .get_filtered_truths(&query, &hypothetical_engine, recursion_tally)?)
     }
 
     fn ingest_assumption(
@@ -224,19 +209,12 @@ impl Engine {
         }
     }
 
-    pub fn ingest_line(
-        self: &mut Engine,
-        line: Line,
-        debug_margin: String,
-        debug_print: bool,
-    ) -> Result<Option<TruthList>, RuntimeError> {
+    pub fn ingest_line(self: &mut Engine, line: Line) -> Result<Option<TruthList>, RuntimeError> {
         match line {
             Line::Query(q) => Ok(Some(self.query(
                 &q,
                 &VarContext::new(),
                 &RecursionTally::new(self.recursion_limit),
-                debug_margin.to_owned() + "|  ",
-                debug_print,
             )?)),
             Line::Assumption(assumption) => {
                 self.ingest_assumption(&assumption, &VarContext::new())?;

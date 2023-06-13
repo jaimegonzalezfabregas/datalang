@@ -27,16 +27,9 @@ impl fmt::Display for Line {
 pub fn read_line(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     if let LexogramType::Comment = lexograms[start_cursor].l_type {
-        match read_line(
-            lexograms,
-            start_cursor + 1,
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        )? {
+        match read_line(lexograms, start_cursor + 1)? {
             Ok((line, jump_to)) => return Ok(Ok((Line::Comment(Box::new(line)), jump_to))),
             Err(e) => {
                 return Ok(Err(FailureExplanation {
@@ -51,22 +44,11 @@ pub fn read_line(
         let a;
         let b;
 
-        match read_defered_relation(
-            lexograms,
-            start_cursor,
-            true,
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        )? {
+        match read_defered_relation(lexograms, start_cursor, true)? {
             Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Query(defered_rel), jump_to))),
             Err(e) => a = e,
         }
-        match read_assumption(
-            lexograms,
-            start_cursor,
-            debug_margin.to_owned() + "|  ",
-            debug_print,
-        )? {
+        match read_assumption(lexograms, start_cursor)? {
             Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Assumption(defered_rel), jump_to))),
             Err(e) => b = e,
         }

@@ -44,7 +44,7 @@ impl From<std::io::Error> for DLErr {
 const AUTO_RUN: bool = true;
 
 fn main() -> Result<(), DLErr> {
-    let mut debug_print: bool = true;
+
     let mut engine = Engine::new();
 
     engine.set_recursion_limit(4);
@@ -52,10 +52,7 @@ fn main() -> Result<(), DLErr> {
     let stdin = io::stdin();
 
     if AUTO_RUN {
-        println!(
-            "{}",
-            engine.input(read_to_string("debug_input.dl")?, debug_print)
-        );
+        println!("{}", engine.input(read_to_string("debug_input.dl")?));
     }
 
     loop {
@@ -79,7 +76,7 @@ fn main() -> Result<(), DLErr> {
                     .skip(1)
                     .collect();
                 match read_to_string(file_path.trim()) {
-                    Ok(commands) => println!("{}", engine.input(commands, debug_print)),
+                    Ok(commands) => println!("{}", engine.input(commands)),
                     Err(err) => println!(
                         "the file couldnt be read ({}), reason: {err}",
                         file_path.trim()
@@ -99,16 +96,6 @@ fn main() -> Result<(), DLErr> {
                 }
             }
 
-            if buffer.starts_with("/set_debug") {
-                let arg: String = buffer
-                    .chars()
-                    .into_iter()
-                    .skip_while(|c| c != &' ')
-                    .skip(1)
-                    .collect();
-                debug_print = arg == "true";
-            }
-
             if buffer.starts_with("/set_recursion_limit") {
                 let arg: String = buffer
                     .chars()
@@ -122,7 +109,7 @@ fn main() -> Result<(), DLErr> {
                 }
             }
         } else {
-            println!("{}", engine.input(buffer, debug_print));
+            println!("{}", engine.input(buffer));
         }
     }
 

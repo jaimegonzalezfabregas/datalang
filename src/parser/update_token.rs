@@ -1,6 +1,9 @@
 use core::fmt;
 
+use print_macros::*;
+
 use crate::lexer::LexogramType::*;
+
 use crate::{
     lexer,
     parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
@@ -24,8 +27,6 @@ impl fmt::Display for Update {
 pub fn read_update(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Update, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
@@ -35,9 +36,8 @@ pub fn read_update(
     }
     use IntensionalParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_intensional at {start_cursor}");
-    }
+    printparse!("read_intensional at {}", start_cursor);
+
     let mut cursor = start_cursor;
     let mut op_filter_rel = None;
     let mut state = SpectingDeferedRelationFilter;
@@ -48,13 +48,7 @@ pub fn read_update(
         }
         match (lex.l_type.to_owned(), state) {
             (_, SpectingDeferedRelationFilter) => {
-                match read_defered_relation(
-                    lexograms,
-                    i,
-                    false,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
+                match read_defered_relation(lexograms, i, false)? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
@@ -72,16 +66,7 @@ pub fn read_update(
             }
             (Update, SpectingUpdate) => state = SpectingDeferedRelationGoal,
             (_, SpectingDeferedRelationGoal) => {
-                match (
-                    read_defered_relation(
-                        lexograms,
-                        i,
-                        false,
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    )?,
-                    op_filter_rel,
-                ) {
+                match (read_defered_relation(lexograms, i, false)?, op_filter_rel) {
                     (Err(e), _) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,

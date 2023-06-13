@@ -58,8 +58,6 @@ impl Truth {
         &self,
         filter: &DeferedRelation,
         caller_context: VarContext,
-        debug_margin: String,
-        debug_print: bool,
     ) -> Result<Truth, String> {
         let mut ret = self.clone();
 
@@ -72,12 +70,7 @@ impl Truth {
                 self.data.iter().zip(filter.to_owned().args).enumerate()
             {
                 if !pinned[i] {
-                    let solution = filter_expresion.solve(
-                        &goal,
-                        &context,
-                        debug_margin.to_owned() + "|  ",
-                        debug_print,
-                    );
+                    let solution = filter_expresion.solve(&goal, &context);
                     match solution {
                         Ok(new_context) => {
                             context = new_context;

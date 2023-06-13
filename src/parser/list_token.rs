@@ -1,4 +1,7 @@
+use print_macros::*;
+
 use crate::lexer::LexogramType::*;
+
 use crate::{
     lexer,
     parser::{expresion_token::read_expresion, FailureExplanation},
@@ -10,8 +13,6 @@ pub fn read_list(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     only_literals: bool,
-    debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Vec<Expresion>, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum ListParserStates {
@@ -20,9 +21,7 @@ pub fn read_list(
         SpectingOpenParenthesis,
     }
 
-    if debug_print {
-        println!("{}read_list at {}", debug_margin, start_cursor);
-    }
+    printparse!("read_list at {}", start_cursor);
 
     use ListParserStates::*;
     let mut cursor = start_cursor;
@@ -45,13 +44,7 @@ pub fn read_list(
                 state = SpectingItem;
             }
             (_, SpectingItem, _) => {
-                match read_expresion(
-                    lexograms,
-                    i,
-                    only_literals,
-                    debug_margin.to_owned() + "|  ",
-                    debug_print,
-                )? {
+                match read_expresion(lexograms, i, only_literals)? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
                             lex_pos: i,
