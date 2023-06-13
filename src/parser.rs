@@ -25,7 +25,6 @@ pub trait HasRelId {
 
 pub fn parse(
     lexograms: &Vec<lexer::Lexogram>,
-    debug_print: bool,
 ) -> Result<Vec<Line>, ParserError> {
     let mut ret = vec![];
     let mut cursor = 0;
@@ -34,7 +33,7 @@ pub fn parse(
         if cursor > i {
             continue;
         }
-        match read_line(&lexograms, i, "".into(), debug_print)? {
+        match read_line(&lexograms, i, "".into())? {
             Ok((statement, jump_to)) => {
                 ret.push(statement);
                 cursor = jump_to;

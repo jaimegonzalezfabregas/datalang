@@ -59,7 +59,6 @@ impl Truth {
         filter: &DeferedRelation,
         caller_context: VarContext,
         debug_margin: String,
-        debug_print: bool,
     ) -> Result<Truth, String> {
         let mut ret = self.clone();
 
@@ -76,7 +75,6 @@ impl Truth {
                         &goal,
                         &context,
                         debug_margin.to_owned() + "|  ",
-                        debug_print,
                     );
                     match solution {
                         Ok(new_context) => {

@@ -35,7 +35,6 @@ pub fn read_assumption(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Assumption, usize), FailureExplanation>, ParserError> {
     let a;
     let b;
@@ -45,7 +44,6 @@ pub fn read_assumption(
         lexograms,
         start_cursor,
         debug_margin.to_owned() + "|  ",
-        debug_print,
     )? {
         Ok((i_rel, jump_to)) => return Ok(Ok((Assumption::RelationInmediate(i_rel), jump_to))),
         Err(e) => a = e,
@@ -54,7 +52,6 @@ pub fn read_assumption(
         lexograms,
         start_cursor,
         debug_margin.to_owned() + "|  ",
-        debug_print,
     )? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Conditional(ret), jump_to))),
         Err(e) => b = e,
@@ -63,7 +60,6 @@ pub fn read_assumption(
         lexograms,
         start_cursor,
         debug_margin.to_owned() + "|  ",
-        debug_print,
     )? {
         Ok((ret, jump_to)) => return Ok(Ok((Assumption::Update(ret), jump_to))),
         Err(e) => c = e,
@@ -73,7 +69,6 @@ pub fn read_assumption(
         start_cursor,
         false,
         debug_margin.to_owned() + "|  ",
-        debug_print,
     )? {
         Ok((d_rel, jump_to)) => return Ok(Ok((Assumption::RelationDefered(d_rel), jump_to))),
         Err(e) => d = e,

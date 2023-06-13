@@ -13,6 +13,7 @@ use crate::parser::defered_relation_token::read_defered_relation;
 use crate::parser::expresion_token::read_expresion;
 
 use crate::lexer::{self};
+use crate::printdev;
 
 use super::data_token::Data;
 use super::defered_relation_token::DeferedRelation;
@@ -92,14 +93,13 @@ pub fn read_statement(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
+    
 ) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
-    if debug_print {
-        println!(
+    printdev!(
             "{}read_logical_statement_concatenation at {}",
             debug_margin, start_cursor
         );
-    }
+    
 
     #[derive(Debug, Clone, Copy)]
     enum StatementParserStates {
@@ -153,7 +153,7 @@ pub fn read_statement(
                     lexograms,
                     i + 1,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Ok((new_statement, jump_to)) => {
                         cursor = jump_to;
@@ -191,7 +191,7 @@ pub fn read_statement(
                     lexograms,
                     i,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Ok((new_statement, jump_to)) => {
                         cursor = jump_to;
@@ -243,7 +243,7 @@ pub fn read_statement_item(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
+    
 ) -> Result<Result<(Statement, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum StatementParserStates {
@@ -253,9 +253,8 @@ pub fn read_statement_item(
     }
     use StatementParserStates::*;
 
-    if debug_print {
-        println!("{}read_statement at {}", debug_margin, start_cursor);
-    }
+    printdev!("{}read_statement at {}", debug_margin, start_cursor);
+    
 
     let mut cursor = start_cursor;
     let mut state = SpectingFirstExpresionOrRelation;
@@ -282,7 +281,7 @@ pub fn read_statement_item(
                     i,
                     false,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Ok((def_rel, jump_to)) => {
                         return Ok(Ok((StatementSemantics::Relation(def_rel).into(), jump_to)))
@@ -295,7 +294,7 @@ pub fn read_statement_item(
                     i,
                     false,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Ok((e, jump_to)) => {
                         op_first_expresion = Some(e);
@@ -328,7 +327,7 @@ pub fn read_statement_item(
                     i,
                     false,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Ok((second_expresion, jump_to)) => {
                         return Ok(Ok((
@@ -435,11 +434,10 @@ impl Statement {
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
         debug_margin: String,
-        debug_print: bool,
+        
     ) -> Result<VarContextUniverse, String> {
-        if debug_print {
-            println!("{debug_margin}get posible contexts of {self} over universe:{universe}");
-        }
+        printdev!("{debug_margin}get posible contexts of {self} over universe:{universe}");
+        
 
         let mut memo_hash = DefaultHasher::new();
         engine.hash(&mut memo_hash);
@@ -448,9 +446,8 @@ impl Statement {
         let hash = memo_hash.finish();
 
         let ret = if let Some(recall) = self.memoizer.get(&hash) {
-            if debug_print {
-                println!("{debug_margin}CACHE HIT");
-            }
+            printdev!("{debug_margin}CACHE HIT");
+            
             recall.to_owned()?
         } else {
             let ret = self.get_posible_contexts(
@@ -458,16 +455,15 @@ impl Statement {
                 recursion_tally,
                 universe,
                 debug_margin.to_owned() + "|  ",
-                debug_print,
+                
             );
 
             self.memoizer.insert(hash, ret.to_owned());
 
             ret?
         };
-        if debug_print {
-            println!("{debug_margin}* universe for {self} based on {universe} is {ret}");
-        }
+        printdev!("{debug_margin}* universe for {self} based on {universe} is {ret}");
+        
         Ok(ret)
     }
 
@@ -477,7 +473,7 @@ impl Statement {
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
         debug_margin: String,
-        debug_print: bool,
+        
     ) -> Result<VarContextUniverse, String> {
         let ret = match &mut self.semantics {
             StatementSemantics::Or(statement_a, statement_b) => {
@@ -486,7 +482,7 @@ impl Statement {
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "1  ",
-                    debug_print,
+                    
                 )?;
 
                 let deep_universe_b = statement_b.memo_get_posible_contexts(
@@ -494,13 +490,13 @@ impl Statement {
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "2  ",
-                    debug_print,
+                    
                 )?;
 
                 deep_universe_a.or(
                     deep_universe_b,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )
             }
 
@@ -512,7 +508,7 @@ impl Statement {
                         recursion_tally,
                         universe,
                         debug_margin.to_owned() + "1  ",
-                        debug_print,
+                        
                     )?;
 
                     let first_universe_b = statement_b.memo_get_posible_contexts(
@@ -520,7 +516,7 @@ impl Statement {
                         recursion_tally,
                         universe,
                         debug_margin.to_owned() + "2  ",
-                        debug_print,
+                        
                     )?;
 
                     let universe_a = statement_a.memo_get_posible_contexts(
@@ -528,7 +524,7 @@ impl Statement {
                         recursion_tally,
                         &first_universe_b,
                         debug_margin.to_owned() + "3  ",
-                        debug_print,
+                        
                     )?;
 
                     let universe_b = statement_b.memo_get_posible_contexts(
@@ -536,11 +532,11 @@ impl Statement {
                         recursion_tally,
                         &first_universe_a,
                         debug_margin.to_owned() + "4  ",
-                        debug_print,
+                        
                     )?;
 
                     let new_ret =
-                        universe_a.or(universe_b, debug_margin.to_owned() + "|  ", debug_print);
+                        universe_a.or(universe_b, debug_margin.to_owned() + "|  ");
                     if new_ret != ret {
                         ret = new_ret
                     } else {
@@ -555,46 +551,40 @@ impl Statement {
                     recursion_tally,
                     universe,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )?;
 
                 universe.difference(&negated_contexts) //TODO i dont think i can simplify a not, look into it
             }
             StatementSemantics::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
-                if debug_print {
-                    println!(
+                printdev!(
                         "{debug_margin}equality of {exp_a} and {exp_b} on universe {universe}"
                     );
-                }
+                
                 let mut fitting_contexts = HashSet::new();
 
                 let owned_exp_a = exp_a.to_owned();
                 let owned_exp_b = exp_b.to_owned();
 
                 for context in universe.iter() {
-                    // if debug_print {
-                    //     println!("{debug_margin}for context {context}");
-                    // }
+                   
                     let a = owned_exp_a.literalize(&context);
                     let b = owned_exp_b.to_owned().literalize(&context);
                     match (&owned_exp_a, &owned_exp_b, a, b) {
                         (_, _, Ok(Data::Any), Ok(Data::Any)) => {
-                            if debug_print {
-                                println!(
+                            printdev!(
                                     "{debug_margin}{owned_exp_a} and {owned_exp_b} are not equal (value wise)"
                                 );
-                            }
+                            
                         }
                         (_, exp, Ok(goal), Err(_) | Ok(Data::Any))
                         | (exp, _, Err(_) | Ok(Data::Any), Ok(goal)) => {
-                            // if debug_print {
-                            //     println!("{debug_margin}\"{literalized_exp}\" was literalized to {goal}, trying to backwards solve {exp}");
-                            // }
+                           
                             match exp.solve(
                                 &goal,
                                 &context,
                                 debug_margin.to_owned() + "|  ",
-                                debug_print,
+                                
                             ) {
                                 Ok(new_context) => {
                                     fitting_contexts.insert(new_context);
@@ -603,9 +593,7 @@ impl Statement {
                             }
                         }
                         (_, _, Ok(data_a), Ok(data_b)) => {
-                            // if debug_print {
-                            //     println!("{debug_margin}{exp_a} was literalized to {data_a} and {exp_b} was literalized to {data_a}");
-                            // }
+                          
                             if data_a == data_b {
                                 fitting_contexts.insert(context.to_owned());
                             }
@@ -644,11 +632,10 @@ impl Statement {
                 }
             }
             StatementSemantics::Relation(rel) => {
-                if debug_print {
-                    println!(
+                printdev!(
                         "{debug_margin}recursive relation querry for {rel} in each of: {universe}"
                     );
-                }
+                
 
                 let mut ret = VarContextUniverse::new();
 
@@ -658,7 +645,7 @@ impl Statement {
                         &base_context,
                         recursion_tally,
                         debug_margin.to_owned() + "|   ",
-                        debug_print,
+                        
                     )?;
 
                     for truth in table_truths.into_iter() {
@@ -671,18 +658,14 @@ impl Statement {
                                     col_data,
                                     &context,
                                     debug_margin.to_owned() + "|  ",
-                                    debug_print,
+                                    
                                 ) {
                                     Ok(new_context) => {
-                                        // if debug_print {
-                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} resulted on {new_context}");
-                                        // }
+                                       
                                         context = new_context
                                     }
                                     Err(_) => {
-                                        // if debug_print {
-                                        //     println!("{debug_margin}fitting {col_data} to {col_exp} failed: {err}");
-                                        // }
+                                       
                                         unfiteable = true;
                                     }
                                 }

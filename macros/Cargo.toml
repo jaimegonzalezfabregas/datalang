@@ -1,0 +1,11 @@
+[package]
+name = "macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "print_macros"
+path = "src/print_macros.rs"
+proc-macro = true
+
+[dependencies]

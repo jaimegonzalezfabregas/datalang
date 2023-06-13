@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     engine::{var_context::VarContext, RelId},
     lexer::{self, LexogramType::*},
-    parser::list_token::read_list,
+    parser::list_token::read_list, printdev,
 };
 
 use super::{
@@ -54,7 +54,7 @@ pub fn read_inmediate_relation(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
+    
 ) -> Result<Result<(InmediateRelation, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum RelationParserStates {
@@ -64,9 +64,8 @@ pub fn read_inmediate_relation(
     }
     use RelationParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_inmediate_relation at {start_cursor}");
-    }
+    printdev!("{debug_margin}read_inmediate_relation at {start_cursor}");
+    
     let cursor = start_cursor;
     let mut op_rel_name = None;
     let mut state = SpectingStatementIdentifierOrNegation;
@@ -96,7 +95,7 @@ pub fn read_inmediate_relation(
                         i,
                         true,
                         debug_margin.to_owned() + "|  ",
-                        debug_print,
+                        
                     )?,
                     op_rel_name,
                 ) {

@@ -2,6 +2,8 @@ use std::{collections::HashSet, fmt, hash};
 mod conditional_truth;
 pub mod truth;
 
+use print_macros::printdev;
+
 use crate::parser::{
     conditional_token::Conditional, defered_relation_token::DeferedRelation,
     inmediate_relation_token::InmediateRelation,
@@ -60,7 +62,10 @@ impl Relation {
     }
 
     pub(crate) fn add_conditional(&mut self, cond: Conditional) -> Result<(), String> {
-        if self.conditions.contains(&ConditionalTruth::from(cond.to_owned())) {
+        if self
+            .conditions
+            .contains(&ConditionalTruth::from(cond.to_owned()))
+        {
             Err(format!(
                 "La condición {} ya existe dentro de la tabla {:?}",
                 ConditionalTruth::from(cond),
@@ -78,7 +83,6 @@ impl Relation {
         engine: &Engine,
         caller_recursion_tally: &RecursionTally,
         debug_margin: String,
-        debug_print: bool,
     ) -> Result<TruthList, String> {
         let mut ret = TruthList::new();
         let mut recursion_tally = caller_recursion_tally.to_owned();
@@ -95,7 +99,6 @@ impl Relation {
                     engine,
                     &recursion_tally,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
                 )?;
 
                 for truth in sub_truth_list.into_iter() {
@@ -103,9 +106,7 @@ impl Relation {
                 }
             }
         } else {
-            if debug_print {
-                println!("{debug_margin}** no more recursion **")
-            }
+            printdev!("{}** no more recursion **", debug_margin)
         }
         Ok(ret)
     }
@@ -116,37 +117,30 @@ impl Relation {
         engine: &Engine,
         recursion_tally: &RecursionTally,
         debug_margin: String,
-        debug_print: bool,
     ) -> Result<TruthList, String> {
-        if debug_print {
-            println!(
-                "{debug_margin}get filtered truths of {} with filter {filter}",
-                self.rel_id.identifier
-            );
-        }
+        printdev!(
+            "{}get filtered truths of {} with filter {}",
+            debug_margin,
+            self.rel_id.identifier,
+            filter
+        );
 
         let all_truths = self.get_all_truths(
             filter,
             engine,
             recursion_tally,
             debug_margin.to_owned() + "|  ",
-            debug_print,
         )?;
 
         let mut matched_truths = TruthList::new();
 
         for truth in all_truths.into_iter() {
-            if let Ok(fitted) = truth.fits_filter(
-                filter,
-                VarContext::new(),
-                debug_margin.to_owned() + "|  ",
-                debug_print,
-            ) {
+            if let Ok(fitted) =
+                truth.fits_filter(filter, VarContext::new(), debug_margin.to_owned() + "|  ")
+            {
                 matched_truths.add(fitted);
             }
         }
-
-        
 
         Ok(matched_truths)
     }

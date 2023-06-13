@@ -1,6 +1,7 @@
 use core::fmt;
 
 use crate::lexer::LexogramType::*;
+use crate::printdev;
 use crate::{
     lexer,
     parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
@@ -25,7 +26,7 @@ pub fn read_update(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
+    
 ) -> Result<Result<(Update, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
@@ -35,9 +36,8 @@ pub fn read_update(
     }
     use IntensionalParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_intensional at {start_cursor}");
-    }
+    printdev!("{debug_margin}read_intensional at {start_cursor}");
+    
     let mut cursor = start_cursor;
     let mut op_filter_rel = None;
     let mut state = SpectingDeferedRelationFilter;
@@ -53,7 +53,7 @@ pub fn read_update(
                     i,
                     false,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
+                    
                 )? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
@@ -78,7 +78,7 @@ pub fn read_update(
                         i,
                         false,
                         debug_margin.to_owned() + "|  ",
-                        debug_print,
+                        
                     )?,
                     op_filter_rel,
                 ) {

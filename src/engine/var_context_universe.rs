@@ -1,5 +1,7 @@
 use std::{collections::HashSet, fmt};
 
+use crate::printdev;
+
 use super::var_context::VarContext;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +38,7 @@ impl VarContextUniverse {
         }
     }
 
-    pub fn or(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
+    pub fn or(self, other: Self, debug_margin: String) -> Self {
         let mut ret = Self::new();
 
         for context in &self.contents {
@@ -46,16 +48,13 @@ impl VarContextUniverse {
         for context in &other.contents {
             ret.insert(context.to_owned());
         }
-        if debug_print {
-            println!("{debug_margin}{self} or {other} = {ret}");
-        }
+        printdev!("{debug_margin}{self} or {other} = {ret}");
+
         ret
     }
 
-    pub fn and(self, other: Self, debug_margin: String, debug_print: bool) -> Self {
-        if debug_print {
-            print!("{debug_margin}{self} and {other} =");
-        }
+    pub fn and(self, other: Self, debug_margin: String) -> Self {
+        printdev!("{debug_margin}{self} and {other} =");
 
         let mut contents = HashSet::new();
 
@@ -73,9 +72,8 @@ impl VarContextUniverse {
 
         let ret = VarContextUniverse { contents };
 
-        if debug_print {
-            println!(" {ret}");
-        }
+        printdev!(" {ret}");
+
         ret
     }
 

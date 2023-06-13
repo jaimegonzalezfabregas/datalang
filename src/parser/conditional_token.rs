@@ -3,6 +3,7 @@ use std::fmt;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
 use crate::parser::statement_token::read_statement;
+use crate::printdev;
 use crate::{
     lexer,
     parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
@@ -35,7 +36,6 @@ pub fn read_conditional(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
 ) -> Result<Result<(Conditional, usize), FailureExplanation>, ParserError> {
     #[derive(Debug, Clone, Copy)]
     enum IntensionalParserStates {
@@ -45,9 +45,8 @@ pub fn read_conditional(
     }
     use IntensionalParserStates::*;
 
-    if debug_print {
-        println!("{debug_margin}read_intensional at {start_cursor}");
-    }
+    printdev!("{debug_margin}read_intensional at {start_cursor}");
+
     let mut cursor = start_cursor;
     let mut base_relation = None;
     let mut state = SpectingDeferedRelation;
@@ -63,7 +62,6 @@ pub fn read_conditional(
                     i,
                     false,
                     debug_margin.to_owned() + "|  ",
-                    debug_print,
                 )? {
                     Err(e) => {
                         return Ok(Err(FailureExplanation {
@@ -83,7 +81,7 @@ pub fn read_conditional(
             (TrueWhen, SpectingTrueWhen) => state = SpectingCondition,
             (_, SpectingCondition) => {
                 match (
-                    read_statement(lexograms, i, debug_margin.to_owned() + "|  ", debug_print)?,
+                    read_statement(lexograms, i, debug_margin.to_owned() + "|  ")?,
                     base_relation,
                 ) {
                     (Err(e), _) => {

@@ -6,6 +6,7 @@ version = 3
 name = "_datalang"
 version = "0.1.0"
 dependencies = [
+ "macros",
  "regex",
  "sprintf",
 ]
@@ -18,6 +19,10 @@ checksum = "67fc08ce920c31afb70f013dcce1bfc3a3195de6a228474e45e1f145b36f8d04"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
 
 [[package]]
 name = "memchr"

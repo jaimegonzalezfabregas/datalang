@@ -28,14 +28,14 @@ pub fn read_line(
     lexograms: &Vec<lexer::Lexogram>,
     start_cursor: usize,
     debug_margin: String,
-    debug_print: bool,
+    
 ) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     if let LexogramType::Comment = lexograms[start_cursor].l_type {
         match read_line(
             lexograms,
             start_cursor + 1,
             debug_margin.to_owned() + "|  ",
-            debug_print,
+            
         )? {
             Ok((line, jump_to)) => return Ok(Ok((Line::Comment(Box::new(line)), jump_to))),
             Err(e) => {
@@ -56,7 +56,7 @@ pub fn read_line(
             start_cursor,
             true,
             debug_margin.to_owned() + "|  ",
-            debug_print,
+            
         )? {
             Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Query(defered_rel), jump_to))),
             Err(e) => a = e,
@@ -65,7 +65,7 @@ pub fn read_line(
             lexograms,
             start_cursor,
             debug_margin.to_owned() + "|  ",
-            debug_print,
+            
         )? {
             Ok((defered_rel, jump_to)) => return Ok(Ok((Line::Assumption(defered_rel), jump_to))),
             Err(e) => b = e,
