@@ -48,32 +48,7 @@ impl VarContextUniverse {
         for context in &other.contents {
             ret.insert(context.to_owned());
         }
-        printprocess!("{} or {} = {}", self, other, ret); // TODO Do I need this print??
-
-        ret
-    }
-
-    pub fn and(self, other: Self) -> Self {
-        // TODO check i use this
-        printprocess!("{} and {} =", self, other);
-
-        let mut contents = HashSet::new();
-
-        for context_a in &self.contents {
-            for content_b in &other.contents {
-                let op_merge = context_a.extend(&content_b);
-                match op_merge {
-                    Some(merged) => {
-                        contents.insert(merged);
-                    }
-                    None => (),
-                }
-            }
-        }
-
-        let ret = VarContextUniverse { contents };
-
-        printprocess!("{}", ret);
+        printprocessop!("{} or {} = {}", self, other, ret); // TODO Do I need this print??
 
         ret
     }

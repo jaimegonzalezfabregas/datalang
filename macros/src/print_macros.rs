@@ -32,13 +32,19 @@ pub fn printdev(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn printparse(input: TokenStream) -> TokenStream {
-    //printdev(input)
+pub fn printparse(_input: TokenStream) -> TokenStream {
+    //printdev(_input)
     "".parse().unwrap()
 }
 
 #[proc_macro]
-pub fn printprocess(input: TokenStream) -> TokenStream {
-    //printdev(input)
+pub fn printprocess(_input: TokenStream) -> TokenStream {
+    printdev(_input)
+    //"".parse().unwrap()
+}
+
+#[proc_macro]
+pub fn printprocessop(_input: TokenStream) -> TokenStream {
+    //printdev(_input)
     "".parse().unwrap()
 }

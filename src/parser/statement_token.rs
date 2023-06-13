@@ -477,7 +477,7 @@ impl Statement {
                 let negated_contexts =
                     statement.memo_get_posible_contexts(engine, recursion_tally, universe)?;
 
-                universe.difference(&negated_contexts) //TODO i dont think i can simplify a not, look into it
+                universe.difference(&negated_contexts)
             }
             StatementSemantics::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
                 printprocess!(

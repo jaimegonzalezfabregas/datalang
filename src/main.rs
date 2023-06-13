@@ -5,6 +5,7 @@ mod tests;
 mod utils;
 
 use std::fs::write;
+use std::time::Instant;
 use std::{fs::read_to_string, io};
 
 use crate::engine::Engine;
@@ -41,19 +42,14 @@ impl From<std::io::Error> for DLErr {
         Self::IOError(e)
     }
 }
-const AUTO_RUN: bool = true;
+const AUTO_RUN_SAMPLES: usize = 10;
 
-fn main() -> Result<(), DLErr> {
-
+fn console_loop() -> Result<(), DLErr> {
     let mut engine = Engine::new();
 
-    engine.set_recursion_limit(4);
+    engine.set_recursion_limit(10);
 
     let stdin = io::stdin();
-
-    if AUTO_RUN {
-        println!("{}", engine.input(read_to_string("debug_input.dl")?));
-    }
 
     loop {
         let mut buffer = String::new();
@@ -111,6 +107,40 @@ fn main() -> Result<(), DLErr> {
         } else {
             println!("{}", engine.input(buffer));
         }
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<(), DLErr> {
+    if AUTO_RUN_SAMPLES > 0 {
+        let mut times = vec![];
+
+        for i in 0..AUTO_RUN_SAMPLES {
+            let now = Instant::now();
+
+            let mut engine = Engine::new();
+
+            engine.set_recursion_limit(10);
+
+            engine.input(read_to_string("debug_input.dl")?);
+
+            let elapsed_time = now.elapsed();
+            println!(
+                "{}%: {}s",
+                100. * (i as f64) / (AUTO_RUN_SAMPLES as f64),
+                elapsed_time.as_secs_f64()
+            );
+            times.push(elapsed_time.as_micros());
+        }
+
+        times.sort();
+        // let min = times[0];
+        // let max = times[times.len() - 1];
+
+        println!("{:?}", times);
+    } else {
+        console_loop()?;
     }
 
     Ok(())
