@@ -52,7 +52,7 @@ impl ConditionalTruth {
 
         posible_contexts =
             self.condition
-                .memo_get_posible_contexts(engine, recursion_tally, &posible_contexts)?;
+                .get_posible_contexts(engine, recursion_tally, &posible_contexts)?;
 
         printprocess!("* universe of {} is {}", self, posible_contexts);
 

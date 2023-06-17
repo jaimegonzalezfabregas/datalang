@@ -1,6 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{BTreeMap, HashSet};
-use std::hash::{Hash, Hasher};
+use std::collections::{ HashSet};
+use std::hash::{Hash};
 use std::{fmt, vec};
 
 use print_macros::*;
@@ -38,7 +37,7 @@ pub enum Comparison {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum StatementSemantics {
+pub enum Statement {
     // resolvable to a bolean
     True,
     And(Box<Statement>, Box<Statement>),
@@ -48,44 +47,29 @@ pub enum StatementSemantics {
     Relation(DeferedRelation),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Statement {
-    memoizer: BTreeMap<u64, Result<VarContextUniverse, String>>,
-    semantics: StatementSemantics,
-}
-
-impl From<StatementSemantics> for Statement {
-    fn from(value: StatementSemantics) -> Self {
-        Self {
-            memoizer: BTreeMap::new(),
-            semantics: value,
-        }
-    }
-}
-
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.semantics {
-            StatementSemantics::And(sta, stb) => write!(f, "({sta} && {stb})"),
-            StatementSemantics::Or(sta, stb) => write!(f, "({sta} || {stb})"),
-            StatementSemantics::Not(st) => write!(f, "!({st})"),
-            StatementSemantics::ExpresionComparison(sta, stb, Comparison::Eq) => {
+        match &self {
+            Statement::And(sta, stb) => write!(f, "({sta} && {stb})"),
+            Statement::Or(sta, stb) => write!(f, "({sta} || {stb})"),
+            Statement::Not(st) => write!(f, "!({st})"),
+            Statement::ExpresionComparison(sta, stb, Comparison::Eq) => {
                 write!(f, "({sta}={stb})")
             }
-            StatementSemantics::ExpresionComparison(sta, stb, Comparison::Lt) => {
+            Statement::ExpresionComparison(sta, stb, Comparison::Lt) => {
                 write!(f, "({sta}<{stb})")
             }
-            StatementSemantics::ExpresionComparison(sta, stb, Comparison::Gt) => {
+            Statement::ExpresionComparison(sta, stb, Comparison::Gt) => {
                 write!(f, "({sta}>{stb})")
             }
-            StatementSemantics::ExpresionComparison(sta, stb, Comparison::Gte) => {
+            Statement::ExpresionComparison(sta, stb, Comparison::Gte) => {
                 write!(f, "({sta}>={stb})")
             }
-            StatementSemantics::ExpresionComparison(sta, stb, Comparison::Lte) => {
+            Statement::ExpresionComparison(sta, stb, Comparison::Lte) => {
                 write!(f, "({sta}<={stb})")
             }
-            StatementSemantics::Relation(rel) => write!(f, "{rel}"),
-            StatementSemantics::True => write!(f, "true"),
+            Statement::Relation(rel) => write!(f, "{rel}"),
+            Statement::True => write!(f, "true"),
         }
     }
 }
@@ -135,7 +119,7 @@ pub fn read_statement(
             }
 
             (True, SpectingStatementOrNegationOrOpenParenthesisOrTrue, _) => {
-                return Ok(Ok((StatementSemantics::True.into(), i + 1)));
+                return Ok(Ok((Statement::True.into(), i + 1)));
             }
 
             (
@@ -260,7 +244,7 @@ pub fn read_statement_item(
 
                 match read_defered_relation(lexograms, i, false)? {
                     Ok((def_rel, jump_to)) => {
-                        return Ok(Ok((StatementSemantics::Relation(def_rel).into(), jump_to)))
+                        return Ok(Ok((Statement::Relation(def_rel).into(), jump_to)))
                     }
 
                     Err(err) => err1 = err,
@@ -296,27 +280,27 @@ pub fn read_statement_item(
                     Ok((second_expresion, jump_to)) => {
                         return Ok(Ok((
                             match append_mode {
-                                OpEq => StatementSemantics::ExpresionComparison(
+                                OpEq => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
                                     Comparison::Eq,
                                 ),
-                                OpLT => StatementSemantics::ExpresionComparison(
+                                OpLT => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
                                     Comparison::Lt,
                                 ),
-                                OpLTE => StatementSemantics::ExpresionComparison(
+                                OpLTE => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
                                     Comparison::Lte,
                                 ),
-                                OpGT => StatementSemantics::ExpresionComparison(
+                                OpGT => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
                                     Comparison::Gt,
                                 ),
-                                OpGTE => StatementSemantics::ExpresionComparison(
+                                OpGTE => Statement::ExpresionComparison(
                                     first_expresion,
                                     second_expresion,
                                     Comparison::Gte,
@@ -372,19 +356,19 @@ fn merge_statements(
     Some(match (op_ret, append_mode, negate_next_statement) {
         (None, _, _) => new_statement,
         (Some(prev_statement), AppendModes::And, false) => {
-            StatementSemantics::And(Box::new(prev_statement), Box::new(new_statement)).into()
+            Statement::And(Box::new(prev_statement), Box::new(new_statement)).into()
         }
         (Some(prev_statement), AppendModes::Or, false) => {
-            StatementSemantics::Or(Box::new(prev_statement), Box::new(new_statement)).into()
+            Statement::Or(Box::new(prev_statement), Box::new(new_statement)).into()
         }
-        (Some(prev_statement), AppendModes::And, true) => StatementSemantics::And(
+        (Some(prev_statement), AppendModes::And, true) => Statement::And(
             Box::new(prev_statement),
-            Box::new(StatementSemantics::Not(Box::new(new_statement)).into()),
+            Box::new(Statement::Not(Box::new(new_statement)).into()),
         )
         .into(),
-        (Some(prev_statement), AppendModes::Or, true) => StatementSemantics::Or(
+        (Some(prev_statement), AppendModes::Or, true) => Statement::Or(
             Box::new(prev_statement),
-            Box::new(StatementSemantics::Not(Box::new(new_statement)).into()),
+            Box::new(Statement::Not(Box::new(new_statement)).into()),
         )
         .into(),
         (Some(_), AppendModes::None, _) => unreachable!(),
@@ -392,73 +376,39 @@ fn merge_statements(
 }
 
 impl Statement {
-    pub fn memo_get_posible_contexts(
-        &mut self,
+    pub fn get_posible_contexts(
+        &self,
         engine: &Engine,
         recursion_tally: &RecursionTally,
         universe: &VarContextUniverse,
     ) -> Result<VarContextUniverse, String> {
-        printprocess!(
-            "get posible contexts of {} over universe:{}",
-            self,
-            universe
-        );
-
-        let mut memo_hash = DefaultHasher::new();
-        engine.hash(&mut memo_hash);
-        universe.hash(&mut memo_hash);
-
-        let hash = memo_hash.finish();
-
-        let ret = if let Some(recall) = self.memoizer.get(&hash) {
-            printprocess!("CACHE HIT");
-
-            recall.to_owned()?
-        } else {
-            let ret = self.get_posible_contexts(engine, recursion_tally, universe);
-
-            self.memoizer.insert(hash, ret.to_owned());
-
-            ret?
-        };
-        printprocess!("* universe for {} based on {} is {}", self, universe, ret);
-
-        Ok(ret)
-    }
-
-    fn get_posible_contexts(
-        &mut self,
-        engine: &Engine,
-        recursion_tally: &RecursionTally,
-        universe: &VarContextUniverse,
-    ) -> Result<VarContextUniverse, String> {
-        let ret = match &mut self.semantics {
-            StatementSemantics::Or(statement_a, statement_b) => {
+        let ret = match &self {
+            Statement::Or(statement_a, statement_b) => {
                 let deep_universe_a =
-                    statement_a.memo_get_posible_contexts(engine, recursion_tally, universe)?;
+                    statement_a.get_posible_contexts(engine, recursion_tally, universe)?;
 
                 let deep_universe_b =
-                    statement_b.memo_get_posible_contexts(engine, recursion_tally, universe)?;
+                    statement_b.get_posible_contexts(engine, recursion_tally, universe)?;
 
                 deep_universe_a.or(deep_universe_b)
             }
 
-            StatementSemantics::And(statement_a, statement_b) => {
+            Statement::And(statement_a, statement_b) => {
                 let mut ret = universe.to_owned();
                 loop {
                     let first_universe_a =
-                        statement_a.memo_get_posible_contexts(engine, recursion_tally, universe)?;
+                        statement_a.get_posible_contexts(engine, recursion_tally, universe)?;
 
                     let first_universe_b =
-                        statement_b.memo_get_posible_contexts(engine, recursion_tally, universe)?;
+                        statement_b.get_posible_contexts(engine, recursion_tally, universe)?;
 
-                    let universe_a = statement_a.memo_get_posible_contexts(
+                    let universe_a = statement_a.get_posible_contexts(
                         engine,
                         recursion_tally,
                         &first_universe_b,
                     )?;
 
-                    let universe_b = statement_b.memo_get_posible_contexts(
+                    let universe_b = statement_b.get_posible_contexts(
                         engine,
                         recursion_tally,
                         &first_universe_a,
@@ -473,13 +423,13 @@ impl Statement {
                 }
                 ret
             }
-            StatementSemantics::Not(statement) => {
+            Statement::Not(statement) => {
                 let negated_contexts =
-                    statement.memo_get_posible_contexts(engine, recursion_tally, universe)?;
+                    statement.get_posible_contexts(engine, recursion_tally, universe)?;
 
                 universe.difference(&negated_contexts)
             }
-            StatementSemantics::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
+            Statement::ExpresionComparison(exp_a, exp_b, Comparison::Eq) => {
                 printprocess!(
                     "equality of {} and {} on universe {}",
                     exp_a,
@@ -520,7 +470,7 @@ impl Statement {
                 }
             }
 
-            StatementSemantics::ExpresionComparison(exp_a, exp_b, comp) => {
+            Statement::ExpresionComparison(exp_a, exp_b, comp) => {
                 let fitting_contexts = universe
                     .iter()
                     .filter(|context| {
@@ -544,7 +494,7 @@ impl Statement {
                     contents: fitting_contexts,
                 }
             }
-            StatementSemantics::Relation(rel) => {
+            Statement::Relation(rel) => {
                 printprocess!(
                     "recursive relation querry for {} in each of: {}",
                     rel,
@@ -582,7 +532,7 @@ impl Statement {
                 ret
             }
 
-            StatementSemantics::True => universe.to_owned(),
+            Statement::True => universe.to_owned(),
         };
 
         Ok(ret)
