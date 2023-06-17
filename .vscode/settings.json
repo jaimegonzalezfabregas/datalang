@@ -3,6 +3,7 @@
         ".\\Cargo.toml",
         ".\\macros\\Cargo.toml",
         ".\\macros\\Cargo.toml",
+        ".\\macros\\Cargo.toml",
         ".\\macros\\Cargo.toml"
     ]
 }

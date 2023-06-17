@@ -42,7 +42,7 @@ impl From<std::io::Error> for DLErr {
         Self::IOError(e)
     }
 }
-const AUTO_RUN_SAMPLES: usize = 10;
+const AUTO_RUN_SAMPLES: usize = 30;
 
 fn console_loop() -> Result<(), DLErr> {
     let mut engine = Engine::new();
@@ -121,7 +121,7 @@ fn main() -> Result<(), DLErr> {
 
             let mut engine = Engine::new();
 
-            engine.set_recursion_limit(10);
+            engine.set_recursion_limit(5);
 
             engine.input(read_to_string("debug_input.dl")?);
 
@@ -137,8 +137,16 @@ fn main() -> Result<(), DLErr> {
         times.sort();
         // let min = times[0];
         // let max = times[times.len() - 1];
+        let mut sum = 0;
+        for t in &times {
+            sum += t;
+        }
 
-        println!("{:?}", times);
+        println!(
+            "{:?} => {}",
+            times,
+            (sum as f64) / (AUTO_RUN_SAMPLES as f64)
+        );
     } else {
         console_loop()?;
     }

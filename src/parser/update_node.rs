@@ -1,6 +1,6 @@
 use core::fmt;
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::lexer::LexogramType::*;
 

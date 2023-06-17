@@ -1,6 +1,7 @@
 use core::fmt;
+use std::sync::Arc;
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::{
     engine::{
@@ -29,8 +30,8 @@ impl ConditionalTruth {
     pub fn get_deductions(
         &mut self,
         filter: &DeferedRelation,
-        engine: &Engine,
-        recursion_tally: &RecursionTally,
+        engine: &Arc<Engine>,
+        recursion_tally: &Arc<RecursionTally>,
     ) -> Result<TruthList, String> {
         printprocess!("getting deductions of {}", self);
 
@@ -50,9 +51,11 @@ impl ConditionalTruth {
         let mut posible_contexts = VarContextUniverse::new();
         posible_contexts.insert(base_context);
 
-        posible_contexts =
-            self.condition
-                .get_posible_contexts(engine, recursion_tally, &posible_contexts)?;
+        posible_contexts = self.condition.get_posible_contexts(
+            engine,
+            recursion_tally,
+            &Arc::new(posible_contexts),
+        )?;
 
         printprocess!("* universe of {} is {}", self, posible_contexts);
 

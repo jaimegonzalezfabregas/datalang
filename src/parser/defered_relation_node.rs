@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{hash, vec};
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::engine::relation::truth::Truth;
 use crate::engine::var_context::VarContext;

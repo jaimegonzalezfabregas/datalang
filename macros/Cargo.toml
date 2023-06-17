@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "print_macros"
-path = "src/print_macros.rs"
+name = "conditional_compilation"
+path = "src/conditional_compilation.rs"
 proc-macro = true
 
 [dependencies]

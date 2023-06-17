@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::RelId;
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RecursionTally {
     max_recursion: usize,
     tally: BTreeMap<RelId, usize>,

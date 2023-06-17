@@ -1,4 +1,4 @@
-use print_macros::*;
+use conditional_compilation::*;
 
 use super::error::{FailureExplanation, ParserError};
 use crate::lexer::LexogramType::*;

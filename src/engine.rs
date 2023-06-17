@@ -5,7 +5,7 @@ pub mod truth_list;
 pub mod var_context;
 pub mod var_context_universe;
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::{
     lexer,
@@ -14,7 +14,7 @@ use crate::{
         inmediate_relation_node::InmediateRelation, line_node::Line, HasRelId,
     },
 };
-use std::{collections::BTreeMap, fmt, vec};
+use std::{collections::BTreeMap, fmt, sync::Arc, vec};
 
 use self::{
     recursion_tally::RecursionTally,
@@ -106,7 +106,7 @@ impl Engine {
         match get_lines_from_chars(commands) {
             Ok(lines) => {
                 for line in lines {
-                    printdev!("\nexecuting: {}", line);
+                    printinfo!("\nexecuting: {}", line);
 
                     match self.ingest_line(line) {
                         Ok(Some(output)) => {
@@ -135,7 +135,7 @@ impl Engine {
         &self,
         query: &DeferedRelation,
         context: &VarContext,
-        recursion_tally: &RecursionTally,
+        recursion_tally: &Arc<RecursionTally>,
     ) -> Result<TruthList, String> {
         printprocess!("query {}", query);
 
@@ -148,7 +148,7 @@ impl Engine {
 
         Ok(hypothetical_engine
             .get_relation(rel_id)
-            .get_filtered_truths(&query, &hypothetical_engine, recursion_tally)?)
+            .get_filtered_truths(&query, &Arc::new(hypothetical_engine), &recursion_tally)?)
     }
 
     fn ingest_assumption(
@@ -214,7 +214,7 @@ impl Engine {
             Line::Query(q) => Ok(Some(self.query(
                 &q,
                 &VarContext::new(),
-                &RecursionTally::new(self.recursion_limit),
+                &Arc::new(RecursionTally::new(self.recursion_limit)),
             )?)),
             Line::Assumption(assumption) => {
                 self.ingest_assumption(&assumption, &VarContext::new())?;

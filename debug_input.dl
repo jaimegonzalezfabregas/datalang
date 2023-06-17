@@ -1,12 +1,10 @@
 edge(1,2) 
 edge(2,3) 
-edge(3,4) 
-edge(4,5) 
-edge(5,6) 
-
 
 conected(a,b) :- conected(a,mid) && edge(mid,b) 
 
 conected(a,a):- true 
+
+edge(b,a) :- edge(a,b) 
 
 conected(_,_)?

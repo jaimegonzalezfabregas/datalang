@@ -1,8 +1,9 @@
-use std::collections::{ HashSet};
-use std::hash::{Hash};
-use std::{fmt, vec};
+use std::collections::HashSet;
+use std::hash::Hash;
+use std::sync::Arc;
+use std::{fmt, thread, vec};
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::engine::recursion_tally::RecursionTally;
 use crate::engine::var_context::VarContext;
@@ -40,9 +41,9 @@ pub enum Comparison {
 pub enum Statement {
     // resolvable to a bolean
     True,
-    And(Box<Statement>, Box<Statement>),
-    Or(Box<Statement>, Box<Statement>),
-    Not(Box<Statement>),
+    And(Arc<Statement>, Arc<Statement>),
+    Or(Arc<Statement>, Arc<Statement>),
+    Not(Arc<Statement>),
     ExpresionComparison(Expresion, Expresion, Comparison),
     Relation(DeferedRelation),
 }
@@ -356,19 +357,19 @@ fn merge_statements(
     Some(match (op_ret, append_mode, negate_next_statement) {
         (None, _, _) => new_statement,
         (Some(prev_statement), AppendModes::And, false) => {
-            Statement::And(Box::new(prev_statement), Box::new(new_statement)).into()
+            Statement::And(Arc::new(prev_statement), Arc::new(new_statement)).into()
         }
         (Some(prev_statement), AppendModes::Or, false) => {
-            Statement::Or(Box::new(prev_statement), Box::new(new_statement)).into()
+            Statement::Or(Arc::new(prev_statement), Arc::new(new_statement)).into()
         }
         (Some(prev_statement), AppendModes::And, true) => Statement::And(
-            Box::new(prev_statement),
-            Box::new(Statement::Not(Box::new(new_statement)).into()),
+            Arc::new(prev_statement),
+            Arc::new(Statement::Not(Arc::new(new_statement)).into()),
         )
         .into(),
         (Some(prev_statement), AppendModes::Or, true) => Statement::Or(
-            Box::new(prev_statement),
-            Box::new(Statement::Not(Box::new(new_statement)).into()),
+            Arc::new(prev_statement),
+            Arc::new(Statement::Not(Arc::new(new_statement)).into()),
         )
         .into(),
         (Some(_), AppendModes::None, _) => unreachable!(),
@@ -378,9 +379,9 @@ fn merge_statements(
 impl Statement {
     pub fn get_posible_contexts(
         &self,
-        engine: &Engine,
-        recursion_tally: &RecursionTally,
-        universe: &VarContextUniverse,
+        engine: &Arc<Engine>,
+        recursion_tally: &Arc<RecursionTally>,
+        universe: &Arc<VarContextUniverse>,
     ) -> Result<VarContextUniverse, String> {
         let ret = match &self {
             Statement::Or(statement_a, statement_b) => {
@@ -394,8 +395,54 @@ impl Statement {
             }
 
             Statement::And(statement_a, statement_b) => {
-                let mut ret = universe.to_owned();
-                loop {
+                let ret;
+
+                if_multithread!(
+
+                let statement_a_clone = statement_a.clone();
+                              let engine_clone = engine.clone();
+                              let recursion_tally_clone = recursion_tally.clone();
+                              let universe_clone = universe.clone();
+
+                              let h1 = thread::spawn(move || {
+                                  statement_a_clone.get_posible_contexts(
+                                      &engine_clone,
+                                      &recursion_tally_clone,
+                                      &universe_clone,
+                                  )
+                              });
+
+                              let first_universe_b =
+                                  statement_b.get_posible_contexts(engine, recursion_tally, universe)?;
+
+                              let first_universe_a = h1.join().unwrap()?;
+
+                              let statement_a_clone = statement_a.clone();
+                              let engine_clone = engine.clone();
+                              let recursion_tally_clone = recursion_tally.clone();
+
+                              let h2 = thread::spawn(move || {
+                                  statement_a_clone.get_posible_contexts(
+                                      &engine_clone,
+                                      &recursion_tally_clone,
+                                      &&Arc::new(first_universe_b),
+                                  )
+                              });
+
+                              let universe_b = statement_b.get_posible_contexts(
+                                  engine,
+                                  recursion_tally,
+                                  &Arc::new(first_universe_a),
+                              )?;
+
+                              let universe_a = h2.join().unwrap()?;
+
+                              ret = universe_a.or(universe_b)
+
+                              );
+                if_not_multithread!(
+
+
                     let first_universe_a =
                         statement_a.get_posible_contexts(engine, recursion_tally, universe)?;
 
@@ -405,22 +452,19 @@ impl Statement {
                     let universe_a = statement_a.get_posible_contexts(
                         engine,
                         recursion_tally,
-                        &first_universe_b,
+                        &Arc::new(first_universe_b),
                     )?;
 
                     let universe_b = statement_b.get_posible_contexts(
                         engine,
                         recursion_tally,
-                        &first_universe_a,
+                        &Arc::new(first_universe_a),
                     )?;
 
-                    let new_ret = universe_a.or(universe_b);
-                    if new_ret != ret {
-                        ret = new_ret
-                    } else {
-                        break;
-                    }
-                }
+                    ret = universe_a.or(universe_b)
+
+
+                );
                 ret
             }
             Statement::Not(statement) => {
@@ -532,7 +576,7 @@ impl Statement {
                 ret
             }
 
-            Statement::True => universe.to_owned(),
+            Statement::True => VarContextUniverse::clone(universe),
         };
 
         Ok(ret)

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;

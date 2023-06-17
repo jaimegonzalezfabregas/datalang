@@ -1,4 +1,5 @@
 use core::fmt;
+use std::sync::Arc;
 
 use super::{
     assumption_node::{read_assumption, Assumption},
@@ -11,7 +12,7 @@ use crate::lexer::{self, LexogramType};
 pub enum Line {
     Assumption(Assumption),
     Query(DeferedRelation),
-    Comment(Box<Line>),
+    Comment(Arc<Line>),
 }
 
 impl fmt::Display for Line {
@@ -30,7 +31,7 @@ pub fn read_line(
 ) -> Result<Result<(Line, usize), FailureExplanation>, ParserError> {
     if let LexogramType::Comment = lexograms[start_cursor].l_type {
         match read_line(lexograms, start_cursor + 1)? {
-            Ok((line, jump_to)) => return Ok(Ok((Line::Comment(Box::new(line)), jump_to))),
+            Ok((line, jump_to)) => return Ok(Ok((Line::Comment(Arc::new(line)), jump_to))),
             Err(e) => {
                 return Ok(Err(FailureExplanation {
                     lex_pos: start_cursor,

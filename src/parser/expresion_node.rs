@@ -1,6 +1,7 @@
 use std::fmt::{self};
+use std::sync::Arc;
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use crate::engine::var_context::VarContext;
 use crate::lexer;
@@ -51,7 +52,7 @@ pub struct Operation<Op, Res> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Expresion {
     // resolvable to a value
-    Arithmetic(Box<Expresion>, Box<Expresion>, Operation<Data, Data>),
+    Arithmetic(Arc<Expresion>, Arc<Expresion>, Operation<Data, Data>),
     Literal(Data),
     Var(VarName),
 }
@@ -278,7 +279,7 @@ pub fn read_expresion(
                         cursor = jump_to;
                         op_ret = Some(match (&append_mode, op_ret) {
                             (Some(op), Some(ret)) => {
-                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.clone())
+                                Expresion::Arithmetic(Arc::new(ret), Arc::new(e), op.clone())
                             }
                             _ => e,
                         });
@@ -305,7 +306,7 @@ pub fn read_expresion(
                         cursor = jump_to;
                         op_ret = Some(match (&append_mode, op_ret) {
                             (Some(op), Some(ret)) => {
-                                Expresion::Arithmetic(Box::new(ret), Box::new(e), op.clone())
+                                Expresion::Arithmetic(Arc::new(ret), Arc::new(e), op.clone())
                             }
                             _ => e,
                         });

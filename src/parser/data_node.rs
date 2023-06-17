@@ -1,6 +1,6 @@
 use std::{fmt, hash};
 
-use print_macros::*;
+use conditional_compilation::*;
 
 use super::error::ParserError;
 use crate::engine::var_context::VarContext;
