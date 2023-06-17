@@ -4,15 +4,15 @@ use print_macros::*;
 
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
-use crate::parser::statement_token::read_statement;
+use crate::parser::statement_node::read_statement;
 use crate::{
     lexer,
-    parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
+    parser::{defered_relation_node::read_defered_relation, error::FailureExplanation},
 };
 
-use super::defered_relation_token::DeferedRelation;
+use super::defered_relation_node::DeferedRelation;
 use super::error::ParserError;
-use super::statement_token::Statement;
+use super::statement_node::Statement;
 use super::HasRelId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

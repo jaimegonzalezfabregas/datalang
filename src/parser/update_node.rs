@@ -6,10 +6,10 @@ use crate::lexer::LexogramType::*;
 
 use crate::{
     lexer,
-    parser::{defered_relation_token::read_defered_relation, error::FailureExplanation},
+    parser::{defered_relation_node::read_defered_relation, error::FailureExplanation},
 };
 
-use super::defered_relation_token::DeferedRelation;
+use super::defered_relation_node::DeferedRelation;
 use super::error::ParserError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

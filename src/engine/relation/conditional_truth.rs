@@ -8,8 +8,8 @@ use crate::{
         var_context_universe::VarContextUniverse, Engine,
     },
     parser::{
-        conditional_token::Conditional, data_token::Data, defered_relation_token::DeferedRelation,
-        statement_token::Statement,
+        conditional_node::Conditional, data_node::Data, defered_relation_node::DeferedRelation,
+        statement_node::Statement,
     },
 };
 

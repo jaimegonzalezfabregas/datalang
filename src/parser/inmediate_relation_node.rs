@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    data_token::Data,
+    data_node::Data,
     error::{FailureExplanation, ParserError},
     HasRelId,
 };

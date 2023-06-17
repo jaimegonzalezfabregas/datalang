@@ -10,8 +10,8 @@ use print_macros::*;
 use crate::{
     lexer,
     parser::{
-        self, assumption_token::Assumption, defered_relation_token::DeferedRelation,
-        inmediate_relation_token::InmediateRelation, line_token::Line, HasRelId,
+        self, assumption_node::Assumption, defered_relation_node::DeferedRelation,
+        inmediate_relation_node::InmediateRelation, line_node::Line, HasRelId,
     },
 };
 use std::{collections::BTreeMap, fmt, vec};

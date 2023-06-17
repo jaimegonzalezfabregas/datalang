@@ -5,8 +5,8 @@ pub mod truth;
 use print_macros::*;
 
 use crate::parser::{
-    conditional_token::Conditional, defered_relation_token::DeferedRelation,
-    inmediate_relation_token::InmediateRelation,
+    conditional_node::Conditional, defered_relation_node::DeferedRelation,
+    inmediate_relation_node::InmediateRelation,
 };
 
 use self::{conditional_truth::ConditionalTruth, truth::Truth};

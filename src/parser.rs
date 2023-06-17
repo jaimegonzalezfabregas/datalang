@@ -1,14 +1,14 @@
-pub mod assumption_token;
-pub mod conditional_token;
-pub mod data_token;
-pub mod defered_relation_token;
-pub mod destructuring_array_token;
-pub mod expresion_token;
-pub mod inmediate_relation_token;
-pub mod line_token;
-pub mod list_token;
-pub mod statement_token;
-pub mod update_token;
+pub mod assumption_node;
+pub mod conditional_node;
+pub mod data_node;
+pub mod defered_relation_node;
+pub mod destructuring_array_node;
+pub mod expresion_node;
+pub mod inmediate_relation_node;
+pub mod line_node;
+pub mod list_node;
+pub mod statement_node;
+pub mod update_node;
 
 pub mod error;
 
@@ -17,7 +17,7 @@ use crate::lexer;
 use crate::parser::error::FailureExplanation;
 
 use self::error::ParserError;
-use self::line_token::*;
+use self::line_node::*;
 
 pub trait HasRelId {
     fn get_rel_id(&self) -> RelId;

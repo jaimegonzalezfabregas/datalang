@@ -3,8 +3,8 @@ use std::fmt;
 use crate::{
     engine::{var_context::VarContext, RelId},
     parser::{
-        data_token::Data, defered_relation_token::DeferedRelation,
-        inmediate_relation_token::InmediateRelation, HasRelId,
+        data_node::Data, defered_relation_node::DeferedRelation,
+        inmediate_relation_node::InmediateRelation, HasRelId,
     },
 };
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]

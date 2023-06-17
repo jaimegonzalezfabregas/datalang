@@ -7,14 +7,14 @@ use crate::engine::relation::truth::Truth;
 use crate::engine::var_context::VarContext;
 use crate::engine::RelId;
 use crate::lexer::LexogramType::*;
-use crate::parser::assumption_token::read_assumption;
+use crate::parser::assumption_node::read_assumption;
 
-use crate::{lexer, parser::list_token::read_list};
+use crate::{lexer, parser::list_node::read_list};
 
-use super::assumption_token::Assumption;
+use super::assumption_node::Assumption;
 use super::error::ParserError;
 use super::{FailureExplanation, HasRelId};
-use crate::parser::expresion_token::Expresion;
+use crate::parser::expresion_node::Expresion;
 
 #[derive(Debug, Clone, Eq)]
 pub struct DeferedRelation {

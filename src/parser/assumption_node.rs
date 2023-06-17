@@ -1,15 +1,15 @@
 use core::fmt;
 
 use super::{
-    conditional_token::Conditional,
-    defered_relation_token::{read_defered_relation, DeferedRelation},
+    conditional_node::Conditional,
+    defered_relation_node::{read_defered_relation, DeferedRelation},
     error::{FailureExplanation, ParserError},
-    inmediate_relation_token::{read_inmediate_relation, InmediateRelation},
-    update_token::{read_update, Update},
+    inmediate_relation_node::{read_inmediate_relation, InmediateRelation},
+    update_node::{read_update, Update},
 };
 use crate::{
     lexer::{self},
-    parser::conditional_token::read_conditional,
+    parser::conditional_node::read_conditional,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
