@@ -2,7 +2,7 @@ use print_macros::*;
 
 use super::error::{FailureExplanation, ParserError};
 use crate::lexer::LexogramType::*;
-use crate::parser::expresion_token::{read_expresion, Expresion, VarName};
+use crate::parser::expresion_node::{read_expresion, Expresion, VarName};
 
 use crate::lexer;
 
